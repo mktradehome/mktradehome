@@ -22,7 +22,7 @@ header {
     padding: 22px 16px;
     border-bottom: 1px solid #26344b;
 }
-.header-content {
+.header-content, .container {
     max-width: 1000px;
     margin: auto;
 }
@@ -36,8 +36,6 @@ header p {
     font-size: 13px;
 }
 .container {
-    max-width: 1000px;
-    margin: auto;
     padding: 16px;
 }
 .section-title {
@@ -55,7 +53,7 @@ header p {
     font-size: 16px;
     margin-bottom: 12px;
 }
-.market-grid {
+.market-grid, .stats-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
     gap: 12px;
@@ -65,7 +63,7 @@ header p {
     font-weight: bold;
     font-size: 17px;
 }
-.market-status {
+.market-status, .price {
     color: #94a3b8;
     font-size: 12px;
     margin-top: 8px;
@@ -78,10 +76,6 @@ header p {
     font-weight: bold;
     background: #26344b;
     color: #facc15;
-}
-.price {
-    font-size: 13px;
-    color: #94a3b8;
     margin-top: 10px;
 }
 .signal-box {
@@ -99,6 +93,16 @@ header p {
     font-size: 13px;
     line-height: 1.7;
 }
+.stat {
+    font-size: 22px;
+    color: #38bdf8;
+    font-weight: bold;
+}
+.stat-label {
+    font-size: 12px;
+    color: #94a3b8;
+    margin-top: 5px;
+}
 button {
     width: 100%;
     border: none;
@@ -110,9 +114,6 @@ button {
     font-weight: bold;
     margin-top: 12px;
     cursor: pointer;
-}
-button:active {
-    opacity: 0.8;
 }
 input, select {
     width: 100%;
@@ -128,21 +129,6 @@ label {
     color: #cbd5e1;
     font-size: 13px;
 }
-.stat {
-    font-size: 22px;
-    color: #38bdf8;
-    font-weight: bold;
-}
-.stat-label {
-    font-size: 12px;
-    color: #94a3b8;
-    margin-top: 5px;
-}
-.stats-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
-}
 footer {
     text-align: center;
     color: #64748b;
@@ -150,7 +136,7 @@ footer {
     padding: 25px 10px;
 }
 @media (max-width: 400px) {
-    .market-grid {
+    .market-grid, .stats-grid {
         grid-template-columns: 1fr;
     }
 }
@@ -177,7 +163,7 @@ footer {
         </div>
     </div>
     <h2 class="section-title">Markets Watchlist</h2>
-    <div class="market-grid">
+    <div class="market-grid" id="marketGrid">
         <div class="card">
             <div class="market-name">BTC/USD</div>
             <div class="market-status">Bitcoin / US Dollar</div>
@@ -208,7 +194,7 @@ footer {
         <h3>Current Market Signal</h3>
         <div class="signal">WAIT</div>
         <p class="info">
-            Waiting for a live market connection and technical analysis.
+            Waiting for live market data and technical analysis.
             No real BUY or SELL recommendation is available yet.
         </p>
     </div>
@@ -269,7 +255,7 @@ footer {
     <div class="card">
         <h3>System Connection Status</h3>
         <p class="info">Dashboard: <span style="color:#22c55e">Running</span></p>
-        <p class="info">Supabase: Not connected yet</p>
+        <p class="info" id="databaseStatus">Supabase: Connecting...</p>
         <p class="info">Live Market Data: Not connected yet</p>
         <p class="info">AI Analysis: Not connected yet</p>
         <p class="info">MT5 / Exness: Not connected yet</p>
@@ -279,8 +265,72 @@ footer {
     Mktradehome · Private Personal Trading Assistant<br>
     Analysis is not a guarantee of profit. Trade responsibly.
 </footer>
+<!-- SUPABASE LIBRARY -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-let trades = JSON.parse(localStorage.getItem("mkTrades") || "[]");
+// =================================
+// SUPABASE DATABASE CONNECTION
+// =================================
+const SUPABASE_URL = "https://pjwqyveitncygamaaybi.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_Ny_yyLQYsjyCNuGAn25ybw_ahxLPjwk";
+const supabaseClient = window.supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_PUBLISHABLE_KEY
+);
+// Check that the Supabase client loads.
+async function checkDatabase() {
+    const status = document.getElementById("databaseStatus");
+    try {
+        const { data, error } = await supabaseClient
+            .from("trading_markets")
+            .select("symbol, market_name, is_active")
+            .order("id");
+        if (error) {
+            status.textContent =
+                "Supabase: Client loaded; authentication or database access needs setup.";
+            console.log("Supabase response:", error.message);
+            return;
+        }
+        status.textContent =
+            "Supabase: Connected. " + data.length + " markets found.";
+        displayMarkets(data);
+    } catch (error) {
+        status.textContent = "Supabase: Connection error.";
+        console.log(error);
+    }
+}
+// Display markets returned by Supabase.
+function displayMarkets(markets) {
+    const grid = document.getElementById("marketGrid");
+    grid.innerHTML = "";
+    markets.forEach(market => {
+        const card = document.createElement("div");
+        card.className = "card";
+        const name = document.createElement("div");
+        name.className = "market-name";
+        name.textContent = market.symbol;
+        const description = document.createElement("div");
+        description.className = "market-status";
+        description.textContent = market.market_name;
+        const price = document.createElement("div");
+        price.className = "price";
+        price.textContent = "Live price: Not connected";
+        const badge = document.createElement("span");
+        badge.className = "status";
+        badge.textContent = market.is_active ? "ACTIVE" : "INACTIVE";
+        card.appendChild(name);
+        card.appendChild(description);
+        card.appendChild(price);
+        card.appendChild(badge);
+        grid.appendChild(card);
+    });
+}
+// =================================
+// LOCAL TRADE RECORDS
+// =================================
+let trades = JSON.parse(
+    localStorage.getItem("mkTrades") || "[]"
+);
 function saveTrades() {
     localStorage.setItem("mkTrades", JSON.stringify(trades));
 }
@@ -294,30 +344,45 @@ function updateDashboard() {
     openArea.innerHTML = "";
     historyArea.innerHTML = "";
     if (open.length === 0) {
-        openArea.innerHTML = '<div class="card info">No trades recorded yet.</div>';
+        openArea.innerHTML =
+            '<div class="card info">No trades recorded yet.</div>';
     }
     if (closed.length === 0) {
-        historyArea.innerHTML = '<div class="card info">Your closed trades will appear here.</div>';
+        historyArea.innerHTML =
+            '<div class="card info">Your closed trades will appear here.</div>';
     }
-    open.forEach((trade, index) => {
+    open.forEach(trade => {
         const originalIndex = trades.indexOf(trade);
-        openArea.innerHTML += `
-        <div class="card">
-            <h3>${trade.symbol} — ${trade.direction}</h3>
-            <p class="info">Entry: ${trade.entry}</p>
-            <p class="info">Stop Loss: ${trade.stopLoss || "Not set"}</p>
-            <p class="info">Take Profit: ${trade.takeProfit || "Not set"}</p>
-            <p class="info">Lot Size: ${trade.lotSize || "Not set"}</p>
-            <button onclick="closeTrade(${originalIndex})">Close Trade</button>
-        </div>`;
+        const card = document.createElement("div");
+        card.className = "card";
+        const heading = document.createElement("h3");
+        heading.textContent = trade.symbol + " — " + trade.direction;
+        const details = document.createElement("p");
+        details.className = "info";
+        details.textContent =
+            "Entry: " + trade.entry +
+            " | Stop Loss: " + (trade.stopLoss || "Not set") +
+            " | Take Profit: " + (trade.takeProfit || "Not set") +
+            " | Lot Size: " + trade.lotSize;
+        const button = document.createElement("button");
+        button.textContent = "Close Trade";
+        button.onclick = () => closeTrade(originalIndex);
+        card.appendChild(heading);
+        card.appendChild(details);
+        card.appendChild(button);
+        openArea.appendChild(card);
     });
     closed.forEach(trade => {
-        historyArea.innerHTML += `
-        <div class="card">
-            <h3>${trade.symbol} — ${trade.direction}</h3>
-            <p class="info">Entry: ${trade.entry}</p>
-            <p class="info">Status: CLOSED</p>
-        </div>`;
+        const card = document.createElement("div");
+        card.className = "card";
+        const heading = document.createElement("h3");
+        heading.textContent = trade.symbol + " — " + trade.direction;
+        const details = document.createElement("p");
+        details.className = "info";
+        details.textContent = "Entry: " + trade.entry + " | Status: CLOSED";
+        card.appendChild(heading);
+        card.appendChild(details);
+        historyArea.appendChild(card);
     });
 }
 function addTrade() {
@@ -349,13 +414,16 @@ function addTrade() {
     document.getElementById("lotSize").value = "";
 }
 function closeTrade(index) {
-    if (!confirm("Are you sure you want to mark this trade as closed?")) {
+    if (!confirm("Mark this trade as closed?")) {
         return;
     }
     trades[index].status = "CLOSED";
     saveTrades();
     updateDashboard();
 }
+// =================================
+// RISK MANAGEMENT
+// =================================
 function saveRisk() {
     const settings = {
         risk: document.getElementById("risk").value,
@@ -367,15 +435,21 @@ function saveRisk() {
         "Risk settings saved on this device.";
 }
 function loadRisk() {
-    const settings = JSON.parse(localStorage.getItem("mkRisk") || "null");
+    const settings = JSON.parse(
+        localStorage.getItem("mkRisk") || "null"
+    );
     if (settings) {
         document.getElementById("risk").value = settings.risk;
         document.getElementById("dailyLimit").value = settings.dailyLimit;
         document.getElementById("maxTrades").value = settings.maxTrades;
     }
 }
+// =================================
+// START DASHBOARD
+// =================================
 updateDashboard();
 loadRisk();
+checkDatabase();
 </script>
 </body>
 </html>

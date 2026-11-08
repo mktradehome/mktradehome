@@ -222,13 +222,13 @@ Mktradehome • Personal trading analysis tool
 
 <script>
 
-const SUPABASE_URL = "https://pjwqyveitncygamaaybi.supabase.co";
+const SUPABASE_URL="https://pjwqyveitncygamaaybi.supabase.co";
 
-const SUPABASE_KEY = "sb_publishable_Ny_yyLQYsjyCNuGAn25ybw_ahxLPjwk";
+const SUPABASE_KEY="sb_publishable_Ny_yyLQYsjyCNuGAn25ybw_ahxLPjwk";
 
-const db = window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 
-const markets = [
+const markets=[
 
  {symbol:"BTCUSD",name:"BTC/USD"},
 
@@ -240,19 +240,21 @@ const markets = [
 
 ];
 
-let latestQuotes = {};
+let latestQuotes={};
 
-let analyses = {};
+let analyses={};
 
-let priceBusy = false;
+let priceBusy=false;
+
+let appStarted=false;
 
 function escapeHTML(value){
 
- return String(value).replace(/[&<>"']/g,function(c){
+ return String(value).replace(/[&<>"']/g,c=>({
 
-  return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
+ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
 
- });
+ })[c]);
 
 }
 
@@ -290,11 +292,15 @@ async function checkSession(){
 
  const {data}=await db.auth.getSession();
 
- if(data.session) showApp();
+ if(data.session)showApp();
 
 }
 
 function showApp(){
+
+ if(appStarted)return;
+
+ appStarted=true;
 
  document.getElementById("loginBox").classList.add("hidden");
 
@@ -312,6 +318,8 @@ function showApp(){
 
 }
 
+/* LIVE PRICE DATA */
+
 async function fetchPrices(){
 
  if(priceBusy)return;
@@ -324,29 +332,45 @@ async function fetchPrices(){
 
   const response=await fetch(url);
 
-  if(!response.ok)throw new Error("Price service unavailable");
+  if(!response.ok){
+
+   throw new Error("Price service returned "+response.status);
+
+  }
 
   const data=await response.json();
 
-  const rows=Array.isArray(data)?data:(data.quotes||data.data||[]);
+  let rows=data.quotes||data.data||data;
 
-  rows.forEach(q=>{
+  if(Array.isArray(rows)){
 
-   const symbol=q.symbol||q.name;
+   rows.forEach(q=>{
 
-   if(symbol){
+    const symbol=q.symbol||q.name;
 
-    latestQuotes[symbol]=q;
+    if(symbol)latestQuotes[symbol]=q;
 
-   }
+   });
 
-  });
+  }else if(rows&&typeof rows==="object"){
+
+   markets.forEach(m=>{
+
+    if(rows[m.symbol]){
+
+     latestQuotes[m.symbol]=rows[m.symbol];
+
+    }
+
+   });
+
+  }
 
   renderMarkets();
 
  }catch(error){
 
-  document.getElementById("connection").textContent="Price connection error: "+error.message;
+  document.getElementById("connection").textContent="Price error: "+error.message;
 
   document.getElementById("connection").className="red";
 
@@ -364,7 +388,9 @@ function getPrice(symbol){
 
  if(!q)return null;
 
- return Number(q.mid||q.price||q.close||0);
+ const value=Number(q.mid||q.price||q.close||0);
+
+ return Number.isFinite(value)&&value>0?value:null;
 
 }
 
@@ -376,15 +402,15 @@ function quoteIsFresh(symbol){
 
  const age=Number(q.quoteAgeSeconds);
 
- return q.stale===false &&
+ return q.stale===false&&
 
-        q.marketState==="open" &&
+        q.marketState==="open"&&
 
-        Number.isFinite(age) &&
+        Number.isFinite(age)&&
 
-        age<=300 &&
+        age<=300&&
 
-        getPrice(symbol)>0;
+        getPrice(symbol)!==null;
 
 }
 
@@ -406,7 +432,11 @@ function renderMarkets(){
 
    <h3>${m.name}</h3>
 
-   <div class="price">${price?price.toLocaleString("en-US",{maximumFractionDigits:5}):"Waiting for price..."}</div>
+   <div class="price">
+
+    ${price!==null?price.toLocaleString("en-US",{maximumFractionDigits:5}):"Waiting for price..."}
+
+   </div>
 
    <span class="badge ${fresh?"green":"yellow"}">
 
@@ -414,7 +444,11 @@ function renderMarkets(){
 
    </span>
 
-   <p class="small">${q&&q.quoteAgeSeconds!==undefined?"Quote age: "+q.quoteAgeSeconds+" seconds":""}</p>
+   <p class="small">
+
+    ${q&&q.quoteAgeSeconds!==undefined?"Quote age: "+q.quoteAgeSeconds+" seconds":""}
+
+   </p>
 
    <div id="signal-${m.symbol}">
 
@@ -428,19 +462,29 @@ function renderMarkets(){
 
 }
 
+/* CANDLE DATA */
+
 async function fetchCandles(symbol,interval){
 
  const url=`https://biquote.io/api/${symbol}/ohlc?interval=${interval}&limit=200`;
 
  const response=await fetch(url);
 
- if(!response.ok)throw new Error("Candle data unavailable for "+symbol+" "+interval);
+ if(!response.ok){
+
+  throw new Error("Candle data unavailable: "+symbol+" "+interval);
+
+ }
 
  const data=await response.json();
 
  const bars=data.bars||data.data||data;
 
- if(!Array.isArray(bars))throw new Error("Invalid candle data");
+ if(!Array.isArray(bars)){
+
+  throw new Error("Invalid candle data for "+symbol);
+
+ }
 
  return bars.map(b=>({
 
@@ -468,9 +512,13 @@ async function fetchCandles(symbol,interval){
 
   Number.isFinite(b.close)
 
- ).filter(b=>!b.isOpen).sort((a,b)=>a.time-b.time);
+ ).filter(b=>!b.isOpen)
+
+ .sort((a,b)=>a.time-b.time);
 
 }
+
+/* BUILD THREE-HOUR CANDLES */
 
 function make3HourBars(hourBars){
 
@@ -510,11 +558,15 @@ function make3HourBars(hourBars){
 
 }
 
+/* TECHNICAL INDICATORS */
+
 function ema(values,period){
 
  if(values.length<period)return null;
 
- let result=values.slice(0,period).reduce((a,b)=>a+b,0)/period;
+ let result=values.slice(0,period)
+
+  .reduce((a,b)=>a+b,0)/period;
 
  const multiplier=2/(period+1);
 
@@ -532,31 +584,23 @@ function calculateRSI(values,period=14){
 
  if(values.length<=period)return null;
 
- let gains=0,losses=0;
+ let gains=0;
+
+ let losses=0;
 
  for(let i=values.length-period;i<values.length;i++){
 
   const change=values[i]-values[i-1];
 
-  if(change>0)gains+=change;
+  if(change>0){
 
-  else loss+=0;
+   gains+=change;
 
- }
+  }else{
 
- // Recalculate losses separately.
+   losses+=Math.abs(change);
 
- gains=0;
-
- losses=0;
-
- for(let i=values.length-period;i<values.length;i++){
-
-  const change=values[i]-values[i-1];
-
-  if(change>0)gains+=change;
-
-  else losses+=Math.abs(change);
+  }
 
  }
 
@@ -576,7 +620,9 @@ function calculateATR(bars,period=14){
 
  for(let i=1;i<bars.length;i++){
 
-  const b=bars[i],previous=bars[i-1];
+  const b=bars[i];
+
+  const previous=bars[i-1];
 
   ranges.push(Math.max(
 
@@ -590,13 +636,19 @@ function calculateATR(bars,period=14){
 
  }
 
- return ranges.slice(-period).reduce((a,b)=>a+b,0)/period;
+ return ranges.slice(-period)
+
+  .reduce((a,b)=>a+b,0)/period;
 
 }
 
 function analyzeTimeframe(bars){
 
- if(bars.length<60)throw new Error("Not enough candles");
+ if(bars.length<60){
+
+  throw new Error("Not enough candles");
+
+ }
 
  const closes=bars.map(b=>b.close);
 
@@ -608,19 +660,45 @@ function analyzeTimeframe(bars){
 
  const atr=calculateATR(bars,14);
 
- if(fast===null||slow===null||rsi===null||atr===null)
+ if(fast===null||slow===null||rsi===null||atr===null){
 
   throw new Error("Indicator calculation failed");
 
+ }
+
  let direction="WAIT";
 
- if(fast>slow&&rsi>50&&rsi<70)direction="BUY";
+ if(fast>slow&&rsi>50&&rsi<70){
 
- if(fast<slow&&rsi<50&&rsi>30)direction="SELL";
+  direction="BUY";
 
- return {direction,fast,slow,rsi,atr,last:closes[closes.length-1]};
+ }
+
+ if(fast<slow&&rsi<50&&rsi>30){
+
+  direction="SELL";
+
+ }
+
+ return {
+
+  direction,
+
+  fast,
+
+  slow,
+
+  rsi,
+
+  atr,
+
+  last:closes[closes.length-1]
+
+ };
 
 }
+
+/* BUY / SELL / WAIT ANALYSIS */
 
 function buildSignal(results,price){
 
@@ -628,15 +706,35 @@ function buildSignal(results,price){
 
  let direction="WAIT";
 
- if(directions.every(x=>x==="BUY"))direction="BUY";
+ if(directions.every(x=>x==="BUY")){
 
- if(directions.every(x=>x==="SELL"))direction="SELL";
+  direction="BUY";
+
+ }
+
+ if(directions.every(x=>x==="SELL")){
+
+  direction="SELL";
+
+ }
 
  const atr=results["1H"]?.atr||0;
 
  if(direction==="WAIT"||!price||!atr){
 
-  return {direction,entry:price,stop:null,tp1:null,tp2:null};
+  return {
+
+   direction,
+
+   entry:price,
+
+   stop:null,
+
+   tp1:null,
+
+   tp2:null
+
+  };
 
  }
 
@@ -644,11 +742,23 @@ function buildSignal(results,price){
 
  const entry=price;
 
- const stop=direction==="BUY"?entry-distance:entry+distance;
+ const stop=direction==="BUY"
 
- const tp1=direction==="BUY"?entry+distance*1.5:entry-distance*1.5;
+  ?entry-distance
 
- const tp2=direction==="BUY"?entry+distance*2.5:entry-distance*2.5;
+  :entry+distance;
+
+ const tp1=direction==="BUY"
+
+  ?entry+distance*1.5
+
+  :entry-distance*1.5;
+
+ const tp2=direction==="BUY"
+
+  ?entry+distance*2.5
+
+  :entry-distance*2.5;
 
  return {direction,entry,stop,tp1,tp2};
 
@@ -658,9 +768,17 @@ async function analyzeMarket(m){
 
  const price=getPrice(m.symbol);
 
- if(!price)throw new Error("No current price");
+ if(!price){
 
- if(!quoteIsFresh(m.symbol))throw new Error("Price is stale or market is closed");
+  throw new Error("No current price");
+
+ }
+
+ if(!quoteIsFresh(m.symbol)){
+
+  throw new Error("Price is stale or market is closed");
+
+ }
 
  const [bars5,bars15,bars1h]=await Promise.all([
 
@@ -702,9 +820,17 @@ function renderAnalysis(m,result){
 
  const s=result.signal;
 
- const color=s.direction==="BUY"?"green":s.direction==="SELL"?"red":"yellow";
+ const color=s.direction==="BUY"
 
- let timeframes=Object.entries(result.results).map(([tf,r])=>
+  ?"green"
+
+  :s.direction==="SELL"
+
+  ?"red"
+
+  :"yellow";
+
+ const timeframes=Object.entries(result.results).map(([tf,r])=>
 
   `<p class="small">${tf}: <b>${r.direction}</b> | RSI: ${r.rsi.toFixed(1)}</p>`
 
@@ -746,6 +872,8 @@ function renderAnalysis(m,result){
 
 }
 
+/* REFRESH DASHBOARD */
+
 async function refreshAll(){
 
  document.getElementById("connection").textContent="Updating market data...";
@@ -776,7 +904,13 @@ async function refreshAll(){
 
    if(box){
 
-    box.innerHTML=`<p class="yellow">WAIT</p><p class="small">${escapeHTML(error.message)}</p>`;
+    box.innerHTML=`
+
+     <p class="yellow">WAIT</p>
+
+     <p class="small">${escapeHTML(error.message)}</p>
+
+    `;
 
    }
 
@@ -784,21 +918,35 @@ async function refreshAll(){
 
  }
 
- document.getElementById("connection").textContent="Analysis updated. Check quote freshness before trading.";
+ document.getElementById("connection").textContent=
+
+  "Analysis updated. Check quote freshness before trading.";
 
  document.getElementById("connection").className="green";
 
- document.getElementById("lastUpdated").textContent="Last update: "+new Date().toLocaleString();
+ document.getElementById("lastUpdated").textContent=
+
+  "Last update: "+new Date().toLocaleString();
 
 }
+
+/* RISK SETTINGS */
 
 function loadSettings(){
 
  const saved=JSON.parse(localStorage.getItem("mkRisk")||"{}");
 
- if(saved.balance)document.getElementById("balance").value=saved.balance;
+ if(saved.balance){
 
- if(saved.risk)document.getElementById("risk").value=saved.risk;
+  document.getElementById("balance").value=saved.balance;
+
+ }
+
+ if(saved.risk){
+
+  document.getElementById("risk").value=saved.risk;
+
+ }
 
 }
 
@@ -810,7 +958,9 @@ function saveRisk(){
 
  if(balance<=0||risk<=0||risk>5){
 
-  document.getElementById("riskMessage").textContent="Enter a valid balance and risk between 0.1% and 5%.";
+  document.getElementById("riskMessage").textContent=
+
+   "Enter a valid balance and risk between 0.1% and 5%.";
 
   return;
 
@@ -818,9 +968,13 @@ function saveRisk(){
 
  localStorage.setItem("mkRisk",JSON.stringify({balance,risk}));
 
- document.getElementById("riskMessage").textContent="Risk settings saved.";
+ document.getElementById("riskMessage").textContent=
+
+  "Risk settings saved.";
 
 }
+
+/* TRADE RECORDS */
 
 function getTrades(){
 
@@ -930,7 +1084,9 @@ function renderTrades(){
 
  const closed=trades.filter(t=>t.status==="CLOSED");
 
- document.getElementById("openTrades").innerHTML=open.length?open.map(t=>`
+ document.getElementById("openTrades").innerHTML=
+
+ open.length?open.map(t=>`
 
   <div class="trade">
 
@@ -946,7 +1102,9 @@ function renderTrades(){
 
  `).join(""):"<p class='muted'>No open trades.</p>";
 
- document.getElementById("tradeHistory").innerHTML=closed.length?closed.map(t=>`
+ document.getElementById("tradeHistory").innerHTML=
+
+ closed.length?closed.map(t=>`
 
   <div class="trade">
 
@@ -964,7 +1122,11 @@ function renderTrades(){
 
 db.auth.onAuthStateChange((event,session)=>{
 
- if(session)showApp();
+ if(session){
+
+  showApp();
+
+ }
 
 });
 

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+by<!DOCTYPE html>
 
 <html lang="en">
 
@@ -661,6 +661,34 @@ async function analyzeMarket(market){
 }
 
 function renderMarkets(){
+
+  $("markets").innerHTML=marketList.map(m=>{
+
+    const q=quotes[m.symbol];
+
+    const price=q?formatPrice(q.price):"Waiting for price";
+
+    const status=!q?"PRICE UNAVAILABLE":
+
+      q.stale||q.marketState!=="open"?"MARKET CLOSED / STALE":
+
+      "LIVE · OPEN";
+
+    return `<div class="marketbox">
+
+      <strong>${m.name}</strong>
+
+      <div class="price">${price}</div>
+
+      <div class="small">${status}</div>
+
+      ${q?`<div class="small">Bid: ${formatPrice(q.bid)} · Ask: ${formatPrice(q.ask)}</div>`:""}
+
+    </div>`;
+
+  }).join("");
+
+}
 
   $("markets").innerHTML=marketList.map(m=>{
 

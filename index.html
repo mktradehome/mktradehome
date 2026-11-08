@@ -118,9 +118,15 @@ label{display:block;font-size:13px;color:#c4ccda;margin-top:10px}
 
 <button id="refreshBtn">Refresh Prices &amp; Analysis</button>
 
-<button id="notifyBtn" class="secondary">Enable Push Notifications</button>
+<hr>
 
-<div id="notificationStatus" class="small"></div>
+<h2>Telegram Alerts</h2>
+
+<p>Connect your Telegram bot to receive trading signals and safety warnings.</p>
+
+<button id="telegramBtn">Connect Telegram Alerts</button>
+
+<div id="telegramStatus" class="status">Telegram is not connected yet.</div>
 
 </div>
 
@@ -185,8 +191,6 @@ label{display:block;font-size:13px;color:#c4ccda;margin-top:10px}
 const SUPABASE_URL="https://pjwqyveitncygamaaybi.supabase.co";
 
 const SUPABASE_KEY="sb_publishable_Ny_yyLQYsjyCNuGAn25ybw_ahxLPjwk";
-
-const VAPID_PUBLIC_KEY="BAEbkqgLD24JOlTc7NpviLRBRyoaiBqirWYmXNlS5RqlxJeCn755ggOaMExnDPg5_FzbziO4OXzYzj8ZqHyAaao";
 
 const supabaseClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 
@@ -314,6 +318,76 @@ refreshTimer=setInterval(refreshAll,15000);
 
 }
 
+/* TELEGRAM */
+
+async function sendTelegramAlert(message){
+
+try{
+
+const {data,error}=await supabaseClient.functions.invoke("telegram-alerts",{body:{message}});
+
+if(error)throw error;
+
+if(!data?.success)throw new Error(data?.error||"Telegram alert failed.");
+
+return true;
+
+}catch(e){
+
+console.error("Telegram alert error:",e);
+
+return false;
+
+}
+
+}
+
+async function connectTelegram(){
+
+const btn=$("telegramBtn");
+
+btn.disabled=true;
+
+showMessage("telegramStatus","Connecting to Telegram...");
+
+try{
+
+const {data,error}=await supabaseClient.functions.invoke("telegram-connect",{body:{}});
+
+if(error)throw error;
+
+if(!data?.success)throw new Error(data?.message||data?.error||"Telegram connection failed.");
+
+showMessage("telegramStatus","Telegram connected. Sending a test message...");
+
+const test=await supabaseClient.functions.invoke("telegram-alerts",{
+
+body:{message:"Mktradehome Telegram connected successfully! You will receive trading signals and safety alerts here."}
+
+});
+
+if(test.error)throw test.error;
+
+if(!test.data?.success)throw new Error(test.data?.error||"Telegram test message failed.");
+
+showMessage("telegramStatus","Success! Telegram is connected. Check your Telegram for the test message.");
+
+}catch(e){
+
+console.error("Telegram connection error:",e);
+
+showMessage("telegramStatus","Connection failed: "+(e.message||"Unknown error"));
+
+}finally{
+
+btn.disabled=false;
+
+}
+
+}
+
+/* MARKET DATA */
+
 async function fetchQuotes(){
 
 const response=await fetch(QUOTE_URL,{cache:"no-store"});
@@ -336,7 +410,9 @@ if(Number.isFinite(price)&&price>0){
 
 output[m.symbol]={price,bid,ask,stale:item.stale,marketState:item.marketState,quoteAgeSeconds:Number(item.quoteAgeSeconds),time:item.timestamp};
 
-}}
+}
+
+}
 
 quotes={...quotes,...output};
 
@@ -363,6 +439,8 @@ time:c.openTime||c.time||c.timestamp,isOpen:c.isOpen===true
 .sort((a,b)=>new Date(a.time)-new Date(b.time));
 
 }
+
+/* ANALYSIS */
 
 function calculateATR(bars){
 
@@ -504,6 +582,8 @@ return {results,overall,reason,entry,sl,tp1,tp2,quoteFresh:fresh,safetyLocked:sa
 
 }
 
+/* DISPLAY */
+
 function renderMarkets(){
 
 $("markets").innerHTML=marketList.map(m=>{
@@ -542,11 +622,13 @@ ${Object.entries(a.results).map(([tf,r])=>`<div class="row"><span>${tf} · ${r.r
 
 }
 
+/* NOTIFICATIONS */
+
 async function notify(title,message){
 
 try{
 
-if(Notification.permission!=="granted")return;
+if(!("Notification"in window)||Notification.permission!=="granted")return;
 
 const reg=await navigator.serviceWorker.ready;
 
@@ -564,7 +646,25 @@ const a=analyses[m.symbol];if(!a)continue;
 
 const old=previousSignals[m.symbol];
 
-if(a.quoteFresh&&a.overall!=="WAIT"&&a.overall!==old)notify("Mktradehome "+m.name,a.overall+" signal. "+a.reason+" Verify before trading.");
+if(a.quoteFresh&&a.overall!=="WAIT"&&a.overall!==old){
+
+const message=m.name+" "+a.overall+" signal. "+a.reason+
+
+". Entry: "+(a.entry!==null?formatPrice(a.entry):"—")+
+
+". Stop Loss: "+(a.sl!==null?formatPrice(a.sl):"—")+
+
+". TP1: "+(a.tp1!==null?formatPrice(a.tp1):"—")+
+
+". TP2: "+(a.tp2!==null?formatPrice(a.tp2):"—")+
+
+". Verify before trading.";
+
+notify("Mktradehome "+m.name,message);
+
+sendTelegramAlert(message);
+
+}
 
 previousSignals[m.symbol]=a.overall;
 
@@ -576,7 +676,9 @@ async function refreshAll(){
 
 if(refreshing)return;
 
-refreshing=true;showMessage("systemStatus","Updating prices and market analysis...");
+refreshing=true;
+
+showMessage("systemStatus","Updating prices and market analysis...");
 
 try{
 
@@ -594,13 +696,19 @@ renderAnalysis();checkSignalAlerts();
 
 $("lastUpdate").textContent=new Date().toLocaleString();
 
-showMessage("systemStatus","Monitoring active. Analysis refreshed.");checkSafety();
+showMessage("systemStatus","Monitoring active. Analysis refreshed.");
 
-}catch(e){showMessage("systemStatus","Update error: "+e.message)}
+checkSafety();
 
-finally{refreshing=false}
+}catch(e){
+
+showMessage("systemStatus","Update error: "+e.message);
+
+}finally{refreshing=false}
 
 }
+
+/* RISK MANAGEMENT */
 
 function saveTrades(t){localStorage.setItem("mktradehome_trades",JSON.stringify(t))}
 
@@ -616,7 +724,11 @@ function saveRiskSettings(){
 
 const d=Number($("dailyLimit").value),s=Number($("lossLimit").value);
 
-if(!Number.isFinite(d)||d<=0||!Number.isInteger(s)||s<1){showMessage("safetyStatus","Enter valid safety limits.");return}
+if(!Number.isFinite(d)||d<=0||!Number.isInteger(s)||s<1){
+
+showMessage("safetyStatus","Enter valid safety limits.");return;
+
+}
 
 localStorage.setItem("mktradehome_daily_limit",d);
 
@@ -634,7 +746,15 @@ if(s.locked){
 
 showMessage("safetyStatus","STOP TRADING: "+s.reason);
 
-if(previousSafetyState!=="LOCKED")notify("Mktradehome - STOP TRADING",s.reason);
+if(previousSafetyState!=="LOCKED"){
+
+const message="STOP TRADING WARNING: "+s.reason+" Mktradehome safety limit reached.";
+
+notify("Mktradehome - STOP TRADING",message);
+
+sendTelegramAlert(message);
+
+}
 
 previousSafetyState="LOCKED";
 
@@ -652,13 +772,23 @@ function recordTrade(){
 
 const raw=$("tradeResult").value,result=Number(raw);
 
-if(raw===""||!Number.isFinite(result)){showMessage("safetyStatus","Enter a valid trade result.");return}
+if(raw===""||!Number.isFinite(result)){
+
+showMessage("safetyStatus","Enter a valid trade result.");return;
+
+}
 
 const today=new Intl.DateTimeFormat("en-CA",{timeZone:"Africa/Accra",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());
 
-const trades=getTrades();trades.push({result,date:today,time:new Date().toLocaleString()});
+const trades=getTrades();
 
-saveTrades(trades);$("tradeResult").value="";renderHistory();checkSafety();refreshAll();
+trades.push({result,date:today,time:new Date().toLocaleString()});
+
+saveTrades(trades);
+
+$("tradeResult").value="";
+
+renderHistory();checkSafety();refreshAll();
 
 }
 
@@ -670,79 +800,7 @@ $("tradeHistory").innerHTML="<hr><h2>Trade History</h2>"+(t.length?t.slice(0,20)
 
 }
 
-function urlBase64ToUint8Array(value){
-
-const pad="=".repeat((4-value.length%4)%4);
-
-const base64=(value+pad).replace(/-/g,"+").replace(/_/g,"/");
-
-const raw=atob(base64);
-
-return Uint8Array.from(raw,c=>c.charCodeAt(0));
-
-}
-
-async function enablePush(){
-
-const btn=$("notifyBtn");btn.disabled=true;
-
-try{
-
-showMessage("notificationStatus","Checking notification support...");
-
-if(!("Notification"in window)||!("serviceWorker"in navigator)||!("PushManager"in window)){
-
-throw new Error("Push notifications are not supported by this browser. Open the installed app in Safari.");
-
-}
-
-const permission=await Notification.requestPermission();
-
-if(permission!=="granted")throw new Error("Allow notifications in your iPhone settings, then try again.");
-
-const {data:{session}}=await supabaseClient.auth.getSession();
-
-if(!session)throw new Error("Please sign in again before registering this phone.");
-
-const reg=await navigator.serviceWorker.ready;
-
-let sub=await reg.pushManager.getSubscription();
-
-if(!sub){
-
-sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlBase64ToUint8Array(VAPID_PUBLIC_KEY)});
-
-}
-
-const {data,error}=await supabaseClient.functions.invoke("push-notifications",{
-
-body:{action:"subscribe",subscription:sub.toJSON()}
-
-});
-
-if(error)throw error;
-
-if(data?.error)throw new Error(data.error);
-
-showMessage("notificationStatus","Phone registered. Sending test push...");
-
-const test=await supabaseClient.functions.invoke("push-notifications",{body:{action:"test"}});
-
-if(test.error)throw test.error;
-
-if(!test.data?.success)throw new Error("Phone registered, but the push test did not succeed.");
-
-showMessage("notificationStatus","Success! Test push sent. Check your iPhone notifications.");
-
-}catch(e){
-
-console.error(e);
-
-showMessage("notificationStatus","Push setup failed: "+(e.message||"Unknown error"));
-
-}finally{btn.disabled=false}
-
-}
+/* BUTTON EVENTS */
 
 $("loginBtn").addEventListener("click",login);
 
@@ -754,11 +812,13 @@ $("logoutBtn").addEventListener("click",logout);
 
 $("refreshBtn").addEventListener("click",refreshAll);
 
-$("notifyBtn").addEventListener("click",enablePush);
+$("telegramBtn").addEventListener("click",connectTelegram);
 
 $("saveRiskBtn").addEventListener("click",saveRiskSettings);
 
 $("recordTradeBtn").addEventListener("click",recordTrade);
+
+/* AUTH SESSION */
 
 supabaseClient.auth.getSession().then(({data,error})=>{
 
@@ -785,6 +845,8 @@ if(refreshTimer)clearInterval(refreshTimer);
 }
 
 });
+
+/* SERVICE WORKER */
 
 if("serviceWorker"in navigator){
 

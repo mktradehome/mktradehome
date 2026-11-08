@@ -608,6 +608,64 @@ async function fetchCandles(symbol,interval){
 
  const data=await response.json();
 
+ const bars=data.bars;
+
+ if(!Array.isArray(bars)){
+
+  throw new Error("Invalid candle data for "+symbol);
+
+ }
+
+ return bars.map(b=>({
+
+  time:Date.parse(b.openTime),
+
+  open:Number(b.open),
+
+  high:Number(b.high),
+
+  low:Number(b.low),
+
+  close:Number(b.close),
+
+  isOpen:b.isOpen===true
+
+ }))
+
+ .filter(b=>
+
+  Number.isFinite(b.time)&&
+
+  Number.isFinite(b.open)&&
+
+  Number.isFinite(b.high)&&
+
+  Number.isFinite(b.low)&&
+
+  Number.isFinite(b.close)
+
+ )
+
+ .filter(b=>!b.isOpen)
+
+ .sort((a,b)=>a.time-b.time);
+
+}
+
+ const response=await fetch(
+
+  `https://biquote.io/api/${symbol}/ohlc?interval=${interval}&limit=200`
+
+ );
+
+ if(!response.ok){
+
+  throw new Error("Candle data unavailable: "+symbol+" "+interval);
+
+ }
+
+ const data=await response.json();
+
  const bars=data.bars||data.data||data;
 
  if(!Array.isArray(bars)){

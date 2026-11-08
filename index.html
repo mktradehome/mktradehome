@@ -76,13 +76,7 @@ label{display:block;font-size:13px;color:#c4ccda;margin-top:10px}
 
 <header>
 
-<div>
-
-<h1>Mktradehome</h1>
-
-<p>Personal Trading Analysis Assistant</p>
-
-</div>
+<div><h1>Mktradehome</h1><p>Personal Trading Analysis Assistant</p></div>
 
 <button id="logoutBtn" class="secondary hidden" style="width:auto">Sign Out</button>
 
@@ -112,7 +106,7 @@ label{display:block;font-size:13px;color:#c4ccda;margin-top:10px}
 
 <h2>Trading Dashboard</h2>
 
-<p>Market monitoring and analysis</p>
+<p>Live market monitoring and analysis</p>
 
 <div id="systemStatus" class="status">Starting monitoring...</div>
 
@@ -138,7 +132,7 @@ label{display:block;font-size:13px;color:#c4ccda;margin-top:10px}
 
 <h2>Market Analysis</h2>
 
-<p>Analysis timeframes: 5M, 15M, 1H and 4H.</p>
+<p>5M entry timing · 15M confirmation · 1H and 4H trend direction.</p>
 
 <div id="analysis">Waiting for market data...</div>
 
@@ -152,7 +146,7 @@ label{display:block;font-size:13px;color:#c4ccda;margin-top:10px}
 
 <label>Maximum daily loss</label>
 
-<input id="dailyLimit" type="number" min="0" step="0.01" value="20">
+<input id="dailyLimit" type="number" min="0.01" step="0.01" value="20">
 
 <label>Maximum consecutive losing trades</label>
 
@@ -178,7 +172,7 @@ label{display:block;font-size:13px;color:#c4ccda;margin-top:10px}
 
 <h2>Trading Reminder</h2>
 
-<p>Mktradehome provides analysis only. It does not place trades on Exness. Signals are not guaranteed. Confirm market conditions and your risk before entering a trade.</p>
+<p>Mktradehome provides analysis only. It does not place trades on Exness or currently read your open Exness positions. Signals are not guaranteed. Verify prices and manage your risk before entering a trade.</p>
 
 </div>
 
@@ -210,23 +204,11 @@ const marketList=[
 
 ];
 
-let quotes={};
-
-let analyses={};
-
-let refreshTimer=null;
-
-let previousSignals={};
-
-let refreshing=false;
+let quotes={},analyses={},refreshTimer=null,previousSignals={},previousSafetyState="",refreshing=false;
 
 const $=id=>document.getElementById(id);
 
-function showMessage(id,message){
-
-$(id).textContent=message;
-
-}
+function showMessage(id,message){$(id).textContent=message}
 
 function formatPrice(value){
 
@@ -240,17 +222,9 @@ async function login(){
 
 try{
 
-const email=$("email").value.trim();
+const email=$("email").value.trim(),password=$("password").value;
 
-const password=$("password").value;
-
-if(!email||!password){
-
-showMessage("loginMessage","Enter your email and password.");
-
-return;
-
-}
+if(!email||!password){showMessage("loginMessage","Enter your email and password.");return}
 
 showMessage("loginMessage","Signing in...");
 
@@ -260,11 +234,7 @@ if(error)showMessage("loginMessage",error.message);
 
 else openDashboard();
 
-}catch(error){
-
-showMessage("loginMessage","Login error: "+error.message);
-
-}
+}catch(error){showMessage("loginMessage","Login error: "+error.message)}
 
 }
 
@@ -272,25 +242,11 @@ async function signup(){
 
 try{
 
-const email=$("email").value.trim();
+const email=$("email").value.trim(),password=$("password").value;
 
-const password=$("password").value;
+if(!email||!password){showMessage("loginMessage","Enter your email and password.");return}
 
-if(!email||!password){
-
-showMessage("loginMessage","Enter your email and password.");
-
-return;
-
-}
-
-if(password.length<6){
-
-showMessage("loginMessage","Password must contain at least 6 characters.");
-
-return;
-
-}
+if(password.length<6){showMessage("loginMessage","Password must contain at least 6 characters.");return}
 
 showMessage("loginMessage","Creating account...");
 
@@ -298,11 +254,7 @@ const {error}=await supabaseClient.auth.signUp({email,password});
 
 showMessage("loginMessage",error?error.message:"Account request sent. Check your email if confirmation is required.");
 
-}catch(error){
-
-showMessage("loginMessage","Signup error: "+error.message);
-
-}
+}catch(error){showMessage("loginMessage","Signup error: "+error.message)}
 
 }
 
@@ -312,39 +264,19 @@ try{
 
 const email=$("email").value.trim();
 
-if(!email){
-
-showMessage("loginMessage","Enter your email address first.");
-
-return;
-
-}
+if(!email){showMessage("loginMessage","Enter your email address first.");return}
 
 showMessage("loginMessage","Sending password reset request...");
 
-const {error}=await supabaseClient.auth.resetPasswordForEmail(email,{
-
-redirectTo:window.location.origin+"/reset-password.html"
-
-});
+const {error}=await supabaseClient.auth.resetPasswordForEmail(email,{redirectTo:window.location.origin+"/reset-password.html"});
 
 showMessage("loginMessage",error?error.message:"Password reset request sent. Check your email.");
 
-}catch(error){
-
-showMessage("loginMessage","Password reset error: "+error.message);
+}catch(error){showMessage("loginMessage","Password reset error: "+error.message)}
 
 }
 
-}
-
-async function logout(){
-
-await supabaseClient.auth.signOut();
-
-location.reload();
-
-}
+async function logout(){await supabaseClient.auth.signOut();location.reload()}
 
 function openDashboard(){
 
@@ -353,8 +285,6 @@ $("loginPanel").classList.add("hidden");
 $("dashboard").classList.remove("hidden");
 
 $("logoutBtn").classList.remove("hidden");
-
-showMessage("systemStatus","Monitoring active. Check quote freshness before trading.");
 
 loadRiskSettings();
 
@@ -374,9 +304,7 @@ const response=await fetch(QUOTE_URL,{cache:"no-store"});
 
 if(!response.ok)throw new Error("Price service returned "+response.status);
 
-const data=await response.json();
-
-const output={};
+const data=await response.json(),output={};
 
 for(const market of marketList){
 
@@ -384,25 +312,17 @@ const item=data[market.symbol];
 
 if(!item)continue;
 
-const price=Number(item.mid||((Number(item.bid)+Number(item.ask))/2));
+const bid=Number(item.bid),ask=Number(item.ask);
+
+const price=Number(item.mid||((bid+ask)/2));
 
 if(Number.isFinite(price)&&price>0){
 
 output[market.symbol]={
 
-price,
+price,bid,ask,stale:item.stale,marketState:item.marketState,
 
-bid:Number(item.bid),
-
-ask:Number(item.ask),
-
-stale:item.stale,
-
-marketState:item.marketState,
-
-quoteAgeSeconds:item.quoteAgeSeconds,
-
-time:item.timestamp
+quoteAgeSeconds:Number(item.quoteAgeSeconds),time:item.timestamp
 
 };
 
@@ -428,29 +348,15 @@ const rows=Array.isArray(data)?data:data.bars||data.data||data.candles||data.res
 
 return rows.map(c=>({
 
-open:Number(c.open),
+open:Number(c.open),high:Number(c.high),low:Number(c.low),close:Number(c.close),
 
-high:Number(c.high),
-
-low:Number(c.low),
-
-close:Number(c.close),
-
-time:c.openTime||c.time||c.timestamp,
-
-isOpen:c.isOpen===true
+time:c.openTime||c.time||c.timestamp,isOpen:c.isOpen===true
 
 })).filter(c=>
 
-Number.isFinite(c.open)&&
+Number.isFinite(c.open)&&Number.isFinite(c.high)&&Number.isFinite(c.low)&&
 
-Number.isFinite(c.high)&&
-
-Number.isFinite(c.low)&&
-
-Number.isFinite(c.close)&&
-
-!c.isOpen
+Number.isFinite(c.close)&&c.high>=c.low&&!c.isOpen
 
 ).sort((a,b)=>new Date(a.time)-new Date(b.time));
 
@@ -476,17 +382,9 @@ return total/(recent.length-1);
 
 }
 
-function analyzeTimeframe(bars){
+function calculateEMA(values,period){
 
-if(!bars||bars.length<30)return {signal:"WAIT",reason:"Not enough completed candles",bars:bars?.length||0};
-
-const closes=bars.map(b=>b.close);
-
-const last=closes[closes.length-1];
-
-const average=arr=>arr.reduce((a,b)=>a+b,0)/arr.length;
-
-const ema=(values,period)=>{
+if(values.length<period)return 0;
 
 const k=2/(period+1);
 
@@ -496,11 +394,23 @@ for(let i=1;i<values.length;i++)result=values[i]*k+result*(1-k);
 
 return result;
 
+}
+
+function analyzeTimeframe(bars){
+
+if(!bars||bars.length<60)return {
+
+signal:"WAIT",reason:"Need at least 60 completed candles",bars:bars?.length||0
+
 };
 
-const ema20=ema(closes.slice(-60),20);
+const closes=bars.map(b=>b.close),last=closes[closes.length-1];
 
-const ema50=ema(closes.slice(-100),50);
+const ema20=calculateEMA(closes.slice(-100),20);
+
+const ema50=calculateEMA(closes.slice(-120),50);
+
+const average=arr=>arr.reduce((a,b)=>a+b,0)/arr.length;
 
 const recent=bars.slice(-10);
 
@@ -528,13 +438,61 @@ if(score<=1)signal="SELL";
 
 return {
 
-signal,price:last,ema20,ema50,atr,
+signal,price:last,ema20,ema50,atr,high:recentHigh,low:recentLow,bars:bars.length,
 
-high:recentHigh,low:recentLow,bars:bars.length,
-
-reason:signal==="BUY"?"Bullish trend conditions":signal==="SELL"?"Bearish trend conditions":"Mixed market conditions"
+reason:signal==="BUY"?"Bullish trend":signal==="SELL"?"Bearish trend":"Mixed market conditions"
 
 };
+
+}
+
+function isQuoteFresh(quote){
+
+if(!quote||quote.stale!==false||quote.marketState!=="open")return false;
+
+if(Number.isFinite(quote.quoteAgeSeconds)&&quote.quoteAgeSeconds>120)return false;
+
+return true;
+
+}
+
+function getSafetyState(){
+
+const trades=getTrades();
+
+const today=new Intl.DateTimeFormat("en-CA",{
+
+timeZone:"Africa/Accra",year:"numeric",month:"2-digit",day:"2-digit"
+
+}).format(new Date());
+
+const todays=trades.filter(t=>t.date===today);
+
+const dailyLoss=todays.reduce((sum,t)=>sum+Math.min(0,Number(t.result)),0);
+
+const maxLoss=Number($("dailyLimit").value);
+
+const maxStreak=Number($("lossLimit").value);
+
+let streak=0;
+
+for(let i=trades.length-1;i>=0;i--){
+
+if(Number(trades[i].result)<0)streak++;
+
+else break;
+
+}
+
+if(!Number.isFinite(maxLoss)||maxLoss<=0)return {locked:true,reason:"Set a valid daily loss limit."};
+
+if(!Number.isInteger(maxStreak)||maxStreak<1)return {locked:true,reason:"Set a valid losing trade limit."};
+
+if(Math.abs(dailyLoss)>=maxLoss)return {locked:true,reason:"Daily loss limit reached."};
+
+if(streak>=maxStreak)return {locked:true,reason:"Maximum consecutive losing trades reached."};
+
+return {locked:false,dailyLoss:Math.abs(dailyLoss),streak};
 
 }
 
@@ -564,51 +522,45 @@ const results={
 
 };
 
-const signals=Object.values(results).map(x=>x.signal);
+const quote=quotes[market.symbol],quoteFresh=isQuoteFresh(quote),safety=getSafetyState();
 
-const buyCount=signals.filter(x=>x==="BUY").length;
+let overall="WAIT",reason="Waiting for timeframe confirmation.";
 
-const sellCount=signals.filter(x=>x==="SELL").length;
+const higherAgree=results["1H"].signal===results["4H"].signal&&results["1H"].signal!=="WAIT";
 
-let overall="WAIT";
+const mediumConfirm=results["15M"].signal===results["1H"].signal;
 
-if(buyCount>=3&&results["1H"].signal==="BUY")overall="BUY";
+const entryConfirm=results["5M"].signal===results["1H"].signal;
 
-if(sellCount>=3&&results["1H"].signal==="SELL")overall="SELL";
+if(!quoteFresh)reason="Price is stale or market is closed.";
 
-const quote=quotes[market.symbol];
+else if(safety.locked)reason="Trading safety lock: "+safety.reason;
 
-const quoteFresh=!!quote&&quote.stale===false&&quote.marketState==="open";
+else if(higherAgree&&mediumConfirm&&entryConfirm){
 
-if(!quoteFresh)overall="WAIT";
+overall=results["1H"].signal;
 
-const price=quote?.price||results["5M"].price;
+reason=overall==="BUY"?"4H, 1H, 15M and 5M bullish confirmation.":"4H, 1H, 15M and 5M bearish confirmation.";
 
-const atr=results["1H"].atr||results["15M"].atr||0;
+}else reason="Timeframes do not fully agree. Wait for confirmation.";
 
-let entry=price,sl=0,tp1=0,tp2=0;
+const price=quoteFresh?quote.price:null,atr=results["1H"].atr||0;
 
-if(overall==="BUY"&&atr>0){
+let entry=null,sl=null,tp1=null,tp2=null;
 
-sl=entry-atr*1.5;
+if(overall!=="WAIT"&&price&&atr>0){
 
-tp1=entry+(entry-sl)*2;
+entry=price;
 
-tp2=entry+(entry-sl)*3;
+const risk=atr*1.5;
 
-}
+if(overall==="BUY"){sl=entry-risk;tp1=entry+risk*2;tp2=entry+risk*3}
 
-if(overall==="SELL"&&atr>0){
-
-sl=entry+atr*1.5;
-
-tp1=entry-(sl-entry)*2;
-
-tp2=entry-(sl-entry)*3;
+else{sl=entry+risk;tp1=entry-risk*2;tp2=entry-risk*3}
 
 }
 
-return {results,overall,entry,sl,tp1,tp2,quoteFresh};
+return {results,overall,reason,entry,sl,tp1,tp2,quoteFresh,safetyLocked:safety.locked};
 
 }
 
@@ -620,19 +572,9 @@ const q=quotes[m.symbol];
 
 const price=q?formatPrice(q.price):"Waiting for price";
 
-const status=!q?"PRICE UNAVAILABLE":q.stale||q.marketState!=="open"?"MARKET CLOSED / STALE":"LIVE · OPEN";
+const status=!q?"PRICE UNAVAILABLE":!isQuoteFresh(q)?"MARKET CLOSED / STALE":"LIVE · OPEN";
 
-return `<div class="marketbox">
-
-<strong>${m.name}</strong>
-
-<div class="price">${price}</div>
-
-<div class="small">${status}</div>
-
-${q?`<div class="small">Bid: ${formatPrice(q.bid)} · Ask: ${formatPrice(q.ask)}</div>`:""}
-
-</div>`;
+return `<div class="marketbox"><strong>${m.name}</strong><div class="price">${price}</div><div class="small">${status}</div>${q?`<div class="small">Bid: ${formatPrice(q.bid)} · Ask: ${formatPrice(q.ask)}</div>`:""}</div>`;
 
 }).join("");
 
@@ -646,17 +588,9 @@ for(const market of marketList){
 
 const a=analyses[market.symbol];
 
-if(!a){
-
-html+=`<div class="card"><strong>${market.name}</strong><p>Waiting for analysis...</p></div>`;
-
-continue;
-
-}
+if(!a){html+=`<div class="card"><strong>${market.name}</strong><p>Analysis unavailable. Try refreshing.</p></div>`;continue}
 
 const cls=a.overall==="BUY"?"buy":a.overall==="SELL"?"sell":"wait";
-
-const status=a.quoteFresh?"Fresh market quote":"Market closed or quote stale — wait for fresh data";
 
 html+=`<div class="card">
 
@@ -664,27 +598,19 @@ html+=`<div class="card">
 
 <div class="signal ${cls}">${a.overall}</div>
 
-<p>${status}</p>
+<p>${a.reason}</p>
 
-<div class="row"><span>Entry</span><strong>${formatPrice(a.entry)}</strong></div>
+<div class="row"><span>Entry</span><strong>${a.entry!==null?formatPrice(a.entry):"—"}</strong></div>
 
-<div class="row"><span>Stop Loss</span><strong>${a.sl?formatPrice(a.sl):"—"}</strong></div>
+<div class="row"><span>Stop Loss</span><strong>${a.sl!==null?formatPrice(a.sl):"—"}</strong></div>
 
-<div class="row"><span>Take Profit 1 (1:2)</span><strong>${a.tp1?formatPrice(a.tp1):"—"}</strong></div>
+<div class="row"><span>Take Profit 1 (1:2)</span><strong>${a.tp1!==null?formatPrice(a.tp1):"—"}</strong></div>
 
-<div class="row"><span>Take Profit 2 (1:3)</span><strong>${a.tp2?formatPrice(a.tp2):"—"}</strong></div>
+<div class="row"><span>Take Profit 2 (1:3)</span><strong>${a.tp2!==null?formatPrice(a.tp2):"—"}</strong></div>
 
 <hr>
 
-${Object.entries(a.results).map(([tf,r])=>`
-
-<div class="row">
-
-<span>${tf} · ${r.reason}</span>
-
-<strong class="${r.signal==="BUY"?"buy":r.signal==="SELL"?"sell":"wait"}">${r.signal}</strong>
-
-</div>`).join("")}
+${Object.entries(a.results).map(([tf,r])=>`<div class="row"><span>${tf} · ${r.reason}</span><strong class="${r.signal==="BUY"?"buy":r.signal==="SELL"?"sell":"wait"}">${r.signal}</strong></div>`).join("")}
 
 </div>`;
 
@@ -698,7 +624,7 @@ function notify(title,message){
 
 if("Notification" in window&&Notification.permission==="granted"){
 
-try{new Notification(title,{body:message});}catch(e){}
+try{new Notification(title,{body:message})}catch(e){}
 
 }
 
@@ -716,7 +642,7 @@ const old=previousSignals[market.symbol];
 
 if(a.quoteFresh&&a.overall!=="WAIT"&&a.overall!==old){
 
-notify("Mktradehome "+market.name,a.overall+" signal detected. Check the dashboard before trading.");
+notify("Mktradehome "+market.name,a.overall+" signal. "+a.reason+" Check the dashboard before trading.");
 
 }
 
@@ -742,17 +668,9 @@ renderMarkets();
 
 for(const market of marketList){
 
-try{
+try{analyses[market.symbol]=await analyzeMarket(market)}
 
-analyses[market.symbol]=await analyzeMarket(market);
-
-}catch(error){
-
-analyses[market.symbol]=null;
-
-console.error(market.symbol,error);
-
-}
+catch(error){analyses[market.symbol]=null;console.error(market.symbol,error)}
 
 }
 
@@ -762,27 +680,21 @@ checkSignalAlerts();
 
 $("lastUpdate").textContent=new Date().toLocaleString();
 
-showMessage("systemStatus","Monitoring active. Prices and analysis refreshed.");
+showMessage("systemStatus","Monitoring active. Analysis refreshed.");
 
 checkSafety();
 
-}catch(error){
+}catch(error){showMessage("systemStatus","Update error: "+error.message)}
 
-showMessage("systemStatus","Update error: "+error.message);
-
-}finally{
-
-refreshing=false;
-
-}
+finally{refreshing=false}
 
 }
 
 function getTrades(){
 
-try{return JSON.parse(localStorage.getItem("mktradehome_trades")||"[]");}
+try{return JSON.parse(localStorage.getItem("mktradehome_trades")||"[]")}
 
-catch(e){return [];}
+catch(e){return []}
 
 }
 
@@ -802,55 +714,43 @@ $("lossLimit").value=localStorage.getItem("mktradehome_loss_limit")||3;
 
 function saveRiskSettings(){
 
-localStorage.setItem("mktradehome_daily_limit",$("dailyLimit").value);
+const daily=Number($("dailyLimit").value),streak=Number($("lossLimit").value);
 
-localStorage.setItem("mktradehome_loss_limit",$("lossLimit").value);
+if(!Number.isFinite(daily)||daily<=0||!Number.isInteger(streak)||streak<1){
+
+showMessage("safetyStatus","Enter a valid daily loss and losing trade limit.");
+
+return;
+
+}
+
+localStorage.setItem("mktradehome_daily_limit",daily);
+
+localStorage.setItem("mktradehome_loss_limit",streak);
 
 checkSafety();
 
-showMessage("safetyStatus","Safety settings saved.");
+refreshAll();
 
 }
 
 function checkSafety(){
 
-const trades=getTrades();
+const safety=getSafetyState();
 
-const today=new Date().toISOString().slice(0,10);
+if(safety.locked){
 
-const todays=trades.filter(t=>t.date===today);
+showMessage("safetyStatus","STOP TRADING: "+safety.reason);
 
-const dailyLoss=todays.reduce((sum,t)=>sum+Math.min(0,t.result),0);
+if(previousSafetyState!=="LOCKED")notify("Mktradehome - STOP TRADING",safety.reason);
 
-const maxLoss=Number($("dailyLimit").value)||20;
-
-const maxStreak=Number($("lossLimit").value)||3;
-
-let streak=0;
-
-for(let i=trades.length-1;i>=0;i--){
-
-if(trades[i].result<0)streak++;
-
-else break;
-
-}
-
-if(Math.abs(dailyLoss)>=maxLoss){
-
-showMessage("safetyStatus","STOP TRADING: Your daily loss limit has been reached.");
-
-notify("STOP TRADING","Your daily loss limit has been reached.");
-
-}else if(streak>=maxStreak){
-
-showMessage("safetyStatus","STOP TRADING: Maximum consecutive losing trades reached.");
-
-notify("STOP TRADING","You reached your consecutive loss limit.");
+previousSafetyState="LOCKED";
 
 }else{
 
-showMessage("safetyStatus","Risk monitoring active. Today's recorded losses: "+Math.abs(dailyLoss).toFixed(2));
+showMessage("safetyStatus","Risk monitoring active. Today's recorded losses: "+safety.dailyLoss.toFixed(2)+". Consecutive losses: "+safety.streak);
+
+previousSafetyState="SAFE";
 
 }
 
@@ -862,23 +762,19 @@ const result=Number($("tradeResult").value);
 
 if(!Number.isFinite(result)||$("tradeResult").value===""){
 
-showMessage("safetyStatus","Enter a valid trade result.");
-
-return;
+showMessage("safetyStatus","Enter a valid trade result.");return;
 
 }
 
 const trades=getTrades();
 
-trades.push({
+const today=new Intl.DateTimeFormat("en-CA",{
 
-result,
+timeZone:"Africa/Accra",year:"numeric",month:"2-digit",day:"2-digit"
 
-date:new Date().toISOString().slice(0,10),
+}).format(new Date());
 
-time:new Date().toLocaleString()
-
-});
+trades.push({result,date:today,time:new Date().toLocaleString()});
 
 saveTrades(trades);
 
@@ -888,6 +784,8 @@ renderHistory();
 
 checkSafety();
 
+refreshAll();
+
 }
 
 function renderHistory(){
@@ -896,19 +794,9 @@ const trades=getTrades().slice().reverse();
 
 $("tradeHistory").innerHTML="<hr><h2>Trade History</h2>"+
 
-(trades.length?trades.slice(0,20).map(t=>`
-
-<div class="row">
-
-<span>${t.time}</span>
-
-<strong class="${t.result>=0?"buy":"sell"}">${t.result>=0?"+":""}${t.result.toFixed(2)}</strong>
-
-</div>`).join(""):"<p>No trades recorded yet.</p>");
+(trades.length?trades.slice(0,20).map(t=>`<div class="row"><span>${t.time}</span><strong class="${t.result>=0?"buy":"sell"}">${t.result>=0?"+":""}${Number(t.result).toFixed(2)}</strong></div>`).join(""):"<p>No trades recorded yet.</p>");
 
 }
-
-/* BUTTON EVENTS */
 
 $("loginBtn").addEventListener("click",login);
 
@@ -928,9 +816,7 @@ $("notifyBtn").addEventListener("click",async()=>{
 
 if(!("Notification" in window)){
 
-showMessage("notificationStatus","Browser notifications are not supported.");
-
-return;
+showMessage("notificationStatus","Browser notifications are not supported.");return;
 
 }
 
@@ -940,17 +826,9 @@ showMessage("notificationStatus",permission==="granted"?"Notifications enabled w
 
 });
 
-/* RESTORE SESSION */
-
 supabaseClient.auth.getSession().then(({data,error})=>{
 
-if(error){
-
-showMessage("loginMessage",error.message);
-
-return;
-
-}
+if(error){showMessage("loginMessage",error.message);return}
 
 if(data.session)openDashboard();
 
@@ -958,11 +836,7 @@ if(data.session)openDashboard();
 
 supabaseClient.auth.onAuthStateChange((event,session)=>{
 
-if(session&&!$("dashboard").classList.contains("hidden")){
-
-return;
-
-}
+if(session&&!$("dashboard").classList.contains("hidden"))return;
 
 if(session)openDashboard();
 

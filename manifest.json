@@ -1,0 +1,11 @@
+{
+  "name": "Mktradehome Trading Assistant",
+  "short_name": "Mktradehome",
+  "description": "Personal live trading analysis and alerts",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#101827",
+  "theme_color": "#101827",
+  "orientation": "portrait"
+}

@@ -1,4 +1,4 @@
-by<!DOCTYPE html>
+<!DOCTYPE html>
 
 <html lang="en">
 
@@ -32,13 +32,11 @@ p{color:#aeb9ca;font-size:13px;line-height:1.5}
 
 .card{background:#1b2738;border:1px solid #344258;border-radius:13px;padding:16px;margin-bottom:14px}
 
-input,button,select{width:100%;padding:13px;border-radius:8px;border:1px solid #40516a;background:#101827;color:white;font-size:15px;margin-top:9px}
+input,button{width:100%;padding:13px;border-radius:8px;border:1px solid #40516a;background:#101827;color:white;font-size:15px;margin-top:9px}
 
 button{background:#e9b928;color:#111;font-weight:bold;border:0;cursor:pointer}
 
 button.secondary{background:#344258;color:white}
-
-button.danger{background:#b83232;color:white}
 
 .small{font-size:12px;color:#aeb9ca}
 
@@ -54,7 +52,11 @@ button.danger{background:#b83232;color:white}
 
 .signal{font-size:19px;font-weight:bold;margin:8px 0}
 
-.buy{color:#42d392}.sell{color:#ff7373}.wait{color:#f5c542}
+.buy{color:#42d392}
+
+.sell{color:#ff7373}
+
+.wait{color:#f5c542}
 
 .row{display:flex;justify-content:space-between;gap:10px;margin:8px 0;font-size:13px}
 
@@ -74,117 +76,119 @@ label{display:block;font-size:13px;color:#c4ccda;margin-top:10px}
 
 <header>
 
-  <div>
+<div>
 
-    <h1>Mktradehome</h1>
+<h1>Mktradehome</h1>
 
-    <p>Personal Trading Analysis Assistant</p>
+<p>Personal Trading Analysis Assistant</p>
 
-  </div>
+</div>
 
-  <button id="logoutBtn" class="secondary hidden" style="width:auto">Sign Out</button>
+<button id="logoutBtn" class="secondary hidden" style="width:auto">Sign Out</button>
 
 </header>
 
 <div id="loginPanel" class="card">
 
-  <h2>Login to Mktradehome</h2>
+<h2>Login to Mktradehome</h2>
 
-  <input id="email" type="email" placeholder="Email address">
+<input id="email" type="email" placeholder="Email address">
 
-  <input id="password" type="password" placeholder="Password">
+<input id="password" type="password" placeholder="Password">
 
-  <button id="loginBtn">Sign In</button>
+<button id="loginBtn">Sign In</button>
 
-  <button id="signupBtn" class="secondary">Create Account</button>
+<button id="signupBtn" class="secondary">Create Account</button>
 
-  <button id="resetBtn" class="secondary">Forgot Password</button>
+<button id="resetBtn" class="secondary">Forgot Password</button>
 
-  <div id="loginMessage" class="status">Sign in to open your trading dashboard.</div>
+<div id="loginMessage" class="status">Sign in to open your trading dashboard.</div>
 
 </div>
 
 <div id="dashboard" class="hidden">
 
-  <div class="card">
+<div class="card">
 
-    <h2>Trading Dashboard</h2>
+<h2>Trading Dashboard</h2>
 
-    <p>Market monitoring and analysis</p>
+<p>Market monitoring and analysis</p>
 
-    <div id="systemStatus" class="status">Starting monitoring...</div>
+<div id="systemStatus" class="status">Starting monitoring...</div>
 
-    <div class="row"><span>Last analysis</span><span id="lastUpdate">Waiting...</span></div>
+<div class="row"><span>Last analysis</span><span id="lastUpdate">Waiting...</span></div>
 
-    <button id="refreshBtn">Refresh Prices & Analysis</button>
+<button id="refreshBtn">Refresh Prices & Analysis</button>
 
-    <button id="notifyBtn" class="secondary">Enable Notifications</button>
+<button id="notifyBtn" class="secondary">Enable Notifications</button>
 
-    <div id="notificationStatus" class="small"></div>
+<div id="notificationStatus" class="small"></div>
 
-  </div>
+</div>
 
-  <div class="card">
+<div class="card">
 
-    <h2>Markets</h2>
+<h2>Markets</h2>
 
-    <div id="markets" class="market"></div>
+<div id="markets" class="market"></div>
 
-  </div>
+</div>
 
-  <div class="card">
+<div class="card">
 
-    <h2>Market Analysis</h2>
+<h2>Market Analysis</h2>
 
-    <p>Analysis timeframes: 5M, 15M, 1H and 4H.</p>
+<p>Analysis timeframes: 5M, 15M, 1H and 4H.</p>
 
-    <div id="analysis">Waiting for market data...</div>
+<div id="analysis">Waiting for market data...</div>
 
-  </div>
+</div>
 
-  <div class="card">
+<div class="card">
 
-    <h2>Trading Safety</h2>
+<h2>Trading Safety</h2>
 
-    <div id="safetyStatus" class="status">Risk monitoring active.</div>
+<div id="safetyStatus" class="status">Risk monitoring active.</div>
 
-    <label>Maximum daily loss (account currency)</label>
+<label>Maximum daily loss</label>
 
-    <input id="dailyLimit" type="number" min="0" step="0.01" value="20">
+<input id="dailyLimit" type="number" min="0" step="0.01" value="20">
 
-    <label>Maximum consecutive losing trades</label>
+<label>Maximum consecutive losing trades</label>
 
-    <input id="lossLimit" type="number" min="1" step="1" value="3">
+<input id="lossLimit" type="number" min="1" step="1" value="3">
 
-    <button id="saveRiskBtn">Save Safety Settings</button>
+<button id="saveRiskBtn">Save Safety Settings</button>
 
-    <hr>
+<hr>
 
-    <h2>Record a Completed Trade</h2>
+<h2>Record a Completed Trade</h2>
 
-    <label>Profit or loss (use minus for a loss)</label>
+<label>Profit or loss (use minus for a loss)</label>
 
-    <input id="tradeResult" type="number" step="0.01" placeholder="Example: -5 or 8">
+<input id="tradeResult" type="number" step="0.01" placeholder="Example: -5 or 8">
 
-    <button id="recordTradeBtn">Record Trade Result</button>
+<button id="recordTradeBtn">Record Trade Result</button>
 
-    <div id="tradeHistory"></div>
+<div id="tradeHistory"></div>
 
-  </div>
+</div>
 
-  <div class="card">
+<div class="card">
 
-    <h2>Trading Reminder</h2>
+<h2>Trading Reminder</h2>
 
-    <p>Mktradehome provides analysis only. It does not place trades on Exness. Signals are not guaranteed. Confirm market conditions and your risk before entering a trade.</p>
+<p>Mktradehome provides analysis only. It does not place trades on Exness. Signals are not guaranteed. Confirm market conditions and your risk before entering a trade.</p>
 
-  </div>
+</div>
 
 </div>
 
 </div>
 
 <script>
+
+"use strict";
 
 const SUPABASE_URL="https://pjwqyveitncygamaaybi.supabase.co";
 
@@ -196,13 +200,13 @@ const QUOTE_URL="https://biquote.io/api/latest?symbols=BTCUSD&symbols=EURUSD&sym
 
 const marketList=[
 
- {symbol:"BTCUSD",name:"BTC/USD"},
+{symbol:"BTCUSD",name:"BTC/USD"},
 
- {symbol:"EURUSD",name:"EUR/USD"},
+{symbol:"EURUSD",name:"EUR/USD"},
 
- {symbol:"XAUUSD",name:"XAU/USD"},
+{symbol:"XAUUSD",name:"XAU/USD"},
 
- {symbol:"USDJPY",name:"USD/JPY"}
+{symbol:"USDJPY",name:"USD/JPY"}
 
 ];
 
@@ -214,761 +218,697 @@ let refreshTimer=null;
 
 let previousSignals={};
 
+let refreshing=false;
+
 const $=id=>document.getElementById(id);
 
 function showMessage(id,message){
 
-  $(id).textContent=message;
+$(id).textContent=message;
 
 }
 
 function formatPrice(value){
 
-  if(!Number.isFinite(Number(value)))return "Unavailable";
+if(!Number.isFinite(Number(value)))return "Unavailable";
 
-  return Number(value).toLocaleString("en-US",{maximumFractionDigits:5});
+return Number(value).toLocaleString("en-US",{maximumFractionDigits:5});
 
 }
 
 async function login(){
 
-  const email=$("email").value.trim();
+try{
 
-  const password=$("password").value;
+const email=$("email").value.trim();
 
-  if(!email||!password){
+const password=$("password").value;
 
-    showMessage("loginMessage","Enter your email and password.");
+if(!email||!password){
 
-    return;
+showMessage("loginMessage","Enter your email and password.");
 
-  }
+return;
 
-  showMessage("loginMessage","Signing in...");
+}
 
-  const {error}=await supabaseClient.auth.signInWithPassword({email,password});
+showMessage("loginMessage","Signing in...");
 
-  if(error)showMessage("loginMessage",error.message);
+const {error}=await supabaseClient.auth.signInWithPassword({email,password});
 
-  else openDashboard();
+if(error)showMessage("loginMessage",error.message);
+
+else openDashboard();
+
+}catch(error){
+
+showMessage("loginMessage","Login error: "+error.message);
+
+}
 
 }
 
 async function signup(){
 
-  const email=$("email").value.trim();
+try{
 
-  const password=$("password").value;
+const email=$("email").value.trim();
 
-  if(!email||!password){
+const password=$("password").value;
 
-    showMessage("loginMessage","Enter your email and password.");
+if(!email||!password){
 
-    return;
+showMessage("loginMessage","Enter your email and password.");
 
-  }
+return;
 
-  showMessage("loginMessage","Creating account...");
+}
 
-  const {error}=await supabaseClient.auth.signUp({email,password});
+if(password.length<6){
 
-  showMessage("loginMessage",error?error.message:"Account request sent. Check your email if confirmation is required.");
+showMessage("loginMessage","Password must contain at least 6 characters.");
+
+return;
+
+}
+
+showMessage("loginMessage","Creating account...");
+
+const {error}=await supabaseClient.auth.signUp({email,password});
+
+showMessage("loginMessage",error?error.message:"Account request sent. Check your email if confirmation is required.");
+
+}catch(error){
+
+showMessage("loginMessage","Signup error: "+error.message);
+
+}
 
 }
 
 async function resetPassword(){
 
-  const email=$("email").value.trim();
+try{
 
-  if(!email){
+const email=$("email").value.trim();
 
-    showMessage("loginMessage","Enter your email address first.");
+if(!email){
 
-    return;
+showMessage("loginMessage","Enter your email address first.");
 
-  }
+return;
 
-  const {error}=await supabaseClient.auth.resetPasswordForEmail(email,{
+}
 
-    redirectTo:window.location.origin+"/reset-password.html"
+showMessage("loginMessage","Sending password reset request...");
 
-  });
+const {error}=await supabaseClient.auth.resetPasswordForEmail(email,{
 
-  showMessage("loginMessage",error?error.message:"Password reset request sent. Check your email.");
+redirectTo:window.location.origin+"/reset-password.html"
+
+});
+
+showMessage("loginMessage",error?error.message:"Password reset request sent. Check your email.");
+
+}catch(error){
+
+showMessage("loginMessage","Password reset error: "+error.message);
+
+}
 
 }
 
 async function logout(){
 
-  await supabaseClient.auth.signOut();
+await supabaseClient.auth.signOut();
 
-  location.reload();
+location.reload();
 
 }
 
 function openDashboard(){
 
-  $("loginPanel").classList.add("hidden");
+$("loginPanel").classList.add("hidden");
 
-  $("dashboard").classList.remove("hidden");
+$("dashboard").classList.remove("hidden");
 
-  $("logoutBtn").classList.remove("hidden");
+$("logoutBtn").classList.remove("hidden");
 
-  showMessage("systemStatus","Monitoring active. Check quote freshness before trading.");
+showMessage("systemStatus","Monitoring active. Check quote freshness before trading.");
 
-  loadRiskSettings();
+loadRiskSettings();
 
-  renderHistory();
+renderHistory();
 
-  refreshAll();
+if(refreshTimer)clearInterval(refreshTimer);
 
-  if(refreshTimer)clearInterval(refreshTimer);
+refreshAll();
 
-  refreshTimer=setInterval(refreshAll,15000);
+refreshTimer=setInterval(refreshAll,15000);
 
 }
 
 async function fetchQuotes(){
 
-  const response=await fetch(QUOTE_URL,{cache:"no-store"});
+const response=await fetch(QUOTE_URL,{cache:"no-store"});
 
-  if(!response.ok){
+if(!response.ok)throw new Error("Price service returned "+response.status);
 
-    throw new Error("Price service returned "+response.status);
+const data=await response.json();
 
-  }
+const output={};
 
-  const data=await response.json();
+for(const market of marketList){
 
-  const output={};
+const item=data[market.symbol];
 
-  for(const market of marketList){
+if(!item)continue;
 
-    const item=data[market.symbol];
+const price=Number(item.mid||((Number(item.bid)+Number(item.ask))/2));
 
-    if(!item)continue;
+if(Number.isFinite(price)&&price>0){
 
-    const price=Number(
+output[market.symbol]={
 
-      item.mid ||
+price,
 
-      ((Number(item.bid)+Number(item.ask))/2)
+bid:Number(item.bid),
 
-    );
+ask:Number(item.ask),
 
-    if(Number.isFinite(price)&&price>0){
+stale:item.stale,
 
-      output[market.symbol]={
+marketState:item.marketState,
 
-        price:price,
+quoteAgeSeconds:item.quoteAgeSeconds,
 
-        bid:Number(item.bid),
+time:item.timestamp
 
-        ask:Number(item.ask),
-
-        stale:item.stale,
-
-        marketState:item.marketState,
-
-        quoteAgeSeconds:item.quoteAgeSeconds,
-
-        time:item.timestamp
-
-      };
-
-    }
-
-  }
-
-  quotes={...quotes,...output};
+};
 
 }
 
-  const response=await fetch(QUOTE_URL,{cache:"no-store"});
+}
 
-  if(!response.ok)throw new Error("Price service returned "+response.status);
-
-  const data=await response.json();
-
-  let rows=Array.isArray(data)?data:
-
-    data.data||data.quotes||data.results||data.prices||[];
-
-  if(!Array.isArray(rows)&&typeof rows==="object"){
-
-    rows=Object.entries(rows).map(([symbol,value])=>({symbol,...value}));
-
-  }
-
-  const output={};
-
-  for(const item of rows){
-
-    const symbol=String(item.symbol||item.ticker||item.instrument||"").toUpperCase();
-
-    const price=Number(item.price??item.last??item.close??item.bid??item.ask);
-
-    if(symbol&&Number.isFinite(price)){
-
-      output[symbol]={price,time:Date.now()};
-
-    }
-
-  }
-
-  if(Object.keys(output).length===0){
-
-    for(const market of marketList){
-
-      const item=data[market.symbol];
-
-      if(item){
-
-        const price=Number(item.price??item.last??item.close??item.bid);
-
-        if(Number.isFinite(price))output[market.symbol]={price,time:Date.now()};
-
-      }
-
-    }
-
-  }
-
-  quotes={...quotes,...output};
+quotes={...quotes,...output};
 
 }
 
 async function fetchCandles(symbol,interval){
 
-  const url=`https://biquote.io/api/${symbol}/ohlc?interval=${interval}&limit=200`;
+const url=`https://biquote.io/api/${symbol}/ohlc?interval=${interval}&limit=200`;
 
-  const response=await fetch(url,{cache:"no-store"});
+const response=await fetch(url,{cache:"no-store"});
 
-  if(!response.ok)throw new Error(symbol+" "+interval+" candle request failed");
+if(!response.ok)throw new Error(symbol+" "+interval+" candle request failed");
 
-  const data=await response.json();
+const data=await response.json();
 
-  let rows=Array.isArray(data)?data:
+const rows=Array.isArray(data)?data:data.bars||data.data||data.candles||data.results||[];
 
-    data.bars||data.data||data.candles||data.results||[];
+return rows.map(c=>({
 
-  return rows.map(c=>{
+open:Number(c.open),
 
-    const open=Number(c.open);
+high:Number(c.high),
 
-    const high=Number(c.high);
+low:Number(c.low),
 
-    const low=Number(c.low);
+close:Number(c.close),
 
-    const close=Number(c.close);
+time:c.openTime||c.time||c.timestamp,
 
-    return {
+isOpen:c.isOpen===true
 
-      open,high,low,close,
+})).filter(c=>
 
-      time:c.openTime||c.time||c.timestamp,
+Number.isFinite(c.open)&&
 
-      isOpen:c.isOpen===true
+Number.isFinite(c.high)&&
 
-    };
+Number.isFinite(c.low)&&
 
-  }).filter(c=>
+Number.isFinite(c.close)&&
 
-    Number.isFinite(c.open)&&
+!c.isOpen
 
-    Number.isFinite(c.high)&&
-
-    Number.isFinite(c.low)&&
-
-    Number.isFinite(c.close)&&
-
-    !c.isOpen
-
-  ).sort((a,b)=>new Date(a.time)-new Date(b.time));
+).sort((a,b)=>new Date(a.time)-new Date(b.time));
 
 }
 
 function calculateATR(bars){
 
-  if(bars.length<15)return 0;
+if(bars.length<15)return 0;
 
-  const recent=bars.slice(-15);
+const recent=bars.slice(-15);
 
-  let total=0;
+let total=0;
 
-  for(let i=1;i<recent.length;i++){
+for(let i=1;i<recent.length;i++){
 
-    const c=recent[i],p=recent[i-1];
+const c=recent[i],p=recent[i-1];
 
-    total+=Math.max(
+total+=Math.max(c.high-c.low,Math.abs(c.high-p.close),Math.abs(c.low-p.close));
 
-      c.high-c.low,
+}
 
-      Math.abs(c.high-p.close),
-
-      Math.abs(c.low-p.close)
-
-    );
-
-  }
-
-  return total/(recent.length-1);
+return total/(recent.length-1);
 
 }
 
 function analyzeTimeframe(bars){
 
-  if(!bars||bars.length<30)return {signal:"WAIT",reason:"Not enough completed candles",bars:bars?.length||0};
+if(!bars||bars.length<30)return {signal:"WAIT",reason:"Not enough completed candles",bars:bars?.length||0};
 
-  const closes=bars.map(b=>b.close);
+const closes=bars.map(b=>b.close);
 
-  const last=closes[closes.length-1];
+const last=closes[closes.length-1];
 
-  const average=arr=>arr.reduce((a,b)=>a+b,0)/arr.length;
+const average=arr=>arr.reduce((a,b)=>a+b,0)/arr.length;
 
-  const ema=(values,period)=>{
+const ema=(values,period)=>{
 
-    const k=2/(period+1);
+const k=2/(period+1);
 
-    let result=values[0];
+let result=values[0];
 
-    for(let i=1;i<values.length;i++)result=values[i]*k+result*(1-k);
+for(let i=1;i<values.length;i++)result=values[i]*k+result*(1-k);
 
-    return result;
+return result;
 
-  };
+};
 
-  const ema20=ema(closes.slice(-60),20);
+const ema20=ema(closes.slice(-60),20);
 
-  const ema50=ema(closes.slice(-100),50);
+const ema50=ema(closes.slice(-100),50);
 
-  const recent=bars.slice(-10);
+const recent=bars.slice(-10);
 
-  const recentHigh=Math.max(...recent.map(b=>b.high));
+const recentHigh=Math.max(...recent.map(b=>b.high));
 
-  const recentLow=Math.min(...recent.map(b=>b.low));
+const recentLow=Math.min(...recent.map(b=>b.low));
 
-  const atr=calculateATR(bars);
+const atr=calculateATR(bars);
 
-  let score=0;
+let score=0;
 
-  if(last>ema20)score++;
+if(last>ema20)score++;
 
-  if(last>ema50)score++;
+if(last>ema50)score++;
 
-  if(ema20>ema50)score++;
+if(ema20>ema50)score++;
 
-  if(last>average(closes.slice(-5)))score++;
+if(last>average(closes.slice(-5)))score++;
 
-  let signal="WAIT";
+let signal="WAIT";
 
-  if(score>=3)signal="BUY";
+if(score>=3)signal="BUY";
 
-  if(score<=1)signal="SELL";
+if(score<=1)signal="SELL";
 
-  return {
+return {
 
-    signal,
+signal,price:last,ema20,ema50,atr,
 
-    price:last,
+high:recentHigh,low:recentLow,bars:bars.length,
 
-    ema20,
+reason:signal==="BUY"?"Bullish trend conditions":signal==="SELL"?"Bearish trend conditions":"Mixed market conditions"
 
-    ema50,
-
-    atr,
-
-    high:recentHigh,
-
-    low:recentLow,
-
-    bars:bars.length,
-
-    reason:signal==="BUY"?"Bullish trend conditions":
-
-      signal==="SELL"?"Bearish trend conditions":"Mixed market conditions"
-
-  };
+};
 
 }
 
 async function analyzeMarket(market){
 
-  const [bars5,bars15,bars1h,bars4h]=await Promise.all([
+const [bars5,bars15,bars1h,bars4h]=await Promise.all([
 
-    fetchCandles(market.symbol,"5m"),
+fetchCandles(market.symbol,"5m"),
 
-    fetchCandles(market.symbol,"15m"),
+fetchCandles(market.symbol,"15m"),
 
-    fetchCandles(market.symbol,"1h"),
+fetchCandles(market.symbol,"1h"),
 
-    fetchCandles(market.symbol,"4h")
+fetchCandles(market.symbol,"4h")
 
-  ]);
+]);
 
-  const results={
+const results={
 
-    "5M":analyzeTimeframe(bars5),
+"5M":analyzeTimeframe(bars5),
 
-    "15M":analyzeTimeframe(bars15),
+"15M":analyzeTimeframe(bars15),
 
-    "1H":analyzeTimeframe(bars1h),
+"1H":analyzeTimeframe(bars1h),
 
-    "4H":analyzeTimeframe(bars4h)
+"4H":analyzeTimeframe(bars4h)
 
-  };
+};
 
-  const signals=Object.values(results).map(x=>x.signal);
+const signals=Object.values(results).map(x=>x.signal);
 
-  const buyCount=signals.filter(x=>x==="BUY").length;
+const buyCount=signals.filter(x=>x==="BUY").length;
 
-  const sellCount=signals.filter(x=>x==="SELL").length;
+const sellCount=signals.filter(x=>x==="SELL").length;
 
-  let overall="WAIT";
+let overall="WAIT";
 
-  if(buyCount>=3&&results["1H"].signal==="BUY")overall="BUY";
+if(buyCount>=3&&results["1H"].signal==="BUY")overall="BUY";
 
-  if(sellCount>=3&&results["1H"].signal==="SELL")overall="SELL";
+if(sellCount>=3&&results["1H"].signal==="SELL")overall="SELL";
 
-  const price=quotes[market.symbol]?.price||results["5M"].price;
+const quote=quotes[market.symbol];
 
-  const atr=results["1H"].atr||results["15M"].atr||0;
+const quoteFresh=!!quote&&quote.stale===false&&quote.marketState==="open";
 
-  let entry=price,sl=0,tp1=0,tp2=0;
+if(!quoteFresh)overall="WAIT";
 
-  if(overall==="BUY"&&atr>0){
+const price=quote?.price||results["5M"].price;
 
-    sl=entry-atr*1.5;
+const atr=results["1H"].atr||results["15M"].atr||0;
 
-    tp1=entry+(entry-sl)*2;
+let entry=price,sl=0,tp1=0,tp2=0;
 
-    tp2=entry+(entry-sl)*3;
+if(overall==="BUY"&&atr>0){
 
-  }
+sl=entry-atr*1.5;
 
-  if(overall==="SELL"&&atr>0){
+tp1=entry+(entry-sl)*2;
 
-    sl=entry+atr*1.5;
+tp2=entry+(entry-sl)*3;
 
-    tp1=entry-(sl-entry)*2;
+}
 
-    tp2=entry-(sl-entry)*3;
+if(overall==="SELL"&&atr>0){
 
-  }
+sl=entry+atr*1.5;
 
-  return {results,overall,entry,sl,tp1,tp2};
+tp1=entry-(sl-entry)*2;
+
+tp2=entry-(sl-entry)*3;
+
+}
+
+return {results,overall,entry,sl,tp1,tp2,quoteFresh};
 
 }
 
 function renderMarkets(){
 
-  $("markets").innerHTML=marketList.map(m=>{
+$("markets").innerHTML=marketList.map(m=>{
 
-    const q=quotes[m.symbol];
+const q=quotes[m.symbol];
 
-    const price=q?formatPrice(q.price):"Waiting for price";
+const price=q?formatPrice(q.price):"Waiting for price";
 
-    const status=!q?"PRICE UNAVAILABLE":
+const status=!q?"PRICE UNAVAILABLE":q.stale||q.marketState!=="open"?"MARKET CLOSED / STALE":"LIVE · OPEN";
 
-      q.stale||q.marketState!=="open"?"MARKET CLOSED / STALE":
+return `<div class="marketbox">
 
-      "LIVE · OPEN";
+<strong>${m.name}</strong>
 
-    return `<div class="marketbox">
+<div class="price">${price}</div>
 
-      <strong>${m.name}</strong>
+<div class="small">${status}</div>
 
-      <div class="price">${price}</div>
+${q?`<div class="small">Bid: ${formatPrice(q.bid)} · Ask: ${formatPrice(q.ask)}</div>`:""}
 
-      <div class="small">${status}</div>
+</div>`;
 
-      ${q?`<div class="small">Bid: ${formatPrice(q.bid)} · Ask: ${formatPrice(q.ask)}</div>`:""}
-
-    </div>`;
-
-  }).join("");
-
-}
-
-  $("markets").innerHTML=marketList.map(m=>{
-
-    const q=quotes[m.symbol];
-
-    const price=q?formatPrice(q.price):"Waiting for price";
-
-    return `<div class="marketbox">
-
-      <strong>${m.name}</strong>
-
-      <div class="price">${price}</div>
-
-      <div class="small">${q?"LIVE PRICE":"Price unavailable"}</div>
-
-    </div>`;
-
-  }).join("");
+}).join("");
 
 }
 
 function renderAnalysis(){
 
-  let html="";
+let html="";
 
-  for(const market of marketList){
+for(const market of marketList){
 
-    const a=analyses[market.symbol];
+const a=analyses[market.symbol];
 
-    if(!a){
+if(!a){
 
-      html+=`<div class="card"><strong>${market.name}</strong><p>Waiting for analysis...</p></div>`;
+html+=`<div class="card"><strong>${market.name}</strong><p>Waiting for analysis...</p></div>`;
 
-      continue;
+continue;
 
-    }
+}
 
-    const cls=a.overall==="BUY"?"buy":a.overall==="SELL"?"sell":"wait";
+const cls=a.overall==="BUY"?"buy":a.overall==="SELL"?"sell":"wait";
 
-    html+=`<div class="card">
+const status=a.quoteFresh?"Fresh market quote":"Market closed or quote stale — wait for fresh data";
 
-      <h2>${market.name}</h2>
+html+=`<div class="card">
 
-      <div class="signal ${cls}">${a.overall}</div>
+<h2>${market.name}</h2>
 
-      <div class="row"><span>Entry</span><strong>${formatPrice(a.entry)}</strong></div>
+<div class="signal ${cls}">${a.overall}</div>
 
-      <div class="row"><span>Stop Loss</span><strong>${a.sl?formatPrice(a.sl):"—"}</strong></div>
+<p>${status}</p>
 
-      <div class="row"><span>Take Profit 1 (1:2)</span><strong>${a.tp1?formatPrice(a.tp1):"—"}</strong></div>
+<div class="row"><span>Entry</span><strong>${formatPrice(a.entry)}</strong></div>
 
-      <div class="row"><span>Take Profit 2 (1:3)</span><strong>${a.tp2?formatPrice(a.tp2):"—"}</strong></div>
+<div class="row"><span>Stop Loss</span><strong>${a.sl?formatPrice(a.sl):"—"}</strong></div>
 
-      <hr>
+<div class="row"><span>Take Profit 1 (1:2)</span><strong>${a.tp1?formatPrice(a.tp1):"—"}</strong></div>
 
-      ${Object.entries(a.results).map(([tf,r])=>`
+<div class="row"><span>Take Profit 2 (1:3)</span><strong>${a.tp2?formatPrice(a.tp2):"—"}</strong></div>
 
-        <div class="row">
+<hr>
 
-          <span>${tf} · ${r.reason}</span>
+${Object.entries(a.results).map(([tf,r])=>`
 
-          <strong class="${r.signal==="BUY"?"buy":r.signal==="SELL"?"sell":"wait"}">${r.signal}</strong>
+<div class="row">
 
-        </div>
+<span>${tf} · ${r.reason}</span>
 
-      `).join("")}
+<strong class="${r.signal==="BUY"?"buy":r.signal==="SELL"?"sell":"wait"}">${r.signal}</strong>
 
-    </div>`;
+</div>`).join("")}
 
-  }
+</div>`;
 
-  $("analysis").innerHTML=html;
+}
+
+$("analysis").innerHTML=html;
 
 }
 
 function notify(title,message){
 
-  if("Notification" in window&&Notification.permission==="granted"){
+if("Notification" in window&&Notification.permission==="granted"){
 
-    try{new Notification(title,{body:message});}catch(e){}
+try{new Notification(title,{body:message});}catch(e){}
 
-  }
+}
 
 }
 
 function checkSignalAlerts(){
 
-  for(const market of marketList){
+for(const market of marketList){
 
-    const a=analyses[market.symbol];
+const a=analyses[market.symbol];
 
-    if(!a)continue;
+if(!a)continue;
 
-    const old=previousSignals[market.symbol];
+const old=previousSignals[market.symbol];
 
-    if(a.overall!=="WAIT"&&a.overall!==old){
+if(a.quoteFresh&&a.overall!=="WAIT"&&a.overall!==old){
 
-      notify("Mktradehome "+market.name,a.overall+" signal detected. Check the dashboard before trading.");
+notify("Mktradehome "+market.name,a.overall+" signal detected. Check the dashboard before trading.");
 
-    }
+}
 
-    previousSignals[market.symbol]=a.overall;
+previousSignals[market.symbol]=a.overall;
 
-  }
+}
 
 }
 
 async function refreshAll(){
 
-  showMessage("systemStatus","Updating prices and market analysis...");
+if(refreshing)return;
 
-  try{
+refreshing=true;
 
-    await fetchQuotes();
+showMessage("systemStatus","Updating prices and market analysis...");
 
-    renderMarkets();
+try{
 
-    for(const market of marketList){
+await fetchQuotes();
 
-      try{
+renderMarkets();
 
-        analyses[market.symbol]=await analyzeMarket(market);
+for(const market of marketList){
 
-      }catch(error){
+try{
 
-        analyses[market.symbol]=null;
+analyses[market.symbol]=await analyzeMarket(market);
 
-        console.error(market.symbol,error);
+}catch(error){
 
-      }
+analyses[market.symbol]=null;
 
-    }
+console.error(market.symbol,error);
 
-    renderAnalysis();
+}
 
-    checkSignalAlerts();
+}
 
-    $("lastUpdate").textContent=new Date().toLocaleString();
+renderAnalysis();
 
-    showMessage("systemStatus","Monitoring active. Prices and analysis refreshed.");
+checkSignalAlerts();
 
-    checkSafety();
+$("lastUpdate").textContent=new Date().toLocaleString();
 
-  }catch(error){
+showMessage("systemStatus","Monitoring active. Prices and analysis refreshed.");
 
-    showMessage("systemStatus","Update error: "+error.message);
+checkSafety();
 
-  }
+}catch(error){
+
+showMessage("systemStatus","Update error: "+error.message);
+
+}finally{
+
+refreshing=false;
+
+}
 
 }
 
 function getTrades(){
 
-  try{return JSON.parse(localStorage.getItem("mktradehome_trades")||"[]");}
+try{return JSON.parse(localStorage.getItem("mktradehome_trades")||"[]");}
 
-  catch(e){return [];}
+catch(e){return [];}
 
 }
 
 function saveTrades(trades){
 
-  localStorage.setItem("mktradehome_trades",JSON.stringify(trades));
+localStorage.setItem("mktradehome_trades",JSON.stringify(trades));
 
 }
 
 function loadRiskSettings(){
 
-  $("dailyLimit").value=localStorage.getItem("mktradehome_daily_limit")||20;
+$("dailyLimit").value=localStorage.getItem("mktradehome_daily_limit")||20;
 
-  $("lossLimit").value=localStorage.getItem("mktradehome_loss_limit")||3;
+$("lossLimit").value=localStorage.getItem("mktradehome_loss_limit")||3;
 
 }
 
 function saveRiskSettings(){
 
-  localStorage.setItem("mktradehome_daily_limit",$("dailyLimit").value);
+localStorage.setItem("mktradehome_daily_limit",$("dailyLimit").value);
 
-  localStorage.setItem("mktradehome_loss_limit",$("lossLimit").value);
+localStorage.setItem("mktradehome_loss_limit",$("lossLimit").value);
 
-  checkSafety();
+checkSafety();
 
-  showMessage("safetyStatus","Safety settings saved.");
+showMessage("safetyStatus","Safety settings saved.");
 
 }
 
 function checkSafety(){
 
-  const trades=getTrades();
+const trades=getTrades();
 
-  const today=new Date().toISOString().slice(0,10);
+const today=new Date().toISOString().slice(0,10);
 
-  const todays=trades.filter(t=>t.date===today);
+const todays=trades.filter(t=>t.date===today);
 
-  const dailyLoss=todays.reduce((sum,t)=>sum+Math.min(0,t.result),0);
+const dailyLoss=todays.reduce((sum,t)=>sum+Math.min(0,t.result),0);
 
-  const maxLoss=Number($("dailyLimit").value)||20;
+const maxLoss=Number($("dailyLimit").value)||20;
 
-  const maxStreak=Number($("lossLimit").value)||3;
+const maxStreak=Number($("lossLimit").value)||3;
 
-  let streak=0;
+let streak=0;
 
-  for(let i=trades.length-1;i>=0;i--){
+for(let i=trades.length-1;i>=0;i--){
 
-    if(trades[i].result<0)streak++;
+if(trades[i].result<0)streak++;
 
-    else break;
+else break;
 
-  }
+}
 
-  if(Math.abs(dailyLoss)>=maxLoss){
+if(Math.abs(dailyLoss)>=maxLoss){
 
-    showMessage("safetyStatus","STOP TRADING: Your daily loss limit has been reached.");
+showMessage("safetyStatus","STOP TRADING: Your daily loss limit has been reached.");
 
-    notify("STOP TRADING","Your daily loss limit has been reached.");
+notify("STOP TRADING","Your daily loss limit has been reached.");
 
-  }else if(streak>=maxStreak){
+}else if(streak>=maxStreak){
 
-    showMessage("safetyStatus","STOP TRADING: Maximum consecutive losing trades reached.");
+showMessage("safetyStatus","STOP TRADING: Maximum consecutive losing trades reached.");
 
-    notify("STOP TRADING","You reached your consecutive loss limit.");
+notify("STOP TRADING","You reached your consecutive loss limit.");
 
-  }else{
+}else{
 
-    showMessage("safetyStatus","Risk monitoring active. Today's recorded losses: "+Math.abs(dailyLoss).toFixed(2));
+showMessage("safetyStatus","Risk monitoring active. Today's recorded losses: "+Math.abs(dailyLoss).toFixed(2));
 
-  }
+}
 
 }
 
 function recordTrade(){
 
-  const result=Number($("tradeResult").value);
+const result=Number($("tradeResult").value);
 
-  if(!Number.isFinite(result)||$("tradeResult").value===""){
+if(!Number.isFinite(result)||$("tradeResult").value===""){
 
-    showMessage("safetyStatus","Enter a valid trade result.");
+showMessage("safetyStatus","Enter a valid trade result.");
 
-    return;
+return;
 
-  }
+}
 
-  const trades=getTrades();
+const trades=getTrades();
 
-  trades.push({
+trades.push({
 
-    result,
+result,
 
-    date:new Date().toISOString().slice(0,10),
+date:new Date().toISOString().slice(0,10),
 
-    time:new Date().toLocaleString()
+time:new Date().toLocaleString()
 
-  });
+});
 
-  saveTrades(trades);
+saveTrades(trades);
 
-  $("tradeResult").value="";
+$("tradeResult").value="";
 
-  renderHistory();
+renderHistory();
 
-  checkSafety();
+checkSafety();
 
 }
 
 function renderHistory(){
 
-  const trades=getTrades().slice().reverse();
+const trades=getTrades().slice().reverse();
 
-  $("tradeHistory").innerHTML="<hr><h2>Trade History</h2>"+
+$("tradeHistory").innerHTML="<hr><h2>Trade History</h2>"+
 
-    (trades.length?trades.slice(0,20).map(t=>`
+(trades.length?trades.slice(0,20).map(t=>`
 
-      <div class="row">
+<div class="row">
 
-        <span>${t.time}</span>
+<span>${t.time}</span>
 
-        <strong class="${t.result>=0?"buy":"sell"}">${t.result>=0?"+":""}${t.result.toFixed(2)}</strong>
+<strong class="${t.result>=0?"buy":"sell"}">${t.result>=0?"+":""}${t.result.toFixed(2)}</strong>
 
-      </div>`).join(""):"<p>No trades recorded yet.</p>");
+</div>`).join(""):"<p>No trades recorded yet.</p>");
 
 }
+
+/* BUTTON EVENTS */
 
 $("loginBtn").addEventListener("click",login);
 
@@ -986,33 +926,45 @@ $("recordTradeBtn").addEventListener("click",recordTrade);
 
 $("notifyBtn").addEventListener("click",async()=>{
 
-  if(!("Notification" in window)){
+if(!("Notification" in window)){
 
-    showMessage("notificationStatus","Browser notifications are not supported.");
+showMessage("notificationStatus","Browser notifications are not supported.");
 
-    return;
+return;
 
-  }
+}
 
-  const permission=await Notification.requestPermission();
+const permission=await Notification.requestPermission();
 
-  showMessage("notificationStatus",
-
-    permission==="granted"?"Notifications enabled while the dashboard is open.":"Notifications were not enabled.");
+showMessage("notificationStatus",permission==="granted"?"Notifications enabled while the dashboard is open.":"Notifications were not enabled.");
 
 });
 
-supabaseClient.auth.getSession().then(({data})=>{
+/* RESTORE SESSION */
 
-  if(data.session)openDashboard();
+supabaseClient.auth.getSession().then(({data,error})=>{
+
+if(error){
+
+showMessage("loginMessage",error.message);
+
+return;
+
+}
+
+if(data.session)openDashboard();
 
 });
 
 supabaseClient.auth.onAuthStateChange((event,session)=>{
 
-  if(session&&!$("dashboard").classList.contains("hidden"))return;
+if(session&&!$("dashboard").classList.contains("hidden")){
 
-  if(session)openDashboard();
+return;
+
+}
+
+if(session)openDashboard();
 
 });
 

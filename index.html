@@ -1,530 +1,1453 @@
 <!DOCTYPE html>
+
 <html lang="en">
+
 <head>
+
 <meta charset="UTF-8">
+
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <meta name="theme-color" content="#101827">
+
 <title>Mktradehome | Personal Trading Assistant</title>
+
 <style>
+
 * { box-sizing:border-box; margin:0; padding:0; }
+
 body {
+
     font-family:Arial,sans-serif;
+
     background:#0b1220;
+
     color:#f1f5f9;
+
     padding-bottom:30px;
+
 }
+
 header {
+
     background:#111c30;
+
     padding:22px 16px;
+
     border-bottom:1px solid #26344b;
+
 }
+
 .header-content,.container {
+
     max-width:1000px;
+
     margin:auto;
+
 }
+
 header h1 { color:#38bdf8; font-size:25px; }
+
 header p { color:#94a3b8; margin-top:7px; font-size:13px; }
+
 .container { padding:16px; }
+
 .section-title { margin:25px 0 12px; font-size:18px; }
+
 .card {
+
     background:#111c30;
+
     border:1px solid #26344b;
+
     border-radius:12px;
+
     padding:16px;
+
     margin-bottom:13px;
+
 }
+
 .card h3 { font-size:16px; margin-bottom:12px; }
+
 .market-grid,.stats-grid {
+
     display:grid;
+
     grid-template-columns:repeat(2,1fr);
+
     gap:12px;
+
 }
+
 .market-name {
+
     color:#38bdf8;
+
     font-weight:bold;
+
     font-size:17px;
+
 }
+
 .market-status,.price {
+
     color:#94a3b8;
+
     font-size:12px;
+
     margin-top:8px;
+
 }
-.status {
-    display:inline-block;
-    padding:5px 10px;
-    border-radius:20px;
-    font-size:12px;
-    font-weight:bold;
-    background:#26344b;
-    color:#facc15;
-    margin-top:10px;
-}
-.signal-box { text-align:center; padding:22px 12px; }
-.signal { font-size:25px; font-weight:bold; color:#facc15; margin:10px 0; }
-.info { color:#94a3b8; font-size:13px; line-height:1.7; }
-.stat { font-size:22px; color:#38bdf8; font-weight:bold; }
-.stat-label { font-size:12px; color:#94a3b8; margin-top:5px; }
-button {
-    width:100%;
-    border:none;
-    border-radius:8px;
-    padding:13px;
-    background:#0284c7;
-    color:white;
-    font-size:15px;
-    font-weight:bold;
-    margin-top:12px;
-    cursor:pointer;
-}
-input,select {
-    width:100%;
-    padding:12px;
-    margin:7px 0 13px;
-    background:#0b1220;
-    color:white;
-    border:1px solid #334155;
-    border-radius:7px;
+
+.price {
+
+    color:#e2e8f0;
+
     font-size:14px;
-}
-label { color:#cbd5e1; font-size:13px; }
-footer {
-    text-align:center;
-    color:#64748b;
-    font-size:12px;
-    padding:25px 10px;
-}
-#loginScreen {
-    max-width:420px;
-    margin:65px auto;
-    padding:20px;
-}
-.login-card {
-    background:#111c30;
-    border:1px solid #26344b;
-    border-radius:15px;
-    padding:25px;
-}
-.login-card h1 {
-    color:#38bdf8;
-    margin-bottom:10px;
-}
-.login-card p {
-    color:#94a3b8;
-    font-size:13px;
-    line-height:1.6;
-    margin-bottom:18px;
-}
-#loginMessage {
-    color:#f87171;
-    font-size:13px;
-    margin-top:12px;
+
     line-height:1.5;
+
 }
+
+.status {
+
+    display:inline-block;
+
+    padding:5px 10px;
+
+    border-radius:20px;
+
+    font-size:12px;
+
+    font-weight:bold;
+
+    background:#26344b;
+
+    color:#facc15;
+
+    margin-top:10px;
+
+}
+
+.signal-box { text-align:center; padding:22px 12px; }
+
+.signal { font-size:25px; font-weight:bold; color:#facc15; margin:10px 0; }
+
+.info { color:#94a3b8; font-size:13px; line-height:1.7; }
+
+.stat { font-size:22px; color:#38bdf8; font-weight:bold; }
+
+.stat-label { font-size:12px; color:#94a3b8; margin-top:5px; }
+
+button {
+
+    width:100%;
+
+    border:none;
+
+    border-radius:8px;
+
+    padding:13px;
+
+    background:#0284c7;
+
+    color:white;
+
+    font-size:15px;
+
+    font-weight:bold;
+
+    margin-top:12px;
+
+    cursor:pointer;
+
+}
+
+input,select {
+
+    width:100%;
+
+    padding:12px;
+
+    margin:7px 0 13px;
+
+    background:#0b1220;
+
+    color:white;
+
+    border:1px solid #334155;
+
+    border-radius:7px;
+
+    font-size:14px;
+
+}
+
+label { color:#cbd5e1; font-size:13px; }
+
+footer {
+
+    text-align:center;
+
+    color:#64748b;
+
+    font-size:12px;
+
+    padding:25px 10px;
+
+}
+
+#loginScreen {
+
+    max-width:420px;
+
+    margin:65px auto;
+
+    padding:20px;
+
+}
+
+.login-card {
+
+    background:#111c30;
+
+    border:1px solid #26344b;
+
+    border-radius:15px;
+
+    padding:25px;
+
+}
+
+.login-card h1 {
+
+    color:#38bdf8;
+
+    margin-bottom:10px;
+
+}
+
+.login-card p {
+
+    color:#94a3b8;
+
+    font-size:13px;
+
+    line-height:1.6;
+
+    margin-bottom:18px;
+
+}
+
+#loginMessage {
+
+    color:#f87171;
+
+    font-size:13px;
+
+    margin-top:12px;
+
+    line-height:1.5;
+
+}
+
 .logout-button {
+
     width:auto;
+
     padding:9px 14px;
+
     background:#334155;
+
     margin-top:14px;
+
 }
+
 @media(max-width:400px) {
+
     .market-grid,.stats-grid { grid-template-columns:1fr; }
+
 }
+
 </style>
+
 </head>
+
 <body>
-<!-- PRIVATE LOGIN SCREEN -->
+
+<!-- LOGIN SCREEN -->
+
 <div id="loginScreen">
+
     <div class="login-card">
+
         <h1>MKTRADEHOME</h1>
+
         <p>Your private personal trading assistant. Sign in to access your dashboard.</p>
+
         <form id="loginForm">
+
             <label>Email address</label>
+
             <input type="email" id="loginEmail" required
+
                    placeholder="Enter your registered email">
+
             <label>Password</label>
+
             <input type="password" id="loginPassword" required
+
                    placeholder="Enter your password">
+
             <button type="submit" id="loginButton">Sign In</button>
+
         </form>
+
         <div id="loginMessage"></div>
+
     </div>
+
 </div>
+
 <!-- TRADING DASHBOARD -->
+
 <div id="appArea" style="display:none;">
+
 <header>
+
     <div class="header-content">
+
         <h1>MKTRADEHOME</h1>
+
         <p>Your private AI trading assistant</p>
+
         <p>BTC/USD · EUR/USD · XAU/USD · USD/JPY</p>
+
         <button class="logout-button" onclick="logout()">Sign Out</button>
+
     </div>
+
 </header>
+
 <main class="container">
+
 <h2 class="section-title">Trading Overview</h2>
+
 <div class="stats-grid">
+
     <div class="card">
+
         <div class="stat" id="openCount">0</div>
+
         <div class="stat-label">Open Trades</div>
+
     </div>
+
     <div class="card">
+
         <div class="stat" id="closedCount">0</div>
+
         <div class="stat-label">Closed Trades</div>
+
     </div>
+
 </div>
+
 <h2 class="section-title">Markets Watchlist</h2>
+
 <div class="market-grid" id="marketGrid">
+
     <div class="card">
+
         <div class="market-name">BTC/USD</div>
+
         <div class="market-status">Bitcoin / US Dollar</div>
-        <div class="price">Live price: Not connected</div>
+
+        <div class="price">Live price: Connecting...</div>
+
         <span class="status">WAITING</span>
+
     </div>
+
     <div class="card">
+
         <div class="market-name">EUR/USD</div>
+
         <div class="market-status">Euro / US Dollar</div>
-        <div class="price">Live price: Not connected</div>
+
+        <div class="price">Live price: Connecting...</div>
+
         <span class="status">WAITING</span>
+
     </div>
+
     <div class="card">
+
         <div class="market-name">XAU/USD</div>
+
         <div class="market-status">Gold / US Dollar</div>
-        <div class="price">Live price: Not connected</div>
+
+        <div class="price">Live price: Connecting...</div>
+
         <span class="status">WAITING</span>
+
     </div>
+
     <div class="card">
+
         <div class="market-name">USD/JPY</div>
+
         <div class="market-status">US Dollar / Japanese Yen</div>
-        <div class="price">Live price: Not connected</div>
+
+        <div class="price">Live price: Connecting...</div>
+
         <span class="status">WAITING</span>
+
     </div>
+
 </div>
+
 <h2 class="section-title">AI Trading Analysis</h2>
+
 <div class="card signal-box">
+
     <h3>Current Market Signal</h3>
+
     <div class="signal">WAIT</div>
+
     <p class="info">
-        Waiting for live market data and technical analysis.
+
+        Waiting for verified live market data and technical analysis.
+
         No real BUY or SELL recommendation is available yet.
+
     </p>
+
 </div>
+
 <div class="card">
+
     <h3>Trade Setup</h3>
+
     <p class="info">Entry Price: Awaiting analysis</p>
+
     <p class="info">Stop Loss: Awaiting analysis</p>
+
     <p class="info">Take Profit 1: Awaiting analysis</p>
+
     <p class="info">Take Profit 2: Awaiting analysis</p>
+
     <p class="info">Risk/Reward: Not calculated</p>
+
 </div>
+
 <h2 class="section-title">Risk Management</h2>
+
 <div class="card">
+
     <h3>Personal Risk Settings</h3>
+
     <label>Risk per trade (%)</label>
+
     <input type="number" id="risk" value="1" min="0.1" max="5" step="0.1">
+
     <label>Daily loss limit (%)</label>
+
     <input type="number" id="dailyLimit" value="3" min="1" max="10">
+
     <label>Maximum trades per day</label>
+
     <input type="number" id="maxTrades" value="10" min="1">
+
     <button onclick="saveRisk()">Save Risk Settings</button>
+
     <p class="info" id="riskMessage"></p>
+
 </div>
+
 <h2 class="section-title">Add a Trade Manually</h2>
+
 <div class="card">
+
     <h3>Record Your Exness Trade</h3>
+
     <label>Market</label>
+
     <select id="symbol">
+
         <option value="BTC/USD">BTC/USD</option>
+
         <option value="EUR/USD">EUR/USD</option>
+
         <option value="XAU/USD">XAU/USD</option>
+
         <option value="USD/JPY">USD/JPY</option>
+
     </select>
+
     <label>Direction</label>
+
     <select id="direction">
+
         <option value="BUY">BUY</option>
+
         <option value="SELL">SELL</option>
+
     </select>
+
     <label>Entry Price</label>
+
     <input type="number" id="entry" step="any" placeholder="Enter entry price">
+
     <label>Stop Loss</label>
+
     <input type="number" id="stopLoss" step="any" placeholder="Enter stop loss">
+
     <label>Take Profit</label>
+
     <input type="number" id="takeProfit" step="any" placeholder="Enter take profit">
+
     <label>Lot Size</label>
+
     <input type="number" id="lotSize" step="any" placeholder="Enter lot size">
+
     <button onclick="addTrade()">Save Trade</button>
+
     <p class="info" id="tradeMessage"></p>
+
 </div>
+
 <h2 class="section-title">Open Trades</h2>
+
 <div id="openTrades">
+
     <div class="card info">No trades recorded yet.</div>
+
 </div>
+
 <h2 class="section-title">Trade History</h2>
+
 <div id="tradeHistory">
+
     <div class="card info">Your closed trades will appear here.</div>
+
 </div>
+
 <div class="card">
+
     <h3>System Connection Status</h3>
+
     <p class="info">Dashboard: Running</p>
+
     <p class="info" id="databaseStatus">Supabase: Checking...</p>
-    <p class="info">Live Market Data: Not connected yet</p>
+
+    <p class="info" id="marketDataStatus">Live Market Data: Connecting...</p>
+
     <p class="info">AI Analysis: Not connected yet</p>
+
     <p class="info">MT5 / Exness: Not connected yet</p>
+
+    <p class="info">Price provider: BiQuote · MT5 Broker 1 feed</p>
+
 </div>
+
 </main>
+
 <footer>
+
     Mktradehome · Private Personal Trading Assistant<br>
+
     Trading involves risk. Analysis is not a guarantee of profit.
+
 </footer>
+
 </div>
+
 <!-- SUPABASE LIBRARY -->
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 <script>
+
 // ======================================
+
 // SUPABASE CONNECTION
+
 // ======================================
+
 const SUPABASE_URL =
+
 "https://pjwqyveitncygamaaybi.supabase.co";
+
 const SUPABASE_PUBLISHABLE_KEY =
+
 "sb_publishable_Ny_yyLQYsjyCNuGAn25ybw_ahxLPjwk";
+
 const supabaseClient = window.supabase.createClient(
+
     SUPABASE_URL,
+
     SUPABASE_PUBLISHABLE_KEY
+
 );
+
 // ======================================
+
 // LOGIN AND AUTHENTICATION
+
 // ======================================
+
 const loginScreen = document.getElementById("loginScreen");
+
 const appArea = document.getElementById("appArea");
+
 const loginMessage = document.getElementById("loginMessage");
+
+let priceRefreshTimer = null;
+
+let priceRequestRunning = false;
+
 function showDashboard() {
+
     loginScreen.style.display = "none";
+
     appArea.style.display = "block";
+
     updateDashboard();
+
     loadRisk();
+
     checkDatabase();
+
+    startLivePriceUpdates();
+
 }
+
 function showLogin() {
+
     appArea.style.display = "none";
+
     loginScreen.style.display = "block";
+
+    stopLivePriceUpdates();
+
 }
+
 document.getElementById("loginForm").addEventListener(
+
     "submit",
+
     async function(event) {
+
         event.preventDefault();
-        const email = document.getElementById("loginEmail").value.trim();
-        const password = document.getElementById("loginPassword").value;
-        const button = document.getElementById("loginButton");
+
+        const email =
+
+            document.getElementById("loginEmail").value.trim();
+
+        const password =
+
+            document.getElementById("loginPassword").value;
+
+        const button =
+
+            document.getElementById("loginButton");
+
         button.disabled = true;
+
         button.textContent = "Signing in...";
+
         loginMessage.textContent = "";
+
         try {
-            const { data, error } = await supabaseClient.auth.signInWithPassword({
-                email: email,
-                password: password
-            });
+
+            const { data, error } =
+
+                await supabaseClient.auth.signInWithPassword({
+
+                    email: email,
+
+                    password: password
+
+                });
+
             if (error) {
+
                 loginMessage.textContent = error.message;
+
                 return;
+
             }
+
             if (data.user) {
+
                 showDashboard();
+
             }
+
         } catch (error) {
-            loginMessage.textContent = "Unable to sign in. Check your connection.";
+
+            loginMessage.textContent =
+
+                "Unable to sign in. Check your connection.";
+
         } finally {
+
             button.disabled = false;
+
             button.textContent = "Sign In";
+
         }
+
     }
+
 );
+
 async function logout() {
+
     const { error } = await supabaseClient.auth.signOut();
+
     if (error) {
+
         alert("Unable to sign out. Please try again.");
+
         return;
+
     }
+
     showLogin();
+
 }
+
 async function checkLogin() {
-    const { data, error } = await supabaseClient.auth.getSession();
+
+    const { data, error } =
+
+        await supabaseClient.auth.getSession();
+
     if (error) {
+
         showLogin();
+
         return;
+
     }
+
     if (data.session) {
+
         showDashboard();
+
     } else {
+
         showLogin();
+
     }
+
 }
+
 // ======================================
+
 // DATABASE CONNECTION
+
 // ======================================
+
 async function checkDatabase() {
-    const status = document.getElementById("databaseStatus");
+
+    const status =
+
+        document.getElementById("databaseStatus");
+
     try {
+
         const { data, error } = await supabaseClient
+
             .from("trading_markets")
+
             .select("symbol, market_name, is_active")
+
             .order("id");
+
         if (error) {
-            status.textContent = "Supabase: Database access needs checking.";
+
+            status.textContent =
+
+                "Supabase: Database access needs checking.";
+
             console.log(error.message);
+
             return;
+
         }
+
         status.textContent =
+
             "Supabase: Connected. " + data.length + " markets found.";
+
         displayMarkets(data);
+
+        // Load prices after the market cards are displayed.
+
+        fetchLivePrices();
+
     } catch (error) {
-        status.textContent = "Supabase: Connection error.";
+
+        status.textContent =
+
+            "Supabase: Connection error.";
+
         console.log(error);
+
     }
+
 }
+
 function displayMarkets(markets) {
+
     const grid = document.getElementById("marketGrid");
+
     grid.innerHTML = "";
+
     markets.forEach(market => {
+
         const card = document.createElement("div");
+
         card.className = "card";
+
         const name = document.createElement("div");
+
         name.className = "market-name";
+
         name.textContent = market.symbol;
+
         const description = document.createElement("div");
+
         description.className = "market-status";
+
         description.textContent = market.market_name;
+
         const price = document.createElement("div");
+
         price.className = "price";
-        price.textContent = "Live price: Not connected";
+
+        price.id = "price-" + market.symbol.replace("/", "");
+
+        price.textContent = "Price: Connecting...";
+
         const badge = document.createElement("span");
+
         badge.className = "status";
+
+        badge.id = "badge-" + market.symbol.replace("/", "");
+
         badge.textContent = market.is_active ? "ACTIVE" : "INACTIVE";
+
         card.appendChild(name);
+
         card.appendChild(description);
+
         card.appendChild(price);
+
         card.appendChild(badge);
+
         grid.appendChild(card);
+
     });
+
 }
+
 // ======================================
-// TRADE RECORDS
+
+// LIVE MARKET DATA CONNECTION
+
 // ======================================
-let trades = JSON.parse(
-    localStorage.getItem("mkTrades") || "[]"
-);
-function saveTrades() {
-    localStorage.setItem("mkTrades", JSON.stringify(trades));
-}
-function updateDashboard() {
-    const open = trades.filter(t => t.status === "OPEN");
-    const closed = trades.filter(t => t.status === "CLOSED");
-    document.getElementById("openCount").textContent = open.length;
-    document.getElementById("closedCount").textContent = closed.length;
-    const openArea = document.getElementById("openTrades");
-    const historyArea = document.getElementById("tradeHistory");
-    openArea.innerHTML = "";
-    historyArea.innerHTML = "";
-    if (open.length === 0) {
-        openArea.innerHTML =
-            '<div class="card info">No trades recorded yet.</div>';
+
+const PRICE_API =
+
+"https://biquote.io/api/latest";
+
+const marketSymbols = [
+
+    "BTCUSD",
+
+    "EURUSD",
+
+    "XAUUSD",
+
+    "USDJPY"
+
+];
+
+function formatMarketPrice(value) {
+
+    const number = Number(value);
+
+    if (!Number.isFinite(number)) {
+
+        return "Unavailable";
+
     }
-    if (closed.length === 0) {
-        historyArea.innerHTML =
-            '<div class="card info">Your closed trades will appear here.</div>';
-    }
-    open.forEach(trade => {
-        const index = trades.indexOf(trade);
-        const card = document.createElement("div");
-        card.className = "card";
-        const heading = document.createElement("h3");
-        heading.textContent = trade.symbol + " — " + trade.direction;
-        const details = document.createElement("p");
-        details.className = "info";
-        details.textContent =
-            "Entry: " + trade.entry +
-            " | Stop Loss: " + (trade.stopLoss || "Not set") +
-            " | Take Profit: " + (trade.takeProfit || "Not set") +
-            " | Lot Size: " + trade.lotSize;
-        const button = document.createElement("button");
-        button.textContent = "Close Trade";
-        button.onclick = () => closeTrade(index);
-        card.appendChild(heading);
-        card.appendChild(details);
-        card.appendChild(button);
-        openArea.appendChild(card);
+
+    return number.toLocaleString("en-US", {
+
+        minimumFractionDigits: 2,
+
+        maximumFractionDigits: 5
+
     });
-    closed.forEach(trade => {
-        const card = document.createElement("div");
-        card.className = "card";
-        const heading = document.createElement("h3");
-        heading.textContent = trade.symbol + " — " + trade.direction;
-        const details = document.createElement("p");
-        details.className = "info";
-        details.textContent = "Entry: " + trade.entry + " | Status: CLOSED";
-        card.appendChild(heading);
-        card.appendChild(details);
-        historyArea.appendChild(card);
-    });
+
 }
-function addTrade() {
-    const entry = Number(document.getElementById("entry").value);
-    const stopLoss = Number(document.getElementById("stopLoss").value);
-    const takeProfit = Number(document.getElementById("takeProfit").value);
-    const lotSize = Number(document.getElementById("lotSize").value);
-    if (!entry || entry <= 0 || !lotSize || lotSize <= 0) {
-        document.getElementById("tradeMessage").textContent =
-            "Enter a valid entry price and lot size.";
+
+function startLivePriceUpdates() {
+
+    if (priceRefreshTimer) {
+
         return;
+
     }
-    trades.push({
-        symbol: document.getElementById("symbol").value,
-        direction: document.getElementById("direction").value,
-        entry: entry,
-        stopLoss: stopLoss || null,
-        takeProfit: takeProfit || null,
-        lotSize: lotSize,
-        status: "OPEN"
-    });
-    saveTrades();
-    updateDashboard();
-    document.getElementById("tradeMessage").textContent =
-        "Trade saved on this device.";
-    document.getElementById("entry").value = "";
-    document.getElementById("stopLoss").value = "";
-    document.getElementById("takeProfit").value = "";
-    document.getElementById("lotSize").value = "";
+
+    // Refresh the batch of market prices every 15 seconds.
+
+    priceRefreshTimer = setInterval(() => {
+
+        if (!document.hidden) {
+
+            fetchLivePrices();
+
+        }
+
+    }, 15000);
+
 }
-function closeTrade(index) {
-    if (!confirm("Mark this trade as closed?")) return;
-    trades[index].status = "CLOSED";
-    saveTrades();
-    updateDashboard();
+
+function stopLivePriceUpdates() {
+
+    if (priceRefreshTimer) {
+
+        clearInterval(priceRefreshTimer);
+
+        priceRefreshTimer = null;
+
+    }
+
 }
+
+async function fetchLivePrices() {
+
+    if (priceRequestRunning) {
+
+        return;
+
+    }
+
+    if (document.hidden) {
+
+        return;
+
+    }
+
+    priceRequestRunning = true;
+
+    const status =
+
+        document.getElementById("marketDataStatus");
+
+    try {
+
+        const params = new URLSearchParams();
+
+        marketSymbols.forEach(symbol => {
+
+            params.append("symbols", symbol);
+
+        });
+
+        const response = await fetch(
+
+            PRICE_API + "?" + params.toString(),
+
+            { cache: "no-store" }
+
+        );
+
+        if (!response.ok) {
+
+            if (response.status === 429) {
+
+                status.textContent =
+
+                    "Live Market Data: Rate limit reached. Waiting to retry.";
+
+            } else {
+
+                status.textContent =
+
+                    "Live Market Data: Feed error (" +
+
+                    response.status + ").";
+
+            }
+
+            return;
+
+        }
+
+        const data = await response.json();
+
+        let freshQuotes = 0;
+
+        let receivedQuotes = 0;
+
+        marketSymbols.forEach(symbol => {
+
+            const quote = data[symbol];
+
+            const priceElement =
+
+                document.getElementById("price-" + symbol);
+
+            const badgeElement =
+
+                document.getElementById("badge-" + symbol);
+
+            if (!priceElement || !badgeElement) {
+
+                return;
+
+            }
+
+            if (!quote || quote.mid === undefined) {
+
+                priceElement.textContent =
+
+                    "Price: Unavailable";
+
+                badgeElement.textContent = "NO DATA";
+
+                return;
+
+            }
+
+            receivedQuotes++;
+
+            const price = formatMarketPrice(quote.mid);
+
+            const age = Number(quote.quoteAgeSeconds || 0);
+
+            const isFresh =
+
+                quote.stale === false &&
+
+                quote.marketState === "open" &&
+
+                age <= 300;
+
+            if (isFresh) {
+
+                freshQuotes++;
+
+                priceElement.textContent =
+
+                    "Live price: " + price +
+
+                    " | Bid: " + formatMarketPrice(quote.bid) +
+
+                    " | Ask: " + formatMarketPrice(quote.ask);
+
+                badgeElement.textContent = "LIVE";
+
+            } else {
+
+                const ageText =
+
+                    age > 3600
+
+                    ? Math.floor(age / 3600) + " hours old"
+
+                    : Math.floor(age / 60) + " minutes old";
+
+                if (
+
+                    quote.marketState === "closed" ||
+
+                    quote.stale === true
+
+                ) {
+
+                    priceElement.textContent =
+
+                        "Last price: " + price +
+
+                        " | " +
+
+                        (quote.marketState === "closed"
+
+                            ? "Market closed"
+
+                            : "Stale quote") +
+
+                        " | " + ageText;
+
+                    badgeElement.textContent =
+
+                        quote.marketState === "closed"
+
+                        ? "MARKET CLOSED"
+
+                        : "STALE PRICE";
+
+                } else {
+
+                    priceElement.textContent =
+
+                        "Price: Not verified as live";
+
+                    badgeElement.textContent = "WAIT";
+
+                }
+
+            }
+
+        });
+
+        if (freshQuotes > 0) {
+
+            status.textContent =
+
+                "Live Market Data: Connected. " +
+
+                freshQuotes + " of 4 markets have fresh prices.";
+
+        } else if (receivedQuotes > 0) {
+
+            status.textContent =
+
+                "Live Market Data: Feed responding, but no fresh market prices.";
+
+        } else {
+
+            status.textContent =
+
+                "Live Market Data: No usable prices received.";
+
+        }
+
+    } catch (error) {
+
+        status.textContent =
+
+            "Live Market Data: Connection unavailable.";
+
+        console.log("Market price error:", error);
+
+    } finally {
+
+        priceRequestRunning = false;
+
+    }
+
+}
+
+// Refresh when the user returns to the dashboard.
+
+document.addEventListener("visibilitychange", function() {
+
+    if (!document.hidden && appArea.style.display !== "none") {
+
+        fetchLivePrices();
+
+    }
+
+});
+
 // ======================================
-// RISK MANAGEMENT
+
+// TRADE RECORDS
+
 // ======================================
-function saveRisk() {
-    const settings = {
-        risk: document.getElementById("risk").value,
-        dailyLimit: document.getElementById("dailyLimit").value,
-        maxTrades: document.getElementById("maxTrades").value
-    };
-    localStorage.setItem("mkRisk", JSON.stringify(settings));
-    document.getElementById("riskMessage").textContent =
-        "Risk settings saved on this device.";
-}
-function loadRisk() {
-    const settings = JSON.parse(
-        localStorage.getItem("mkRisk") || "null"
+
+let trades = JSON.parse(
+
+    localStorage.getItem("mkTrades") || "[]"
+
+);
+
+function saveTrades() {
+
+    localStorage.setItem(
+
+        "mkTrades",
+
+        JSON.stringify(trades)
+
     );
-    if (settings) {
-        document.getElementById("risk").value = settings.risk;
-        document.getElementById("dailyLimit").value = settings.dailyLimit;
-        document.getElementById("maxTrades").value = settings.maxTrades;
-    }
+
 }
+
+function updateDashboard() {
+
+    const open = trades.filter(t => t.status === "OPEN");
+
+    const closed = trades.filter(t => t.status === "CLOSED");
+
+    document.getElementById("openCount").textContent =
+
+        open.length;
+
+    document.getElementById("closedCount").textContent =
+
+        closed.length;
+
+    const openArea =
+
+        document.getElementById("openTrades");
+
+    const historyArea =
+
+        document.getElementById("tradeHistory");
+
+    openArea.innerHTML = "";
+
+    historyArea.innerHTML = "";
+
+    if (open.length === 0) {
+
+        openArea.innerHTML =
+
+            '<div class="card info">No trades recorded yet.</div>';
+
+    }
+
+    if (closed.length === 0) {
+
+        historyArea.innerHTML =
+
+            '<div class="card info">Your closed trades will appear here.</div>';
+
+    }
+
+    open.forEach(trade => {
+
+        const index = trades.indexOf(trade);
+
+        const card = document.createElement("div");
+
+        card.className = "card";
+
+        const heading = document.createElement("h3");
+
+        heading.textContent =
+
+            trade.symbol + " — " + trade.direction;
+
+        const details = document.createElement("p");
+
+        details.className = "info";
+
+        details.textContent =
+
+            "Entry: " + trade.entry +
+
+            " | Stop Loss: " + (trade.stopLoss || "Not set") +
+
+            " | Take Profit: " + (trade.takeProfit || "Not set") +
+
+            " | Lot Size: " + trade.lotSize;
+
+        const button = document.createElement("button");
+
+        button.textContent = "Close Trade";
+
+        button.onclick = () => closeTrade(index);
+
+        card.appendChild(heading);
+
+        card.appendChild(details);
+
+        card.appendChild(button);
+
+        openArea.appendChild(card);
+
+    });
+
+    closed.forEach(trade => {
+
+        const card = document.createElement("div");
+
+        card.className = "card";
+
+        const heading = document.createElement("h3");
+
+        heading.textContent =
+
+            trade.symbol + " — " + trade.direction;
+
+        const details = document.createElement("p");
+
+        details.className = "info";
+
+        details.textContent =
+
+            "Entry: " + trade.entry + " | Status: CLOSED";
+
+        card.appendChild(heading);
+
+        card.appendChild(details);
+
+        historyArea.appendChild(card);
+
+    });
+
+}
+
+function addTrade() {
+
+    const entry =
+
+        Number(document.getElementById("entry").value);
+
+    const stopLoss =
+
+        Number(document.getElementById("stopLoss").value);
+
+    const takeProfit =
+
+        Number(document.getElementById("takeProfit").value);
+
+    const lotSize =
+
+        Number(document.getElementById("lotSize").value);
+
+    if (!entry || entry <= 0 || !lotSize || lotSize <= 0) {
+
+        document.getElementById("tradeMessage").textContent =
+
+            "Enter a valid entry price and lot size.";
+
+        return;
+
+    }
+
+    trades.push({
+
+        symbol: document.getElementById("symbol").value,
+
+        direction: document.getElementById("direction").value,
+
+        entry: entry,
+
+        stopLoss: stopLoss || null,
+
+        takeProfit: takeProfit || null,
+
+        lotSize: lotSize,
+
+        status: "OPEN"
+
+    });
+
+    saveTrades();
+
+    updateDashboard();
+
+    document.getElementById("tradeMessage").textContent =
+
+        "Trade saved on this device.";
+
+    document.getElementById("entry").value = "";
+
+    document.getElementById("stopLoss").value = "";
+
+    document.getElementById("takeProfit").value = "";
+
+    document.getElementById("lotSize").value = "";
+
+}
+
+function closeTrade(index) {
+
+    if (!confirm("Mark this trade as closed?")) {
+
+        return;
+
+    }
+
+    trades[index].status = "CLOSED";
+
+    saveTrades();
+
+    updateDashboard();
+
+}
+
 // ======================================
+
+// RISK MANAGEMENT
+
+// ======================================
+
+function saveRisk() {
+
+    const settings = {
+
+        risk: document.getElementById("risk").value,
+
+        dailyLimit: document.getElementById("dailyLimit").value,
+
+        maxTrades: document.getElementById("maxTrades").value
+
+    };
+
+    localStorage.setItem(
+
+        "mkRisk",
+
+        JSON.stringify(settings)
+
+    );
+
+    document.getElementById("riskMessage").textContent =
+
+        "Risk settings saved on this device.";
+
+}
+
+function loadRisk() {
+
+    const settings = JSON.parse(
+
+        localStorage.getItem("mkRisk") || "null"
+
+    );
+
+    if (settings) {
+
+        document.getElementById("risk").value =
+
+            settings.risk;
+
+        document.getElementById("dailyLimit").value =
+
+            settings.dailyLimit;
+
+        document.getElementById("maxTrades").value =
+
+            settings.maxTrades;
+
+    }
+
+}
+
+// ======================================
+
 // START APPLICATION
+
 // ======================================
+
 checkLogin();
+
 </script>
+
 </body>
+
 </html>

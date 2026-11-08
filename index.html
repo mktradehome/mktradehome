@@ -24,23 +24,17 @@ body{font-family:Arial,sans-serif;background:#101827;color:#fff;padding:15px}
 
 header{padding:18px 0;border-bottom:1px solid #334155;margin-bottom:20px}
 
-h1{font-size:25px;color:#f5c542}
-
-.sub{color:#94a3b8;font-size:13px;margin-top:6px}
+h1{font-size:25px;color:#f5c542}.sub{color:#94a3b8;font-size:13px;margin-top:6px}
 
 .card{background:#1e293b;padding:17px;border-radius:13px;margin-bottom:15px}
 
-h2{font-size:18px;margin-bottom:13px}
-
-h3{font-size:16px;margin-bottom:10px}
+h2{font-size:18px;margin-bottom:13px}h3{font-size:16px;margin-bottom:10px}
 
 input,select,button{width:100%;padding:13px;border-radius:8px;border:1px solid #475569;margin:6px 0;background:#0f172a;color:white;font-size:15px}
 
 button{background:#eab308;color:#111827;font-weight:bold;border:0;cursor:pointer}
 
-button.secondary{background:#334155;color:white}
-
-button.danger{background:#991b1b;color:white}
+button.secondary{background:#334155;color:white}button.danger{background:#991b1b;color:white}
 
 .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 
@@ -48,25 +42,19 @@ button.danger{background:#991b1b;color:white}
 
 .price{font-size:22px;font-weight:bold;margin:8px 0}
 
-.muted{color:#94a3b8;font-size:13px}
-
-.green{color:#4ade80}
-
-.red{color:#f87171}
-
-.yellow{color:#facc15}
+.muted{color:#94a3b8;font-size:13px}.green{color:#4ade80}.red{color:#f87171}.yellow{color:#facc15}.orange{color:#fb923c}
 
 .badge{display:inline-block;padding:6px 10px;border-radius:6px;background:#334155;font-weight:bold;margin:5px 0}
 
-.signal{font-size:20px;font-weight:bold;margin:10px 0}
-
-.hidden{display:none}
+.signal{font-size:20px;font-weight:bold;margin:10px 0}.hidden{display:none}
 
 .small{font-size:12px;color:#94a3b8;line-height:1.5}
 
 hr{border:0;border-top:1px solid #475569;margin:12px 0}
 
 .trade{padding:12px;background:#0f172a;border-radius:8px;margin:8px 0}
+
+.notice{padding:13px;border-radius:9px;margin:10px 0;background:#334155;line-height:1.5}
 
 footer{text-align:center;color:#64748b;font-size:12px;padding:20px}
 
@@ -78,13 +66,7 @@ footer{text-align:center;color:#64748b;font-size:12px;padding:20px}
 
 <div class="container">
 
-<header>
-
-<h1>MKTRADEHOME</h1>
-
-<p class="sub">Your private trading analysis assistant</p>
-
-</header>
+<header><h1>MKTRADEHOME</h1><p class="sub">Your private trading analysis assistant</p></header>
 
 <div id="loginBox" class="card">
 
@@ -106,19 +88,9 @@ footer{text-align:center;color:#64748b;font-size:12px;padding:20px}
 
 <div class="row">
 
-<div>
+<div><h2>Trading Dashboard</h2><p class="muted">Market monitoring and analysis</p></div>
 
-<h2>Trading Dashboard</h2>
-
-<p class="muted">Market monitoring and analysis</p>
-
-</div>
-
-<div>
-
-<button class="secondary" onclick="logout()">Sign Out</button>
-
-</div>
+<div><button class="secondary" onclick="logout()">Sign Out</button></div>
 
 </div>
 
@@ -130,13 +102,35 @@ footer{text-align:center;color:#64748b;font-size:12px;padding:20px}
 
 <div class="card">
 
-<h2>Markets</h2>
+<h2>Notifications</h2>
 
-<div id="markets">
+<p id="notificationStatus" class="small">Notifications not enabled.</p>
 
-<p class="muted">Loading markets...</p>
+<button onclick="enableNotifications()">Enable Notifications</button>
+
+<button class="secondary" onclick="testNotification()">Test Alert</button>
+
+<div id="alertBox" class="notice yellow">Waiting for market signals.</div>
 
 </div>
+
+<div class="card">
+
+<h2>Trading Safety</h2>
+
+<div id="safetyStatus" class="notice green">Risk monitoring active.</div>
+
+<p id="dailyLossDisplay" class="small"></p>
+
+<p id="lossStreakDisplay" class="small"></p>
+
+</div>
+
+<div class="card">
+
+<h2>Markets</h2>
+
+<div id="markets"><p class="muted">Loading markets...</p></div>
 
 <button onclick="refreshAll()">Refresh Analysis</button>
 
@@ -154,6 +148,14 @@ footer{text-align:center;color:#64748b;font-size:12px;padding:20px}
 
 <input id="risk" type="number" value="1" min="0.1" max="5" step="0.1">
 
+<label class="small">Maximum daily loss (%)</label>
+
+<input id="dailyLimit" type="number" value="3" min="0.5" max="20" step="0.5">
+
+<label class="small">Maximum consecutive losing trades</label>
+
+<input id="maxLossStreak" type="number" value="3" min="1" max="10">
+
 <button onclick="saveRisk()">Save Risk Settings</button>
 
 <p id="riskMessage" class="small"></p>
@@ -164,25 +166,9 @@ footer{text-align:center;color:#64748b;font-size:12px;padding:20px}
 
 <h2>Record a Trade</h2>
 
-<select id="tradeMarket">
+<select id="tradeMarket"><option>BTC/USD</option><option>EUR/USD</option><option>XAU/USD</option><option>USD/JPY</option></select>
 
-<option>BTC/USD</option>
-
-<option>EUR/USD</option>
-
-<option>XAU/USD</option>
-
-<option>USD/JPY</option>
-
-</select>
-
-<select id="tradeDirection">
-
-<option>BUY</option>
-
-<option>SELL</option>
-
-</select>
+<select id="tradeDirection"><option>BUY</option><option>SELL</option></select>
 
 <input id="tradeEntry" type="number" step="any" placeholder="Entry price">
 
@@ -192,31 +178,17 @@ footer{text-align:center;color:#64748b;font-size:12px;padding:20px}
 
 <button onclick="addTrade()">Save Trade</button>
 
-</div>
-
-<div class="card">
-
-<h2>Open Trades</h2>
-
-<div id="openTrades"></div>
+<p class="small">Record your actual trades and enter the realised profit or loss when closing.</p>
 
 </div>
 
-<div class="card">
+<div class="card"><h2>Open Trades</h2><div id="openTrades"></div></div>
 
-<h2>Trade History</h2>
-
-<div id="tradeHistory"></div>
+<div class="card"><h2>Trade History</h2><div id="tradeHistory"></div></div>
 
 </div>
 
-</div>
-
-<footer>
-
-Mktradehome • Personal trading analysis tool
-
-</footer>
+<footer>Mktradehome • Personal trading analysis tool</footer>
 
 </div>
 
@@ -240,13 +212,9 @@ const markets=[
 
 ];
 
-let latestQuotes={};
+let latestQuotes={},previousPrices={},analyses={};
 
-let analyses={};
-
-let priceBusy=false;
-
-let appStarted=false;
+let priceBusy=false,analysisBusy=false,appStarted=false,audioContext=null;
 
 function escapeHTML(value){
 
@@ -254,7 +222,7 @@ function escapeHTML(value){
 
  "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
 
- })[c]);
+ }[c]));
 
 }
 
@@ -266,7 +234,7 @@ async function login(){
 
  document.getElementById("loginMessage").textContent="Signing in...";
 
- const {data,error}=await db.auth.signInWithPassword({email,password});
+ const {error}=await db.auth.signInWithPassword({email,password});
 
  if(error){
 
@@ -308,17 +276,127 @@ function showApp(){
 
  loadSettings();
 
+ renderMarkets();
+
  renderTrades();
+
+ updateSafety();
+
+ updateNotificationStatus();
 
  refreshAll();
 
- setInterval(fetchPrices,15000);
+ setInterval(fetchPrices,10000);
 
- setInterval(refreshAll,300000);
+ setInterval(refreshAll,60000);
 
 }
 
-/* LIVE PRICE DATA */
+/* NOTIFICATIONS */
+
+function enableNotifications(){
+
+ if(!("Notification" in window)){
+
+  alert("This browser does not support notifications.");
+
+  return;
+
+ }
+
+ Notification.requestPermission().then(permission=>{
+
+  updateNotificationStatus();
+
+  if(permission==="granted"){
+
+   sendAlert("MKTRADEHOME","Notifications enabled.");
+
+  }
+
+ });
+
+}
+
+function updateNotificationStatus(){
+
+ const el=document.getElementById("notificationStatus");
+
+ if(!el)return;
+
+ el.textContent=("Notification" in window)
+
+  ?"Notification permission: "+Notification.permission
+
+  :"Browser notifications are not supported.";
+
+}
+
+function playAlert(){
+
+ try{
+
+  const Audio=window.AudioContext||window.webkitAudioContext;
+
+  if(!Audio)return;
+
+  audioContext=audioContext||new Audio();
+
+  if(audioContext.state==="suspended")audioContext.resume();
+
+  const oscillator=audioContext.createOscillator();
+
+  const gain=audioContext.createGain();
+
+  oscillator.connect(gain);
+
+  gain.connect(audioContext.destination);
+
+  oscillator.frequency.value=850;
+
+  gain.gain.value=0.12;
+
+  oscillator.start();
+
+  oscillator.stop(audioContext.currentTime+0.25);
+
+ }catch(e){}
+
+}
+
+function sendAlert(title,message){
+
+ const box=document.getElementById("alertBox");
+
+ if(box)box.textContent=title+": "+message;
+
+ playAlert();
+
+ if("Notification" in window&&Notification.permission==="granted"){
+
+  try{new Notification(title,{body:message});}catch(e){}
+
+ }
+
+}
+
+function testNotification(){
+
+ sendAlert("TEST ALERT","Mktradehome alerts are working while the dashboard is open.");
+
+}
+
+function notifyOnce(key,title,message){
+
+ if(localStorage.getItem("mkAlert_"+key)===message)return;
+
+ localStorage.setItem("mkAlert_"+key,message);
+
+ sendAlert(title,message);
+
+}
+
+/* LIVE PRICES */
 
 async function fetchPrices(){
 
@@ -328,19 +406,17 @@ async function fetchPrices(){
 
  try{
 
-  const url="https://biquote.io/api/latest?symbols=BTCUSD&symbols=EURUSD&symbols=XAUUSD&symbols=USDJPY";
+  const response=await fetch(
 
-  const response=await fetch(url);
+   "https://biquote.io/api/latest?symbols=BTCUSD&symbols=EURUSD&symbols=XAUUSD&symbols=USDJPY"
 
-  if(!response.ok){
+  );
 
-   throw new Error("Price service returned "+response.status);
-
-  }
+  if(!response.ok)throw new Error("Price service returned "+response.status);
 
   const data=await response.json();
 
-  let rows=data.quotes||data.data||data;
+  const rows=data.quotes||data.data||data;
 
   if(Array.isArray(rows)){
 
@@ -356,23 +432,25 @@ async function fetchPrices(){
 
    markets.forEach(m=>{
 
-    if(rows[m.symbol]){
-
-     latestQuotes[m.symbol]=rows[m.symbol];
-
-    }
+    if(rows[m.symbol])latestQuotes[m.symbol]=rows[m.symbol];
 
    });
 
   }
 
-  renderMarkets();
+  updateMarketPrices();
 
  }catch(error){
 
-  document.getElementById("connection").textContent="Price error: "+error.message;
+  const el=document.getElementById("connection");
 
-  document.getElementById("connection").className="red";
+  if(el){
+
+   el.textContent="Price error: "+error.message;
+
+   el.className="red";
+
+  }
 
  }finally{
 
@@ -404,21 +482,47 @@ function quoteIsFresh(symbol){
 
  return q.stale===false&&
 
-        q.marketState==="open"&&
+  q.marketState==="open"&&
 
-        Number.isFinite(age)&&
+  Number.isFinite(age)&&
 
-        age<=300&&
+  age<=300&&
 
-        getPrice(symbol)!==null;
+  getPrice(symbol)!==null;
 
 }
 
 function renderMarkets(){
 
- const box=document.getElementById("markets");
+ document.getElementById("markets").innerHTML=markets.map(m=>`
 
- box.innerHTML=markets.map(m=>{
+ <div class="market">
+
+ <h3>${m.name}</h3>
+
+ <div class="price" id="price-${m.symbol}">Waiting for price...</div>
+
+ <span class="badge yellow" id="status-${m.symbol}">WAITING</span>
+
+ <p class="small" id="movement-${m.symbol}">Movement: Waiting</p>
+
+ <p class="small" id="age-${m.symbol}"></p>
+
+ <div id="signal-${m.symbol}">
+
+ <p class="muted">Analysis not ready.</p>
+
+ </div>
+
+ </div>`).join("");
+
+ updateMarketPrices();
+
+}
+
+function updateMarketPrices(){
+
+ markets.forEach(m=>{
 
   const q=latestQuotes[m.symbol];
 
@@ -426,49 +530,75 @@ function renderMarkets(){
 
   const fresh=quoteIsFresh(m.symbol);
 
-  return `
+  const priceEl=document.getElementById("price-"+m.symbol);
 
-  <div class="market">
+  const statusEl=document.getElementById("status-"+m.symbol);
 
-   <h3>${m.name}</h3>
+  const movementEl=document.getElementById("movement-"+m.symbol);
 
-   <div class="price">
+  const ageEl=document.getElementById("age-"+m.symbol);
 
-    ${price!==null?price.toLocaleString("en-US",{maximumFractionDigits:5}):"Waiting for price..."}
+  if(!priceEl)return;
 
-   </div>
+  priceEl.textContent=price!==null
 
-   <span class="badge ${fresh?"green":"yellow"}">
+   ?price.toLocaleString("en-US",{maximumFractionDigits:5})
 
-    ${fresh?"LIVE PRICE":"STALE / MARKET CLOSED"}
+   :"Waiting for price...";
 
-   </span>
+  statusEl.textContent=fresh?"LIVE PRICE":"STALE / MARKET CLOSED";
 
-   <p class="small">
+  statusEl.className="badge "+(fresh?"green":"yellow");
 
-    ${q&&q.quoteAgeSeconds!==undefined?"Quote age: "+q.quoteAgeSeconds+" seconds":""}
+  if(price!==null){
 
-   </p>
+   const old=previousPrices[m.symbol];
 
-   <div id="signal-${m.symbol}">
+   if(old!==undefined){
 
-    <p class="muted">Analysis not ready.</p>
+    if(price>old){
 
-   </div>
+     movementEl.textContent="Movement: ↑ UP";
 
-  </div>`;
+     movementEl.className="small green";
 
- }).join("");
+    }else if(price<old){
+
+     movementEl.textContent="Movement: ↓ DOWN";
+
+     movementEl.className="small red";
+
+    }else{
+
+     movementEl.textContent="Movement: → UNCHANGED";
+
+     movementEl.className="small";
+
+    }
+
+   }
+
+   previousPrices[m.symbol]=price;
+
+  }
+
+  ageEl.textContent=q&&q.quoteAgeSeconds!==undefined
+
+   ?"Quote age: "+q.quoteAgeSeconds+" seconds":"";
+
+ });
 
 }
 
-/* CANDLE DATA */
+/* CANDLES AND INDICATORS */
 
 async function fetchCandles(symbol,interval){
 
- const url=`https://biquote.io/api/${symbol}/ohlc?interval=${interval}&limit=200`;
+ const response=await fetch(
 
- const response=await fetch(url);
+  `https://biquote.io/api/${symbol}/ohlc?interval=${interval}&limit=200`
+
+ );
 
  if(!response.ok){
 
@@ -500,7 +630,9 @@ async function fetchCandles(symbol,interval){
 
   isOpen:b.isOpen===true
 
- })).filter(b=>
+ }))
+
+ .filter(b=>
 
   Number.isFinite(b.time)&&
 
@@ -512,13 +644,13 @@ async function fetchCandles(symbol,interval){
 
   Number.isFinite(b.close)
 
- ).filter(b=>!b.isOpen)
+ )
+
+ .filter(b=>!b.isOpen)
 
  .sort((a,b)=>a.time-b.time);
 
 }
-
-/* BUILD THREE-HOUR CANDLES */
 
 function make3HourBars(hourBars){
 
@@ -528,9 +660,7 @@ function make3HourBars(hourBars){
 
   const start=Math.floor(b.time/10800000)*10800000;
 
-  if(!groups[start])groups[start]=[];
-
-  groups[start].push(b);
+  (groups[start]||(groups[start]=[])).push(b);
 
  });
 
@@ -558,15 +688,11 @@ function make3HourBars(hourBars){
 
 }
 
-/* TECHNICAL INDICATORS */
-
 function ema(values,period){
 
  if(values.length<period)return null;
 
- let result=values.slice(0,period)
-
-  .reduce((a,b)=>a+b,0)/period;
+ let result=values.slice(0,period).reduce((a,b)=>a+b,0)/period;
 
  const multiplier=2/(period+1);
 
@@ -584,23 +710,15 @@ function calculateRSI(values,period=14){
 
  if(values.length<=period)return null;
 
- let gains=0;
-
- let losses=0;
+ let gains=0,losses=0;
 
  for(let i=values.length-period;i<values.length;i++){
 
   const change=values[i]-values[i-1];
 
-  if(change>0){
+  if(change>0)gains+=change;
 
-   gains+=change;
-
-  }else{
-
-   losses+=Math.abs(change);
-
-  }
+  else losses+=Math.abs(change);
 
  }
 
@@ -620,35 +738,27 @@ function calculateATR(bars,period=14){
 
  for(let i=1;i<bars.length;i++){
 
-  const b=bars[i];
-
-  const previous=bars[i-1];
+  const b=bars[i],p=bars[i-1];
 
   ranges.push(Math.max(
 
    b.high-b.low,
 
-   Math.abs(b.high-previous.close),
+   Math.abs(b.high-p.close),
 
-   Math.abs(b.low-previous.close)
+   Math.abs(b.low-p.close)
 
   ));
 
  }
 
- return ranges.slice(-period)
-
-  .reduce((a,b)=>a+b,0)/period;
+ return ranges.slice(-period).reduce((a,b)=>a+b,0)/period;
 
 }
 
 function analyzeTimeframe(bars){
 
- if(bars.length<60){
-
-  throw new Error("Not enough candles");
-
- }
+ if(bars.length<60)throw new Error("Not enough candles");
 
  const closes=bars.map(b=>b.close);
 
@@ -668,29 +778,13 @@ function analyzeTimeframe(bars){
 
  let direction="WAIT";
 
- if(fast>slow&&rsi>50&&rsi<70){
+ if(fast>slow&&rsi>50&&rsi<70)direction="BUY";
 
-  direction="BUY";
-
- }
-
- if(fast<slow&&rsi<50&&rsi>30){
-
-  direction="SELL";
-
- }
+ if(fast<slow&&rsi<50&&rsi>30)direction="SELL";
 
  return {
 
-  direction,
-
-  fast,
-
-  slow,
-
-  rsi,
-
-  atr,
+  direction,fast,slow,rsi,atr,
 
   last:closes[closes.length-1]
 
@@ -698,43 +792,21 @@ function analyzeTimeframe(bars){
 
 }
 
-/* BUY / SELL / WAIT ANALYSIS */
-
 function buildSignal(results,price){
 
  const directions=Object.values(results).map(x=>x.direction);
 
  let direction="WAIT";
 
- if(directions.every(x=>x==="BUY")){
+ if(directions.every(x=>x==="BUY"))direction="BUY";
 
-  direction="BUY";
-
- }
-
- if(directions.every(x=>x==="SELL")){
-
-  direction="SELL";
-
- }
+ if(directions.every(x=>x==="SELL"))direction="SELL";
 
  const atr=results["1H"]?.atr||0;
 
  if(direction==="WAIT"||!price||!atr){
 
-  return {
-
-   direction,
-
-   entry:price,
-
-   stop:null,
-
-   tp1:null,
-
-   tp2:null
-
-  };
+  return {direction,entry:price,stop:null,tp1:null,tp2:null};
 
  }
 
@@ -744,21 +816,15 @@ function buildSignal(results,price){
 
  const stop=direction==="BUY"
 
-  ?entry-distance
-
-  :entry+distance;
+  ?entry-distance:entry+distance;
 
  const tp1=direction==="BUY"
 
-  ?entry+distance*1.5
-
-  :entry-distance*1.5;
+  ?entry+distance*2:entry-distance*2;
 
  const tp2=direction==="BUY"
 
-  ?entry+distance*2.5
-
-  :entry-distance*2.5;
+  ?entry+distance*3:entry-distance*3;
 
  return {direction,entry,stop,tp1,tp2};
 
@@ -768,11 +834,7 @@ async function analyzeMarket(m){
 
  const price=getPrice(m.symbol);
 
- if(!price){
-
-  throw new Error("No current price");
-
- }
+ if(!price)throw new Error("No current price");
 
  if(!quoteIsFresh(m.symbol)){
 
@@ -804,11 +866,93 @@ async function analyzeMarket(m){
 
  };
 
- const signal=buildSignal(results,price);
+ return {
 
- analyses[m.symbol]={results,signal};
+  results,
 
- return analyses[m.symbol];
+  signal:buildSignal(results,price)
+
+ };
+
+}
+
+/* SIGNAL ALERTS AND WEAKENING WARNINGS */
+
+function checkSignalAlerts(m,result){
+
+ const s=result.signal;
+
+ const directions=Object.values(result.results).map(x=>x.direction);
+
+ if(s.direction==="BUY"||s.direction==="SELL"){
+
+  const message=m.name+" "+s.direction+
+
+   " | Entry "+s.entry.toFixed(5)+
+
+   " | SL "+s.stop.toFixed(5)+
+
+   " | TP1 "+s.tp1.toFixed(5)+
+
+   " | TP2 "+s.tp2.toFixed(5);
+
+  notifyOnce(m.symbol+"_signal","NEW "+s.direction+" SIGNAL",message);
+
+ }else{
+
+  localStorage.removeItem("mkAlert_"+m.symbol+"_signal");
+
+ }
+
+ const buys=directions.filter(x=>x==="BUY").length;
+
+ const sells=directions.filter(x=>x==="SELL").length;
+
+ if(buys>=2&&sells>=2){
+
+  notifyOnce(
+
+   m.symbol+"_conflict",
+
+   "MARKET WARNING",
+
+   m.name+" has conflicting timeframe signals. Wait for clarity."
+
+  );
+
+ }
+
+}
+
+function checkMarketWarnings(m,result){
+
+ const dirs=Object.values(result.results).map(x=>x.direction);
+
+ const buys=dirs.filter(x=>x==="BUY").length;
+
+ const sells=dirs.filter(x=>x==="SELL").length;
+
+ let current="MIXED";
+
+ if(buys>=3)current="BUY";
+
+ if(sells>=3)current="SELL";
+
+ const previous=localStorage.getItem("mkPrevious_"+m.symbol);
+
+ if(previous&&previous!=="MIXED"&&current==="MIXED"){
+
+  sendAlert(
+
+   "MARKET WEAKENING",
+
+   m.name+" trend alignment weakened. Review open trades."
+
+  );
+
+ }
+
+ localStorage.setItem("mkPrevious_"+m.symbol,current);
 
 }
 
@@ -822,13 +966,7 @@ function renderAnalysis(m,result){
 
  const color=s.direction==="BUY"
 
-  ?"green"
-
-  :s.direction==="SELL"
-
-  ?"red"
-
-  :"yellow";
+  ?"green":s.direction==="SELL"?"red":"yellow";
 
  const timeframes=Object.entries(result.results).map(([tf,r])=>
 
@@ -842,91 +980,95 @@ function renderAnalysis(m,result){
 
   levels=`
 
-   <hr>
+  <hr>
 
-   <p>Entry: ${s.entry.toFixed(5)}</p>
+  <p>Estimated Entry: ${s.entry.toFixed(5)}</p>
 
-   <p>Stop Loss: ${s.stop.toFixed(5)}</p>
+  <p>Stop Loss: ${s.stop.toFixed(5)}</p>
 
-   <p>Take Profit 1: ${s.tp1.toFixed(5)}</p>
+  <p>Take Profit 1: ${s.tp1.toFixed(5)}</p>
 
-   <p>Take Profit 2: ${s.tp2.toFixed(5)}</p>
+  <p>Take Profit 2: ${s.tp2.toFixed(5)}</p>
 
-   <p class="small">Estimated reward/risk: TP1 1:1.5 | TP2 1:2.5</p>
-
-  `;
+  <p class="small">Estimated reward/risk: TP1 1:2 | TP2 1:3</p>`;
 
  }
 
  box.innerHTML=`
 
-  <div class="signal ${color}">${s.direction}</div>
+ <div class="signal ${color}">${s.direction}</div>
 
-  <p class="small">Timeframe analysis</p>
+ <p class="small">Completed candle analysis</p>
 
-  ${timeframes}
+ ${timeframes}
 
-  ${levels}
-
- `;
+ ${levels}`;
 
 }
 
-/* REFRESH DASHBOARD */
-
 async function refreshAll(){
 
- document.getElementById("connection").textContent="Updating market data...";
+ if(analysisBusy)return;
 
- document.getElementById("connection").className="yellow";
+ analysisBusy=true;
 
- await fetchPrices();
+ const connection=document.getElementById("connection");
 
- for(const m of markets){
+ connection.textContent="Updating market analysis...";
 
-  const box=document.getElementById("signal-"+m.symbol);
+ connection.className="yellow";
 
-  if(box)box.innerHTML='<p class="muted">Analyzing...</p>';
+ try{
 
- }
+  await fetchPrices();
 
- for(const m of markets){
+  for(const m of markets){
 
-  try{
+   try{
 
-   const result=await analyzeMarket(m);
+    const result=await analyzeMarket(m);
 
-   renderAnalysis(m,result);
+    analyses[m.symbol]=result;
 
-  }catch(error){
+    renderAnalysis(m,result);
 
-   const box=document.getElementById("signal-"+m.symbol);
+    checkSignalAlerts(m,result);
 
-   if(box){
+    checkMarketWarnings(m,result);
 
-    box.innerHTML=`
+   }catch(error){
 
-     <p class="yellow">WAIT</p>
+    const box=document.getElementById("signal-"+m.symbol);
 
-     <p class="small">${escapeHTML(error.message)}</p>
+    if(box){
 
-    `;
+     box.innerHTML=`
+
+      <p class="yellow">WAIT</p>
+
+      <p class="small">${escapeHTML(error.message)}</p>`;
+
+    }
 
    }
 
   }
 
+  connection.textContent="Monitoring active. Check quote freshness before trading.";
+
+  connection.className="green";
+
+  document.getElementById("lastUpdated").textContent=
+
+   "Last analysis: "+new Date().toLocaleString();
+
+ }finally{
+
+  analysisBusy=false;
+
+  updateSafety();
+
  }
-
- document.getElementById("connection").textContent=
-
-  "Analysis updated. Check quote freshness before trading.";
-
- document.getElementById("connection").className="green";
-
- document.getElementById("lastUpdated").textContent=
-
-  "Last update: "+new Date().toLocaleString();
 
 }
 
@@ -936,17 +1078,13 @@ function loadSettings(){
 
  const saved=JSON.parse(localStorage.getItem("mkRisk")||"{}");
 
- if(saved.balance){
+ if(saved.balance)document.getElementById("balance").value=saved.balance;
 
-  document.getElementById("balance").value=saved.balance;
+ if(saved.risk)document.getElementById("risk").value=saved.risk;
 
- }
+ if(saved.dailyLimit)document.getElementById("dailyLimit").value=saved.dailyLimit;
 
- if(saved.risk){
-
-  document.getElementById("risk").value=saved.risk;
-
- }
+ if(saved.maxLossStreak)document.getElementById("maxLossStreak").value=saved.maxLossStreak;
 
 }
 
@@ -956,25 +1094,35 @@ function saveRisk(){
 
  const risk=Number(document.getElementById("risk").value);
 
- if(balance<=0||risk<=0||risk>5){
+ const dailyLimit=Number(document.getElementById("dailyLimit").value);
+
+ const maxLossStreak=Number(document.getElementById("maxLossStreak").value);
+
+ if(balance<=0||risk<0.1||risk>5||
+
+ dailyLimit<0.5||dailyLimit>20||
+
+ maxLossStreak<1||maxLossStreak>10){
 
   document.getElementById("riskMessage").textContent=
 
-   "Enter a valid balance and risk between 0.1% and 5%.";
+   "Check your settings and try again.";
 
   return;
 
  }
 
- localStorage.setItem("mkRisk",JSON.stringify({balance,risk}));
+ localStorage.setItem("mkRisk",JSON.stringify({
 
- document.getElementById("riskMessage").textContent=
+  balance,risk,dailyLimit,maxLossStreak
 
-  "Risk settings saved.";
+ }));
+
+ document.getElementById("riskMessage").textContent="Risk settings saved.";
+
+ updateSafety();
 
 }
-
-/* TRADE RECORDS */
 
 function getTrades(){
 
@@ -988,7 +1136,123 @@ function saveTrades(trades){
 
 }
 
+function todayKey(){
+
+ const d=new Date();
+
+ return d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate();
+
+}
+
+function dailyResults(){
+
+ const closed=getTrades().filter(t=>
+
+  t.status==="CLOSED"&&t.closedDay===todayKey()
+
+ );
+
+ const total=closed.reduce((sum,t)=>sum+Number(t.pnl||0),0);
+
+ const sorted=closed.slice().sort((a,b)=>Number(b.id)-Number(a.id));
+
+ let streak=0;
+
+ for(const t of sorted){
+
+  if(Number(t.pnl)<0)streak++;
+
+  else break;
+
+ }
+
+ return {total,streak,closed};
+
+}
+
+function tradingBlocked(){
+
+ const s=JSON.parse(localStorage.getItem("mkRisk")||"{}");
+
+ const balance=Number(s.balance||100);
+
+ const limit=Number(s.dailyLimit||3);
+
+ const maxStreak=Number(s.maxLossStreak||3);
+
+ const r=dailyResults();
+
+ return r.total<=-(balance*limit/100)||r.streak>=maxStreak;
+
+}
+
+function updateSafety(){
+
+ const safety=document.getElementById("safetyStatus");
+
+ if(!safety)return;
+
+ const s=JSON.parse(localStorage.getItem("mkRisk")||"{}");
+
+ const balance=Number(s.balance||100);
+
+ const limit=Number(s.dailyLimit||3);
+
+ const maxStreak=Number(s.maxLossStreak||3);
+
+ const r=dailyResults();
+
+ safety.className=tradingBlocked()?"notice red":"notice green";
+
+ safety.textContent=tradingBlocked()
+
+  ?"STOP TRADING. Your recorded daily loss or losing-streak limit has been reached."
+
+  :"Risk monitoring active. No recorded daily limit has been reached.";
+
+ document.getElementById("dailyLossDisplay").textContent=
+
+  "Today's recorded P/L: $"+r.total.toFixed(2)+
+
+  " | Daily loss limit: $"+(balance*limit/100).toFixed(2);
+
+ document.getElementById("lossStreakDisplay").textContent=
+
+  "Consecutive losing trades: "+r.streak+
+
+  " | Maximum: "+maxStreak;
+
+ if(tradingBlocked()){
+
+  notifyOnce(
+
+   "daily_stop",
+
+   "STOP TRADING",
+
+   "Your recorded risk limit has been reached. Stop opening new trades today."
+
+  );
+
+ }else{
+
+  localStorage.removeItem("mkAlert_daily_stop");
+
+ }
+
+}
+
+/* TRADE RECORDING */
+
 function addTrade(){
+
+ if(tradingBlocked()){
+
+  alert("STOP TRADING: Your recorded daily risk limit has been reached.");
+
+  return;
+
+ }
 
  const market=document.getElementById("tradeMarket").value;
 
@@ -1066,13 +1330,43 @@ function closeTrade(id){
 
  if(!trade)return;
 
+ const answer=prompt(
+
+  "Enter realised profit or loss in USD. Use a minus sign for a loss, e.g. -5 or 8."
+
+ );
+
+ if(answer===null)return;
+
+ const pnl=Number(answer);
+
+ if(answer.trim()===""||!Number.isFinite(pnl)){
+
+  alert("Enter a valid profit or loss amount.");
+
+  return;
+
+ }
+
  trade.status="CLOSED";
 
+ trade.pnl=pnl;
+
  trade.closed=new Date().toLocaleString();
+
+ trade.closedDay=todayKey();
 
  saveTrades(trades);
 
  renderTrades();
+
+ updateSafety();
+
+ if(tradingBlocked()){
+
+  sendAlert("STOP TRADING","Your recorded daily risk limit has been reached.");
+
+ }
 
 }
 
@@ -1084,9 +1378,9 @@ function renderTrades(){
 
  const closed=trades.filter(t=>t.status==="CLOSED");
 
- document.getElementById("openTrades").innerHTML=
+ document.getElementById("openTrades").innerHTML=open.length
 
- open.length?open.map(t=>`
+ ?open.map(t=>`
 
   <div class="trade">
 
@@ -1096,15 +1390,19 @@ function renderTrades(){
 
    <p class="small">${escapeHTML(t.created)}</p>
 
-   <button class="danger" onclick="closeTrade(${t.id})">Close Trade</button>
+   <button class="danger" onclick="closeTrade(${t.id})">
 
-  </div>
+    Close Trade / Record P&L
 
- `).join(""):"<p class='muted'>No open trades.</p>";
+   </button>
 
- document.getElementById("tradeHistory").innerHTML=
+  </div>`).join("")
 
- closed.length?closed.map(t=>`
+ :"<p class='muted'>No open trades.</p>";
+
+ document.getElementById("tradeHistory").innerHTML=closed.length
+
+ ?closed.map(t=>`
 
   <div class="trade">
 
@@ -1112,21 +1410,19 @@ function renderTrades(){
 
    <p class="small">Entry: ${t.entry} | SL: ${t.stop} | TP: ${t.target}</p>
 
+   <p class="small">Realised P/L: $${Number(t.pnl||0).toFixed(2)}</p>
+
    <p class="small">Closed: ${escapeHTML(t.closed||"")}</p>
 
-  </div>
+  </div>`).join("")
 
- `).join(""):"<p class='muted'>No closed trades yet.</p>";
+ :"<p class='muted'>No closed trades yet.</p>";
 
 }
 
 db.auth.onAuthStateChange((event,session)=>{
 
- if(session){
-
-  showApp();
-
- }
+ if(session)showApp();
 
 });
 

@@ -332,6 +332,60 @@ async function fetchQuotes(){
 
   const response=await fetch(QUOTE_URL,{cache:"no-store"});
 
+  if(!response.ok){
+
+    throw new Error("Price service returned "+response.status);
+
+  }
+
+  const data=await response.json();
+
+  const output={};
+
+  for(const market of marketList){
+
+    const item=data[market.symbol];
+
+    if(!item)continue;
+
+    const price=Number(
+
+      item.mid ||
+
+      ((Number(item.bid)+Number(item.ask))/2)
+
+    );
+
+    if(Number.isFinite(price)&&price>0){
+
+      output[market.symbol]={
+
+        price:price,
+
+        bid:Number(item.bid),
+
+        ask:Number(item.ask),
+
+        stale:item.stale,
+
+        marketState:item.marketState,
+
+        quoteAgeSeconds:item.quoteAgeSeconds,
+
+        time:item.timestamp
+
+      };
+
+    }
+
+  }
+
+  quotes={...quotes,...output};
+
+}
+
+  const response=await fetch(QUOTE_URL,{cache:"no-store"});
+
   if(!response.ok)throw new Error("Price service returned "+response.status);
 
   const data=await response.json();

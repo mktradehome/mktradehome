@@ -859,7 +859,267 @@ navigator.serviceWorker.register("/sw.js").catch(e=>console.error("Service worke
 }
 
 </script>
+<!-- MKTRADEHOME TRADE APPROVAL SYSTEM -->
 
+<style>
+
+#mk-approval {
+
+  background:#101827;
+
+  color:white;
+
+  padding:20px;
+
+  margin:20px 0;
+
+  border-radius:16px;
+
+  font-family:Arial,sans-serif;
+
+  border:1px solid #d6a928;
+
+}
+
+#mk-approval h2 {
+
+  color:#f5c542;
+
+  margin-top:0;
+
+}
+
+.mk-field {
+
+  background:#1c293b;
+
+  padding:12px;
+
+  margin:9px 0;
+
+  border-radius:9px;
+
+}
+
+.mk-field span {
+
+  color:#f5c542;
+
+  float:right;
+
+  font-weight:bold;
+
+}
+
+.mk-button {
+
+  width:100%;
+
+  padding:15px;
+
+  margin-top:12px;
+
+  border:0;
+
+  border-radius:9px;
+
+  font-size:16px;
+
+  font-weight:bold;
+
+}
+
+#mk-approve {
+
+  background:#16a36a;
+
+  color:white;
+
+}
+
+#mk-reject {
+
+  background:#c0392b;
+
+  color:white;
+
+}
+
+#mk-status {
+
+  margin-top:15px;
+
+  color:#f5c542;
+
+  text-align:center;
+
+}
+
+</style>
+
+<div id="mk-approval">
+
+<h2>MKTRADEHOME</h2>
+
+<h3>Trade Approval Centre</h3>
+
+<div class="mk-field">
+
+Market <span id="mk-market">BTC/USD</span>
+
+</div>
+
+<div class="mk-field">
+
+Signal <span id="mk-direction">WAIT</span>
+
+</div>
+
+<div class="mk-field">
+
+Entry Price <span id="mk-entry">--</span>
+
+</div>
+
+<div class="mk-field">
+
+Stop Loss <span id="mk-sl">--</span>
+
+</div>
+
+<div class="mk-field">
+
+Take Profit 1 <span id="mk-tp1">--</span>
+
+</div>
+
+<div class="mk-field">
+
+Take Profit 2 <span id="mk-tp2">--</span>
+
+</div>
+
+<div class="mk-field">
+
+Lot Size <span id="mk-lot">0.01</span>
+
+</div>
+
+<button id="mk-approve" class="mk-button">
+
+APPROVE TRADE
+
+</button>
+
+<button id="mk-reject" class="mk-button">
+
+REJECT TRADE
+
+</button>
+
+<div id="mk-status">
+
+Waiting for a trading signal.
+
+</div>
+
+</div>
+
+<script>
+
+(function(){
+
+const status = document.getElementById("mk-status");
+
+let approved = false;
+
+document.getElementById("mk-approve")
+
+.addEventListener("click",function(){
+
+const direction =
+
+document.getElementById("mk-direction").textContent;
+
+if(direction !== "BUY" && direction !== "SELL"){
+
+status.textContent = "No valid trading signal.";
+
+return;
+
+}
+
+if(approved){
+
+status.textContent = "This signal was already approved.";
+
+return;
+
+}
+
+approved = true;
+
+status.textContent =
+
+"APPROVED LOCALLY — MT5 execution is not connected yet.";
+
+});
+
+document.getElementById("mk-reject")
+
+.addEventListener("click",function(){
+
+approved = false;
+
+status.textContent = "Trade rejected.";
+
+});
+
+window.MKTRADEHOME = {
+
+setSignal:function(data){
+
+approved = false;
+
+document.getElementById("mk-market").textContent =
+
+data.market || "BTC/USD";
+
+document.getElementById("mk-direction").textContent =
+
+data.direction || "WAIT";
+
+document.getElementById("mk-entry").textContent =
+
+data.entry ?? "--";
+
+document.getElementById("mk-sl").textContent =
+
+data.stopLoss ?? "--";
+
+document.getElementById("mk-tp1").textContent =
+
+data.tp1 ?? "--";
+
+document.getElementById("mk-tp2").textContent =
+
+data.tp2 ?? "--";
+
+document.getElementById("mk-lot").textContent =
+
+data.lot || "0.01";
+
+status.textContent = "New signal awaiting your approval.";
+
+}
+
+};
+
+})();
+
+</script>
+
+<!-- END MKTRADEHOME APPROVAL SYSTEM -->
 </body>
 
 </html>

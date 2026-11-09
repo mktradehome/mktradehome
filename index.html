@@ -244,8 +244,6 @@ header{align-items:flex-start}
 
 </div>
 
-</div>
-
 <script>
 
 "use strict";
@@ -284,7 +282,13 @@ let refreshing=false;
 
 let approvalKey="";
 
+let approvalSnapshot=null;
+
+let rejectedSnapshot=null;
+
 let approved=false;
+
+let approvalExpiry=0;
 
 const $=id=>document.getElementById(id);
 
@@ -1048,15 +1052,81 @@ ${q?`<div class="small">Bid: ${formatPrice(q.bid)} · Ask: ${formatPrice(q.ask)}
 
 /* TRADE APPROVAL CENTRE */
 
+function makeApprovalSnapshot(data){
+
+return {
+
+market:data.market,
+
+direction:data.direction,
+
+entry:data.entry,
+
+stopLoss:data.stopLoss,
+
+tp1:data.tp1,
+
+tp2:data.tp2
+
+};
+
+}
+
+function sameApproval(a,b){
+
+if(!a||!b)return false;
+
+const fields=["market","direction"];
+
+for(const field of fields){
+
+if(a[field]!==b[field])return false;
+
+}
+
+const priceFields=["entry","stopLoss","tp1","tp2"];
+
+for(const field of priceFields){
+
+const x=Number(a[field]);
+
+const y=Number(b[field]);
+
+if(!Number.isFinite(x)||!Number.isFinite(y)){
+
+if(a[field]!==b[field])return false;
+
+continue;
+
+}
+
+const tolerance=Math.max(Math.abs(x),Math.abs(y))*0.001;
+
+if(Math.abs(x-y)>tolerance)return false;
+
+}
+
+return true;
+
+}
+
 function setApprovalSignal(data){
 
-const key=data.market+"-"+data.direction;
+const snapshot=makeApprovalSnapshot(data);
 
-if(key!==approvalKey){
+if(!sameApproval(snapshot,approvalSnapshot)){
 
-approvalKey=key;
+approvalSnapshot=snapshot;
 
 approved=false;
+
+approvalExpiry=0;
+
+if(!sameApproval(snapshot,rejectedSnapshot)){
+
+rejectedSnapshot=null;
+
+}
 
 $("approvalStatus").textContent=
 
@@ -1112,8 +1182,6 @@ if(!selected){
 
 const m=marketList[0];
 
-const a=analyses[m.symbol];
-
 setApprovalSignal({
 
 market:m.name,
@@ -1166,7 +1234,15 @@ return;
 
 }
 
-if(approved){
+if(rejectedSnapshot&&sameApproval(approvalSnapshot,rejectedSnapshot)){
+
+$("approvalStatus").textContent="This signal was rejected. Wait for a new signal.";
+
+return;
+
+}
+
+if(approved&&Date.now()<approvalExpiry){
 
 $("approvalStatus").textContent="This signal has already been approved locally.";
 
@@ -1174,11 +1250,37 @@ return;
 
 }
 
+const market=marketList.find(m=>m.name===$("mk-market").textContent);
+
+const analysis=market?analyses[market.symbol]:null;
+
+if(!analysis||analysis.overall!==direction||!analysis.quoteFresh){
+
+approved=false;
+
+$("approvalStatus").textContent="Signal is no longer valid or price is not fresh. Refresh analysis.";
+
+return;
+
+}
+
+if(getSafetyState().locked){
+
+approved=false;
+
+$("approvalStatus").textContent="Safety lock active. Trade approval blocked.";
+
+return;
+
+}
+
 approved=true;
+
+approvalExpiry=Date.now()+5*60*1000;
 
 $("approvalStatus").textContent=
 
-"APPROVED LOCALLY — No Exness order was placed.";
+"APPROVED LOCALLY for 5 minutes — No Exness order was placed.";
 
 }
 
@@ -1186,7 +1288,17 @@ function rejectTrade(){
 
 approved=false;
 
-$("approvalStatus").textContent="Trade rejected locally.";
+approvalExpiry=0;
+
+rejectedSnapshot=approvalSnapshot
+
+?{...approvalSnapshot}
+
+:null;
+
+$("approvalStatus").textContent=
+
+"Trade rejected. This signal will remain rejected until it changes.";
 
 }
 

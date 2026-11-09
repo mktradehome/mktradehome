@@ -152,6 +152,40 @@ header{align-items:flex-start}
 
 </div>
 
+<!-- EXNESS CONNECTION -->
+
+<div class="card">
+
+<h2>Exness Demo Connection</h2>
+
+<p>Connect your verified Exness Demo account to Mktradehome.</p>
+
+<button id="exnessBtn">Connect Exness Demo</button>
+
+<div id="exnessStatus" class="status">Exness is not connected yet.</div>
+
+<div id="exnessAccount" class="hidden">
+
+<hr>
+
+<div class="row"><span>Account name</span><strong id="exName">--</strong></div>
+
+<div class="row"><span>Account ID</span><strong id="exId">--</strong></div>
+
+<div class="row"><span>Account type</span><strong id="exType">--</strong></div>
+
+<div class="row"><span>Currency</span><strong id="exCurrency">--</strong></div>
+
+<div class="row"><span>Leverage</span><strong id="exLeverage">--</strong></div>
+
+<div class="row"><span>Status</span><strong id="exAccountStatus">--</strong></div>
+
+</div>
+
+<p class="small">Read-only connection. Mktradehome cannot place or close trades through this connection.</p>
+
+</div>
+
 <div class="card">
 
 <h2>Markets</h2>
@@ -238,7 +272,7 @@ header{align-items:flex-start}
 
 <h2>Trading Reminder</h2>
 
-<p>Mktradehome provides analysis only. It does not place trades on Exness or read your open Exness positions. Signals are not guaranteed. Verify prices and manage your risk before entering a trade.</p>
+<p>Mktradehome provides analysis only. It does not automatically place trades or read your open Exness positions. Signals are not guaranteed. Verify prices and manage your risk before entering a trade.</p>
 
 </div>
 
@@ -279,8 +313,6 @@ let previousSignals={};
 let previousSafetyState="";
 
 let refreshing=false;
-
-let approvalKey="";
 
 let approvalSnapshot=null;
 
@@ -462,7 +494,89 @@ if(refreshTimer)clearInterval(refreshTimer);
 
 refreshAll();
 
+refreshExness();
+
 refreshTimer=setInterval(refreshAll,15000);
+
+}
+
+/* EXNESS DEMO CONNECTION */
+
+async function refreshExness(){
+
+const btn=$("exnessBtn");
+
+btn.disabled=true;
+
+showMessage("exnessStatus","Connecting securely to your Exness Demo account...");
+
+try{
+
+const {data,error}=await supabaseClient.functions.invoke(
+
+"exness-connect",
+
+{body:{}}
+
+);
+
+if(error)throw error;
+
+if(!data||data.success!==true){
+
+throw new Error(data?.message||data?.error||"Exness connection failed.");
+
+}
+
+const account=data.account;
+
+if(!account){
+
+throw new Error("The connection returned no account information.");
+
+}
+
+$("exName").textContent=account.account_name||"Mktradehome";
+
+$("exId").textContent=account.account_id||"--";
+
+$("exType").textContent=account.is_demo===true?"DEMO":"LIVE / UNCONFIRMED";
+
+$("exCurrency").textContent=account.settings?.currency||"--";
+
+$("exLeverage").textContent=account.settings?.leverage
+
+?"1:"+account.settings.leverage
+
+:"--";
+
+$("exAccountStatus").textContent=account.settings?.account_status||"Connected";
+
+$("exnessAccount").classList.remove("hidden");
+
+if(account.is_demo===true){
+
+showMessage("exnessStatus","Successfully connected to your Exness Demo account.");
+
+}else{
+
+showMessage("exnessStatus","Connected, but the account was not confirmed as Demo. Do not use it for live trading.");
+
+}
+
+}catch(e){
+
+console.error("Exness connection error:",e);
+
+$("exnessAccount").classList.add("hidden");
+
+showMessage("exnessStatus","Connection failed: "+(e.message||"Unknown error"));
+
+}finally{
+
+btn.disabled=false;
+
+}
 
 }
 
@@ -1656,6 +1770,8 @@ $("refreshBtn").addEventListener("click",refreshAll);
 
 $("telegramBtn").addEventListener("click",connectTelegram);
 
+$("exnessBtn").addEventListener("click",refreshExness);
+
 $("saveRiskBtn").addEventListener("click",saveRiskSettings);
 
 $("recordTradeBtn").addEventListener("click",recordTrade);
@@ -1712,7 +1828,7 @@ window.addEventListener("load",()=>{
 
 navigator.serviceWorker.register("/sw.js").catch(e=>{
 
-console.error("Service worker error",e);
+console.error("Service worker error:",e);
 
 });
 
@@ -1721,6 +1837,8 @@ console.error("Service worker error",e);
 }
 
 </script>
+
+</div>
 
 </body>
 

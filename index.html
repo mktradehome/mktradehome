@@ -78,6 +78,8 @@ label{display:block;font-size:13px;color:#c4ccda;margin-top:10px}
 
 #approvalStatus{text-align:center;color:#f5c542;margin-top:14px;font-size:13px}
 
+.trade-item{background:#26364b;padding:12px;border-radius:9px;margin:8px 0;font-size:13px}
+
 @media(max-width:500px){
 
 .market{grid-template-columns:1fr}
@@ -152,8 +154,6 @@ header{align-items:flex-start}
 
 </div>
 
-<!-- EXNESS CONNECTION -->
-
 <div class="card">
 
 <h2>Exness Demo Connection</h2>
@@ -186,6 +186,50 @@ header{align-items:flex-start}
 
 </div>
 
+<!-- EXNESS DEMO ACCOUNT DATA -->
+
+<div class="card">
+
+<h2>Exness Demo Account Monitor</h2>
+
+<p>Account information retrieved directly through your secure Exness connection.</p>
+
+<button id="exnessTradesBtn" class="secondary">Refresh Demo Account Data</button>
+
+<div id="exnessTradesStatus" class="status">Waiting for Demo account data...</div>
+
+<div id="exnessTradingData" class="hidden">
+
+<hr>
+
+<div class="row"><span>Demo balance</span><strong id="exBalance">--</strong></div>
+
+<div class="row"><span>Demo equity</span><strong id="exEquity">--</strong></div>
+
+<div class="row"><span>Used margin</span><strong id="exMargin">--</strong></div>
+
+<div class="row"><span>Leverage</span><strong id="exTradeLeverage">--</strong></div>
+
+<hr>
+
+<h2>Open Positions</h2>
+
+<div id="exnessPositions"><p>No position data yet.</p></div>
+
+<hr>
+
+<h2>Pending Orders</h2>
+
+<div id="exnessOrders"><p>No order data yet.</p></div>
+
+<div class="small" id="exnessDataUpdated"></div>
+
+</div>
+
+<p class="small">Read-only monitoring. This section does not place, modify or close trades.</p>
+
+</div>
+
 <div class="card">
 
 <h2>Markets</h2>
@@ -203,8 +247,6 @@ header{align-items:flex-start}
 <div id="analysis">Waiting for market data...</div>
 
 </div>
-
-<!-- TRADE APPROVAL CENTRE -->
 
 <div class="card" id="approvalCentre">
 
@@ -272,7 +314,7 @@ header{align-items:flex-start}
 
 <h2>Trading Reminder</h2>
 
-<p>Mktradehome provides analysis only. It does not automatically place trades or read your open Exness positions. Signals are not guaranteed. Verify prices and manage your risk before entering a trade.</p>
+<p>Mktradehome provides analysis only. It does not automatically place trades. Exness account monitoring is read-only. Signals are not guaranteed. Verify prices and manage your risk before entering a trade.</p>
 
 </div>
 
@@ -496,11 +538,19 @@ refreshAll();
 
 refreshExness();
 
-refreshTimer=setInterval(refreshAll,15000);
+refreshExnessTrades();
+
+refreshTimer=setInterval(()=>{
+
+refreshAll();
+
+refreshExnessTrades();
+
+},15000);
 
 }
 
-/* EXNESS DEMO CONNECTION */
+/* EXNESS ACCOUNT CONNECTION */
 
 async function refreshExness(){
 
@@ -532,7 +582,7 @@ const account=data.account;
 
 if(!account){
 
-throw new Error("The connection returned no account information.");
+throw new Error("No account information returned.");
 
 }
 
@@ -546,23 +596,23 @@ $("exCurrency").textContent=account.settings?.currency||"--";
 
 $("exLeverage").textContent=account.settings?.leverage
 
-?"1:"+account.settings.leverage
-
-:"--";
+?"1:"+account.settings.leverage:"--";
 
 $("exAccountStatus").textContent=account.settings?.account_status||"Connected";
 
 $("exnessAccount").classList.remove("hidden");
 
-if(account.is_demo===true){
+showMessage(
 
-showMessage("exnessStatus","Successfully connected to your Exness Demo account.");
+"exnessStatus",
 
-}else{
+account.is_demo===true
 
-showMessage("exnessStatus","Connected, but the account was not confirmed as Demo. Do not use it for live trading.");
+?"Successfully connected to your Exness Demo account."
 
-}
+:"Connected, but Demo status is unconfirmed. Do not use for live trading."
+
+);
 
 }catch(e){
 
@@ -580,7 +630,159 @@ btn.disabled=false;
 
 }
 
-/* TELEGRAM */
+/* EXNESS OPEN POSITIONS AND ACCOUNT SNAPSHOT */
+
+function money(value){
+
+const number=Number(value);
+
+return Number.isFinite(number)
+
+?number.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})
+
+:"Unavailable";
+
+}
+
+function displayTradeList(elementId,items,type){
+
+const container=$(elementId);
+
+if(!Array.isArray(items)||items.length===0){
+
+container.innerHTML="<p>No "+(type==="position"?"open positions":"pending orders")+" reported by Exness.</p>";
+
+return;
+
+}
+
+container.innerHTML=items.map(item=>{
+
+const symbol=item.symbol||item.instrument||item.market||"Unknown market";
+
+const direction=item.type||item.side||item.direction||"Not specified";
+
+const volume=item.volume??item.lots??item.amount??"--";
+
+const price=item.open_price??item.openPrice??item.price??"--";
+
+const sl=item.stop_loss??item.stopLoss??"--";
+
+const tp=item.take_profit??item.takeProfit??"--";
+
+const profit=item.profit??item.pnl??null;
+
+return `
+
+<div class="trade-item">
+
+<strong>${symbol}</strong>
+
+<div class="row"><span>Direction</span><strong>${direction}</strong></div>
+
+<div class="row"><span>Volume</span><strong>${volume}</strong></div>
+
+<div class="row"><span>Price</span><strong>${price}</strong></div>
+
+<div class="row"><span>Stop Loss</span><strong>${sl}</strong></div>
+
+<div class="row"><span>Take Profit</span><strong>${tp}</strong></div>
+
+${profit!==null?`<div class="row"><span>Profit / Loss</span><strong>${money(profit)}</strong></div>`:""}
+
+</div>`;
+
+}).join("");
+
+}
+
+async function refreshExnessTrades(){
+
+const btn=$("exnessTradesBtn");
+
+btn.disabled=true;
+
+showMessage("exnessTradesStatus","Retrieving Demo account information...");
+
+try{
+
+const {data,error}=await supabaseClient.functions.invoke(
+
+"exness-trades",
+
+{body:{}}
+
+);
+
+if(error)throw error;
+
+if(!data||data.success!==true){
+
+throw new Error(data?.message||"Could not retrieve Demo account data.");
+
+}
+
+const snapshot=data.snapshot;
+
+if(!snapshot||!snapshot.account_state){
+
+throw new Error("Exness did not return account state.");
+
+}
+
+const state=snapshot.account_state;
+
+$("exBalance").textContent=money(state.balance);
+
+$("exEquity").textContent=money(state.equity);
+
+$("exMargin").textContent=money(state.used_margin);
+
+$("exTradeLeverage").textContent="1:"+(
+
+state.leverage||"--"
+
+);
+
+displayTradeList("exnessPositions",snapshot.positions,"position");
+
+displayTradeList("exnessOrders",snapshot.orders,"order");
+
+$("exnessTradingData").classList.remove("hidden");
+
+$("exnessDataUpdated").textContent=
+
+"Last retrieved: "+new Date().toLocaleString();
+
+showMessage(
+
+"exnessTradesStatus",
+
+"Successfully retrieved Exness Demo account data. Read-only."
+
+);
+
+}catch(e){
+
+console.error("Exness trading data error:",e);
+
+showMessage(
+
+"exnessTradesStatus",
+
+"Unable to retrieve Demo data: "+(e.message||"Unknown error")
+
+);
+
+}finally{
+
+btn.disabled=false;
+
+}
+
+}
+
+/* TELEGRAM ALERTS */
 
 async function sendTelegramAlert(message){
 
@@ -772,17 +974,13 @@ time:c.openTime||c.time||c.timestamp,
 
 isOpen:c.isOpen===true
 
-}))
-
-.filter(c=>
+})).filter(c=>
 
 [c.open,c.high,c.low,c.close].every(Number.isFinite)&&
 
 c.high>=c.low&&!c.isOpen
 
-)
-
-.sort((a,b)=>new Date(a.time)-new Date(b.time));
+).sort((a,b)=>new Date(a.time)-new Date(b.time));
 
 }
 
@@ -916,94 +1114,6 @@ q.quoteAgeSeconds<=120;
 
 }
 
-/* TRADE HISTORY AND SAFETY */
-
-function getTrades(){
-
-try{
-
-return JSON.parse(localStorage.getItem("mktradehome_trades")||"[]");
-
-}catch(e){
-
-return [];
-
-}
-
-}
-
-function getSafetyState(){
-
-const trades=getTrades();
-
-const today=new Intl.DateTimeFormat("en-CA",{
-
-timeZone:"Africa/Accra",
-
-year:"numeric",
-
-month:"2-digit",
-
-day:"2-digit"
-
-}).format(new Date());
-
-const dailyLoss=trades
-
-.filter(t=>t.date===today)
-
-.reduce((s,t)=>s+Math.min(0,Number(t.result)),0);
-
-const maxLoss=Number($("dailyLimit").value);
-
-const maxStreak=Number($("lossLimit").value);
-
-let streak=0;
-
-for(let i=trades.length-1;i>=0;i--){
-
-if(Number(trades[i].result)<0)streak++;
-
-else break;
-
-}
-
-if(!Number.isFinite(maxLoss)||maxLoss<=0){
-
-return {locked:true,reason:"Set a valid daily loss limit."};
-
-}
-
-if(!Number.isInteger(maxStreak)||maxStreak<1){
-
-return {locked:true,reason:"Set a valid losing trade limit."};
-
-}
-
-if(Math.abs(dailyLoss)>=maxLoss){
-
-return {locked:true,reason:"Daily loss limit reached."};
-
-}
-
-if(streak>=maxStreak){
-
-return {locked:true,reason:"Maximum consecutive losing trades reached."};
-
-}
-
-return {
-
-locked:false,
-
-dailyLoss:Math.abs(dailyLoss),
-
-streak
-
-};
-
-}
-
 async function analyzeMarket(m){
 
 const [b5,b15,b1,b4]=await Promise.all([
@@ -1128,291 +1238,39 @@ safetyLocked:safety.locked
 
 }
 
-/* DISPLAY MARKETS */
+/* MARKET DISPLAY */
 
 function renderMarkets(){
 
-$("markets").innerHTML=marketList.map(m=>{
+const container=$("marketsGrid")||$("markets");
+
+if(!container)return;
+
+container.innerHTML=marketList.map(m=>{
 
 const q=quotes[m.symbol];
 
-const status=!q
-
-?"PRICE UNAVAILABLE"
-
-:!isQuoteFresh(q)
-
-?"MARKET CLOSED / STALE"
-
-:"LIVE · OPEN";
+const a=analyses[m.symbol];
 
 return `
 
-<div class="marketbox">
+<div class="market-card">
 
-<strong>${m.name}</strong>
+<h3>${m.name}</h3>
 
-<div class="price">${q?formatPrice(q.price):"Waiting for price"}</div>
+<div class="market-price">${q?formatPrice(q.price):"Loading..."}</div>
 
-<div class="small">${status}</div>
+<div class="muted">${q?.marketState||"Waiting for price"}</div>
 
-${q?`<div class="small">Bid: ${formatPrice(q.bid)} · Ask: ${formatPrice(q.ask)}</div>`:""}
+<div class="muted">Bid: ${q?formatPrice(q.bid):"--"}</div>
+
+<div class="muted">Ask: ${q?formatPrice(q.ask):"--"}</div>
+
+<div class="signal">${a?.overall||"WAIT"}</div>
 
 </div>`;
 
 }).join("");
-
-}
-
-/* TRADE APPROVAL CENTRE */
-
-function makeApprovalSnapshot(data){
-
-return {
-
-market:data.market,
-
-direction:data.direction,
-
-entry:data.entry,
-
-stopLoss:data.stopLoss,
-
-tp1:data.tp1,
-
-tp2:data.tp2
-
-};
-
-}
-
-function sameApproval(a,b){
-
-if(!a||!b)return false;
-
-const fields=["market","direction"];
-
-for(const field of fields){
-
-if(a[field]!==b[field])return false;
-
-}
-
-const priceFields=["entry","stopLoss","tp1","tp2"];
-
-for(const field of priceFields){
-
-const x=Number(a[field]);
-
-const y=Number(b[field]);
-
-if(!Number.isFinite(x)||!Number.isFinite(y)){
-
-if(a[field]!==b[field])return false;
-
-continue;
-
-}
-
-const tolerance=Math.max(Math.abs(x),Math.abs(y))*0.001;
-
-if(Math.abs(x-y)>tolerance)return false;
-
-}
-
-return true;
-
-}
-
-function setApprovalSignal(data){
-
-const snapshot=makeApprovalSnapshot(data);
-
-if(!sameApproval(snapshot,approvalSnapshot)){
-
-approvalSnapshot=snapshot;
-
-approved=false;
-
-approvalExpiry=0;
-
-if(!sameApproval(snapshot,rejectedSnapshot)){
-
-rejectedSnapshot=null;
-
-}
-
-$("approvalStatus").textContent=
-
-data.direction==="WAIT"
-
-?"Waiting for a valid trading signal."
-
-:"New signal awaiting your approval.";
-
-}
-
-$("mk-market").textContent=data.market||"BTC/USD";
-
-$("mk-direction").textContent=data.direction||"WAIT";
-
-$("mk-entry").textContent=data.entry??"--";
-
-$("mk-sl").textContent=data.stopLoss??"--";
-
-$("mk-tp1").textContent=data.tp1??"--";
-
-$("mk-tp2").textContent=data.tp2??"--";
-
-$("mk-lot").textContent="0.01";
-
-$("mk-direction").style.color=
-
-data.direction==="BUY"?"#42d392":
-
-data.direction==="SELL"?"#ff7373":"#f5c542";
-
-}
-
-function updateApprovalPanel(){
-
-let selected=null;
-
-for(const m of marketList){
-
-const a=analyses[m.symbol];
-
-if(a&&(a.overall==="BUY"||a.overall==="SELL")){
-
-selected={market:m.name,analysis:a};
-
-break;
-
-}
-
-}
-
-if(!selected){
-
-const m=marketList[0];
-
-setApprovalSignal({
-
-market:m.name,
-
-direction:"WAIT",
-
-entry:"--",
-
-stopLoss:"--",
-
-tp1:"--",
-
-tp2:"--"
-
-});
-
-return;
-
-}
-
-const a=selected.analysis;
-
-setApprovalSignal({
-
-market:selected.market,
-
-direction:a.overall,
-
-entry:a.entry!==null?formatPrice(a.entry):"--",
-
-stopLoss:a.sl!==null?formatPrice(a.sl):"--",
-
-tp1:a.tp1!==null?formatPrice(a.tp1):"--",
-
-tp2:a.tp2!==null?formatPrice(a.tp2):"--"
-
-});
-
-}
-
-function approveTrade(){
-
-const direction=$("mk-direction").textContent;
-
-if(direction!=="BUY"&&direction!=="SELL"){
-
-$("approvalStatus").textContent="No valid BUY or SELL signal to approve.";
-
-return;
-
-}
-
-if(rejectedSnapshot&&sameApproval(approvalSnapshot,rejectedSnapshot)){
-
-$("approvalStatus").textContent="This signal was rejected. Wait for a new signal.";
-
-return;
-
-}
-
-if(approved&&Date.now()<approvalExpiry){
-
-$("approvalStatus").textContent="This signal has already been approved locally.";
-
-return;
-
-}
-
-const market=marketList.find(m=>m.name===$("mk-market").textContent);
-
-const analysis=market?analyses[market.symbol]:null;
-
-if(!analysis||analysis.overall!==direction||!analysis.quoteFresh){
-
-approved=false;
-
-$("approvalStatus").textContent="Signal is no longer valid or price is not fresh. Refresh analysis.";
-
-return;
-
-}
-
-if(getSafetyState().locked){
-
-approved=false;
-
-$("approvalStatus").textContent="Safety lock active. Trade approval blocked.";
-
-return;
-
-}
-
-approved=true;
-
-approvalExpiry=Date.now()+5*60*1000;
-
-$("approvalStatus").textContent=
-
-"APPROVED LOCALLY for 5 minutes — No Exness order was placed.";
-
-}
-
-function rejectTrade(){
-
-approved=false;
-
-approvalExpiry=0;
-
-rejectedSnapshot=approvalSnapshot
-
-?{...approvalSnapshot}
-
-:null;
-
-$("approvalStatus").textContent=
-
-"Trade rejected. This signal will remain rejected until it changes.";
 
 }
 
@@ -1420,49 +1278,43 @@ $("approvalStatus").textContent=
 
 function renderAnalysis(){
 
-$("analysis").innerHTML=marketList.map(m=>{
+const container=$("analysisGrid")||$("analysis");
+
+if(!container)return;
+
+container.innerHTML=marketList.map(m=>{
 
 const a=analyses[m.symbol];
 
 if(!a){
 
-return `<div class="card"><strong>${m.name}</strong><p>Analysis unavailable. Try refreshing.</p></div>`;
+return `<div class="analysis-card"><h3>${m.name}</h3><p>Analysis loading...</p></div>`;
 
 }
 
-const cls=a.overall==="BUY"?"buy":a.overall==="SELL"?"sell":"wait";
-
 return `
 
-<div class="card">
+<div class="analysis-card">
 
-<h2>${m.name}</h2>
+<h3>${m.name}</h3>
 
-<div class="signal ${cls}">${a.overall}</div>
+<div class="signal">${a.overall}</div>
 
 <p>${a.reason}</p>
 
-<div class="row"><span>Entry</span><strong>${a.entry!==null?formatPrice(a.entry):"—"}</strong></div>
+<div class="row"><span>Entry</span><strong>${a.entry?formatPrice(a.entry):"--"}</strong></div>
 
-<div class="row"><span>Stop Loss</span><strong>${a.sl!==null?formatPrice(a.sl):"—"}</strong></div>
+<div class="row"><span>Stop Loss</span><strong>${a.sl?formatPrice(a.sl):"--"}</strong></div>
 
-<div class="row"><span>Take Profit 1 (1:2)</span><strong>${a.tp1!==null?formatPrice(a.tp1):"—"}</strong></div>
+<div class="row"><span>Take Profit 1</span><strong>${a.tp1?formatPrice(a.tp1):"--"}</strong></div>
 
-<div class="row"><span>Take Profit 2 (1:3)</span><strong>${a.tp2!==null?formatPrice(a.tp2):"—"}</strong></div>
+<div class="row"><span>Take Profit 2</span><strong>${a.tp2?formatPrice(a.tp2):"--"}</strong></div>
 
-<hr>
+<div class="muted">4H: ${a.results["4H"].signal} · 1H: ${a.results["1H"].signal}</div>
 
-${Object.entries(a.results).map(([tf,r])=>`
+<div class="muted">15M: ${a.results["15M"].signal} · 5M: ${a.results["5M"].signal}</div>
 
-<div class="row">
-
-<span>${tf} · ${r.reason}</span>
-
-<strong class="${r.signal==="BUY"?"buy":r.signal==="SELL"?"sell":"wait"}">${r.signal}</strong>
-
-</div>
-
-`).join("")}
+<button onclick="approveSignal('${m.symbol}')" ${a.overall==="WAIT"?"disabled":""}>Review Signal</button>
 
 </div>`;
 
@@ -1470,75 +1322,429 @@ ${Object.entries(a.results).map(([tf,r])=>`
 
 }
 
-/* NOTIFICATIONS */
+/* TRADING SAFETY */
 
-async function notify(title,message){
+const defaultRisk={
+
+maxDailyLoss:5,
+
+maxTrades:5,
+
+maxConsecutiveLosses:3,
+
+dailyLoss:0,
+
+tradeCount:0,
+
+consecutiveLosses:0,
+
+locked:false
+
+};
+
+function loadRiskSettings(){
 
 try{
 
-if(!("Notification"in window)||Notification.permission!=="granted")return;
+const saved=JSON.parse(localStorage.getItem("mktradehome_risk")||"{}");
 
-const reg=await navigator.serviceWorker.ready;
-
-await reg.showNotification(title,{
-
-body:message,
-
-icon:"/icon-192.png",
-
-badge:"/icon-192.png",
-
-tag:"mktradehome-"+title
-
-});
+window.riskSettings={...defaultRisk,...saved};
 
 }catch(e){
 
-console.error("Notification error",e);
+window.riskSettings={...defaultRisk};
 
 }
 
+updateRiskDisplay();
+
 }
 
-function checkSignalAlerts(){
+function saveRiskSettings(){
 
-for(const m of marketList){
+localStorage.setItem(
 
-const a=analyses[m.symbol];
+"mktradehome_risk",
 
-if(!a)continue;
+JSON.stringify(window.riskSettings)
 
-const old=previousSignals[m.symbol];
+);
 
-if(a.quoteFresh&&a.overall!=="WAIT"&&a.overall!==old){
+updateRiskDisplay();
+
+}
+
+function getSafetyState(){
+
+const r=window.riskSettings||defaultRisk;
+
+let reason="Safety limits are clear.";
+
+let locked=false;
+
+if(Number(r.dailyLoss)>=Number(r.maxDailyLoss)){
+
+locked=true;
+
+reason="Maximum daily loss reached.";
+
+}else if(Number(r.tradeCount)>=Number(r.maxTrades)){
+
+locked=true;
+
+reason="Maximum daily trade count reached.";
+
+}else if(Number(r.consecutiveLosses)>=Number(r.maxConsecutiveLosses)){
+
+locked=true;
+
+reason="Maximum consecutive losses reached.";
+
+}
+
+r.locked=locked;
+
+r.reason=reason;
+
+return {locked,reason};
+
+}
+
+function updateRiskDisplay(){
+
+const r=window.riskSettings||defaultRisk;
+
+const safety=getSafetyState();
+
+if($("dailyLossDisplay"))$("dailyLossDisplay").textContent="GH₵ "+money(r.dailyLoss);
+
+if($("tradeCountDisplay"))$("tradeCountDisplay").textContent=r.tradeCount;
+
+if($("lossCountDisplay"))$("lossCountDisplay").textContent=r.consecutiveLosses;
+
+if($("safetyStatus"))$("safetyStatus").textContent=safety.locked?"LOCKED: "+safety.reason:"ACTIVE: Trading limits clear";
+
+if($("maxDailyLoss"))$("maxDailyLoss").value=r.maxDailyLoss;
+
+if($("maxTrades"))$("maxTrades").value=r.maxTrades;
+
+if($("maxConsecutiveLosses"))$("maxConsecutiveLosses").value=r.maxConsecutiveLosses;
+
+}
+
+function saveSafetySettings(){
+
+const r=window.riskSettings;
+
+r.maxDailyLoss=Math.max(1,Number($("maxDailyLoss").value)||5);
+
+r.maxTrades=Math.max(1,Number($("maxTrades").value)||5);
+
+r.maxConsecutiveLosses=Math.max(1,Number($("maxConsecutiveLosses").value)||3);
+
+saveRiskSettings();
+
+showMessage("safetyMessage","Safety settings saved.");
+
+}
+
+function resetDailyRisk(){
+
+if(!confirm("Reset today's local safety counters? Only do this when starting a new trading day."))return;
+
+window.riskSettings.dailyLoss=0;
+
+window.riskSettings.tradeCount=0;
+
+window.riskSettings.consecutiveLosses=0;
+
+window.riskSettings.locked=false;
+
+saveRiskSettings();
+
+showMessage("safetyMessage","Daily safety counters reset.");
+
+}
+
+/* SIGNAL REVIEW AND APPROVAL */
+
+function approveSignal(symbol){
+
+const a=analyses[symbol];
+
+if(!a||a.overall==="WAIT"){
+
+alert("No confirmed signal is available.");
+
+return;
+
+}
+
+const safety=getSafetyState();
+
+if(safety.locked){
+
+alert("Trading is locked: "+safety.reason);
+
+return;
+
+}
+
+if(!a.quoteFresh){
+
+alert("Price data is not fresh. Wait for an update.");
+
+return;
+
+}
+
+approvalSnapshot={
+
+symbol,
+
+signal:a.overall,
+
+entry:a.entry,
+
+sl:a.sl,
+
+tp1:a.tp1,
+
+tp2:a.tp2,
+
+createdAt:Date.now()
+
+};
+
+approved=false;
+
+approvalExpiry=Date.now()+60000;
 
 const message=
 
-m.name+" "+a.overall+" signal. "+a.reason+
+`${symbol} ${a.overall}\n`+
 
-". Entry: "+(a.entry!==null?formatPrice(a.entry):"—")+
+`Entry: ${formatPrice(a.entry)}\n`+
 
-". Stop Loss: "+(a.sl!==null?formatPrice(a.sl):"—")+
+`Stop Loss: ${formatPrice(a.sl)}\n`+
 
-". TP1: "+(a.tp1!==null?formatPrice(a.tp1):"—")+
+`TP1: ${formatPrice(a.tp1)}\n`+
 
-". TP2: "+(a.tp2!==null?formatPrice(a.tp2):"—")+
+`TP2: ${formatPrice(a.tp2)}\n\n`+
 
-". Verify before trading.";
+`This is an analysis signal, not an executed trade.`;
 
-notify("Mktradehome "+m.name,message);
+if($("approvalDetails"))$("approvalDetails").textContent=message;
 
-sendTelegramAlert(message);
+if($("approvalPanel"))$("approvalPanel").classList.remove("hidden");
 
-}
-
-previousSignals[m.symbol]=a.overall;
+showMessage("approvalStatus","Review this signal carefully before approving.");
 
 }
 
+function confirmApproval(){
+
+if(!approvalSnapshot){
+
+showMessage("approvalStatus","No signal is waiting for approval.");
+
+return;
+
 }
 
-/* REFRESH */
+if(Date.now()>approvalExpiry){
+
+showMessage("approvalStatus","This signal has expired. Refresh the analysis.");
+
+$("approvalPanel").classList.add("hidden");
+
+approvalSnapshot=null;
+
+return;
+
+}
+
+if(getSafetyState().locked){
+
+showMessage("approvalStatus","Safety lock is active. Approval blocked.");
+
+return;
+
+}
+
+approved=true;
+
+localStorage.setItem(
+
+"mktradehome_last_approval",
+
+JSON.stringify({
+
+...approvalSnapshot,
+
+approvedAt:Date.now(),
+
+status:"approved_for_manual_review"
+
+})
+
+);
+
+showMessage(
+
+"approvalStatus",
+
+"Signal approved for manual review. No trade was placed on Exness."
+
+);
+
+$("approvalPanel").classList.add("hidden");
+
+sendTelegramAlert(
+
+"Mktradehome signal approved for manual review:\n"+
+
+approvalSnapshot.symbol+" "+approvalSnapshot.signal+
+
+"\nEntry: "+formatPrice(approvalSnapshot.entry)+
+
+"\nSL: "+formatPrice(approvalSnapshot.sl)+
+
+"\nTP1: "+formatPrice(approvalSnapshot.tp1)+
+
+"\nTP2: "+formatPrice(approvalSnapshot.tp2)+
+
+"\nNo trade was automatically placed."
+
+);
+
+approvalSnapshot=null;
+
+}
+
+function cancelApproval(){
+
+approvalSnapshot=null;
+
+approved=false;
+
+$("approvalPanel").classList.add("hidden");
+
+showMessage("approvalStatus","Signal approval cancelled.");
+
+}
+
+/* LOCAL TRADE RECORDING */
+
+function getHistory(){
+
+try{
+
+return JSON.parse(localStorage.getItem("mktradehome_history")||"[]");
+
+}catch(e){
+
+return [];
+
+}
+
+}
+
+function renderHistory(){
+
+const history=getHistory();
+
+const container=$("tradeHistory");
+
+if(!container)return;
+
+if(history.length===0){
+
+container.innerHTML="<p>No trades recorded yet.</p>";
+
+return;
+
+}
+
+container.innerHTML=history.slice(0,30).map(item=>`
+
+<div class="trade-item">
+
+<strong>${item.symbol} ${item.direction}</strong>
+
+<div class="row"><span>Result</span><strong>${item.result}</strong></div>
+
+<div class="row"><span>Profit / Loss</span><strong>GH₵ ${money(item.pnl)}</strong></div>
+
+<div class="muted">${new Date(item.time).toLocaleString()}</div>
+
+</div>
+
+`).join("");
+
+}
+
+function recordTrade(){
+
+const symbol=$("recordSymbol")?.value;
+
+const direction=$("recordDirection")?.value;
+
+const result=$("recordResult")?.value;
+
+const pnl=Number($("recordPnl")?.value);
+
+if(!symbol||!direction||!result||!Number.isFinite(pnl)){
+
+showMessage("recordMessage","Complete all trade record fields.");
+
+return;
+
+}
+
+const history=getHistory();
+
+history.unshift({
+
+symbol,
+
+direction,
+
+result,
+
+pnl,
+
+time:new Date().toISOString()
+
+});
+
+localStorage.setItem("mktradehome_history",JSON.stringify(history));
+
+const r=window.riskSettings;
+
+r.tradeCount++;
+
+if(result==="Loss"){
+
+r.dailyLoss+=Math.abs(pnl);
+
+r.consecutiveLosses++;
+
+}else if(result==="Win"){
+
+r.consecutiveLosses=0;
+
+}
+
+saveRiskSettings();
+
+renderHistory();
+
+showMessage("recordMessage","Trade result recorded on this device.");
+
+}
+
+/* MAIN REFRESH */
 
 async function refreshAll(){
 
@@ -1546,13 +1752,11 @@ if(refreshing)return;
 
 refreshing=true;
 
-showMessage("systemStatus","Updating prices and market analysis...");
-
 try{
 
-await fetchQuotes();
+showMessage("lastAnalysis","Refreshing market prices and analysis...");
 
-renderMarkets();
+await fetchQuotes();
 
 for(const m of marketList){
 
@@ -1562,29 +1766,79 @@ analyses[m.symbol]=await analyzeMarket(m);
 
 }catch(e){
 
-analyses[m.symbol]=null;
+console.error("Analysis failed for "+m.symbol,e);
 
-console.error(m.symbol,e);
+analyses[m.symbol]={
+
+overall:"WAIT",
+
+reason:"Market data unavailable. Try refreshing.",
+
+results:{
+
+"4H":{signal:"WAIT"},
+
+"1H":{signal:"WAIT"},
+
+"15M":{signal:"WAIT"},
+
+"5M":{signal:"WAIT"}
+
+}
+
+};
 
 }
 
 }
+
+renderMarkets();
 
 renderAnalysis();
 
-updateApprovalPanel();
+showMessage(
 
-checkSignalAlerts();
+"lastAnalysis",
 
-$("lastUpdate").textContent=new Date().toLocaleString();
+"Analysis refreshed: "+new Date().toLocaleString()
 
-showMessage("systemStatus","Monitoring active. Analysis refreshed.");
+);
 
-checkSafety();
+for(const m of marketList){
+
+const a=analyses[m.symbol];
+
+const old=previousSignals[m.symbol];
+
+if(a?.overall&&a.overall!=="WAIT"&&a.overall!==old){
+
+sendTelegramAlert(
+
+"Mktradehome new "+a.overall+" signal: "+m.name+
+
+"\nEntry: "+formatPrice(a.entry)+
+
+"\nStop Loss: "+formatPrice(a.sl)+
+
+"\nTP1: "+formatPrice(a.tp1)+
+
+"\nTP2: "+formatPrice(a.tp2)+
+
+"\nPlease review manually. No trade has been placed."
+
+);
+
+}
+
+previousSignals[m.symbol]=a?.overall||"WAIT";
+
+}
 
 }catch(e){
 
-showMessage("systemStatus","Update error: "+e.message);
+console.error("Refresh error:",e);
+
+showMessage("lastAnalysis","Market refresh failed. Please try again.");
 
 }finally{
 
@@ -1594,169 +1848,7 @@ refreshing=false;
 
 }
 
-/* RISK MANAGEMENT */
-
-function saveTrades(t){
-
-localStorage.setItem("mktradehome_trades",JSON.stringify(t));
-
-}
-
-function loadRiskSettings(){
-
-$("dailyLimit").value=localStorage.getItem("mktradehome_daily_limit")||20;
-
-$("lossLimit").value=localStorage.getItem("mktradehome_loss_limit")||3;
-
-}
-
-function saveRiskSettings(){
-
-const d=Number($("dailyLimit").value);
-
-const s=Number($("lossLimit").value);
-
-if(!Number.isFinite(d)||d<=0||!Number.isInteger(s)||s<1){
-
-showMessage("safetyStatus","Enter valid safety limits.");
-
-return;
-
-}
-
-localStorage.setItem("mktradehome_daily_limit",d);
-
-localStorage.setItem("mktradehome_loss_limit",s);
-
-checkSafety();
-
-refreshAll();
-
-}
-
-function checkSafety(){
-
-const s=getSafetyState();
-
-if(s.locked){
-
-showMessage("safetyStatus","STOP TRADING: "+s.reason);
-
-if(previousSafetyState!=="LOCKED"){
-
-const message="STOP TRADING WARNING: "+s.reason+" Mktradehome safety limit reached.";
-
-notify("Mktradehome - STOP TRADING",message);
-
-sendTelegramAlert(message);
-
-}
-
-previousSafetyState="LOCKED";
-
-}else{
-
-showMessage(
-
-"safetyStatus",
-
-"Risk monitoring active. Today's recorded losses: "+
-
-s.dailyLoss.toFixed(2)+". Consecutive losses: "+s.streak
-
-);
-
-previousSafetyState="SAFE";
-
-}
-
-}
-
-function recordTrade(){
-
-const raw=$("tradeResult").value;
-
-const result=Number(raw);
-
-if(raw===""||!Number.isFinite(result)){
-
-showMessage("safetyStatus","Enter a valid trade result.");
-
-return;
-
-}
-
-const today=new Intl.DateTimeFormat("en-CA",{
-
-timeZone:"Africa/Accra",
-
-year:"numeric",
-
-month:"2-digit",
-
-day:"2-digit"
-
-}).format(new Date());
-
-const trades=getTrades();
-
-trades.push({
-
-result,
-
-date:today,
-
-time:new Date().toLocaleString()
-
-});
-
-saveTrades(trades);
-
-$("tradeResult").value="";
-
-renderHistory();
-
-checkSafety();
-
-refreshAll();
-
-}
-
-function renderHistory(){
-
-const t=getTrades().slice().reverse();
-
-$("tradeHistory").innerHTML=
-
-"<hr><h2>Trade History</h2>"+
-
-(
-
-t.length
-
-?t.slice(0,20).map(x=>`
-
-<div class="row">
-
-<span>${x.time}</span>
-
-<strong class="${x.result>=0?"buy":"sell"}">
-
-${x.result>=0?"+":""}${Number(x.result).toFixed(2)}
-
-</strong>
-
-</div>
-
-`).join("")
-
-:"<p>No trades recorded yet.</p>"
-
-);
-
-}
-
-/* BUTTON EVENTS */
+/* BUTTONS AND EVENTS */
 
 $("loginBtn").addEventListener("click",login);
 
@@ -1766,79 +1858,89 @@ $("resetBtn").addEventListener("click",resetPassword);
 
 $("logoutBtn").addEventListener("click",logout);
 
-$("refreshBtn").addEventListener("click",refreshAll);
+$("exnessBtn").addEventListener("click",refreshExness);
+
+$("exnessTradesBtn").addEventListener("click",refreshExnessTrades);
 
 $("telegramBtn").addEventListener("click",connectTelegram);
 
-$("exnessBtn").addEventListener("click",refreshExness);
+$("refreshBtn")?.addEventListener("click",refreshAll);
 
-$("saveRiskBtn").addEventListener("click",saveRiskSettings);
+$("refreshAnalysisBtn")?.addEventListener("click",refreshAll);
 
-$("recordTradeBtn").addEventListener("click",recordTrade);
+$("saveSafetyBtn")?.addEventListener("click",saveSafetySettings);
 
-$("mk-approve").addEventListener("click",approveTrade);
+$("resetRiskBtn")?.addEventListener("click",resetDailyRisk);
 
-$("mk-reject").addEventListener("click",rejectTrade);
+$("approveBtn")?.addEventListener("click",confirmApproval);
+
+$("cancelApprovalBtn")?.addEventListener("click",cancelApproval);
+
+$("recordTradeBtn")?.addEventListener("click",recordTrade);
 
 /* AUTH SESSION */
 
-supabaseClient.auth.getSession().then(({data,error})=>{
+async function checkSession(){
 
-if(error){
+try{
 
-showMessage("loginMessage",error.message);
+const {data,error}=await supabaseClient.auth.getSession();
 
-return;
+if(error)throw error;
 
-}
-
-if(data.session)openDashboard();
-
-}).catch(e=>{
-
-showMessage("loginMessage","Session check failed: "+e.message);
-
-});
-
-supabaseClient.auth.onAuthStateChange((event,session)=>{
-
-if(session&&$("dashboard").classList.contains("hidden")){
+if(data.session){
 
 openDashboard();
 
-}else if(!session){
-
-$("dashboard").classList.add("hidden");
+}else{
 
 $("loginPanel").classList.remove("hidden");
 
+$("dashboard").classList.add("hidden");
+
 $("logoutBtn").classList.add("hidden");
 
+}
+
+}catch(e){
+
+console.error("Session check failed:",e);
+
+showMessage("loginMessage","Unable to check login session. Refresh the page.");
+
+}
+
+}
+
+supabaseClient.auth.onAuthStateChange((event,session)=>{
+
+if(event==="SIGNED_OUT"){
+
 if(refreshTimer)clearInterval(refreshTimer);
+
+location.reload();
 
 }
 
 });
 
+checkSession();
+
 /* SERVICE WORKER */
 
-if("serviceWorker"in navigator){
+if("serviceWorker" in navigator){
 
 window.addEventListener("load",()=>{
 
-navigator.serviceWorker.register("/sw.js").catch(e=>{
+navigator.serviceWorker.register("/service-worker.js")
 
-console.error("Service worker error:",e);
-
-});
+.catch(error=>console.log("Service worker:",error));
 
 });
 
 }
 
 </script>
-
-</div>
 
 </body>
 

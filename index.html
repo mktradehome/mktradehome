@@ -80,6 +80,13 @@ label{display:block;font-size:13px;color:#c4ccda;margin-top:10px}
 
 .trade-item{background:#26364b;padding:12px;border-radius:9px;margin:8px 0;font-size:13px}
 
+.approval-trade{background:#26364b;border:1px solid #40516a;padding:13px;border-radius:10px;margin:10px 0}
+.approval-trade h3{font-size:16px;margin-bottom:8px}
+.approval-trade .trade-status{font-size:12px;color:#f5c542;margin:7px 0}
+.approval-trade .approve-button,.approval-trade .reject-button{width:100%;margin-top:8px}
+.approval-trade .position-profit{color:#42d392;font-weight:bold}
+.approval-trade .position-loss{color:#ff7373;font-weight:bold}
+
 @media(max-width:500px){
 
 .market{grid-template-columns:1fr}
@@ -252,31 +259,15 @@ header{align-items:flex-start}
 
 <h2>Trade Approval Centre</h2>
 
-<p>Review a signal before deciding whether to trade manually.</p>
+<p>Every market setup is shown separately. Profitable open Exness positions appear first. Review and approve each signal independently.</p>
 
-<div class="approval-field">Market <span id="mk-market">BTC/USD</span></div>
+<div id="approvalTrades"><p>Waiting for market analysis and Exness position data...</p></div>
 
-<div class="approval-field">Signal <span id="mk-direction">WAIT</span></div>
-
-<div class="approval-field">Entry Price <span id="mk-entry">--</span></div>
-
-<div class="approval-field">Stop Loss <span id="mk-sl">--</span></div>
-
-<div class="approval-field">Take Profit 1 <span id="mk-tp1">--</span></div>
-
-<div class="approval-field">Take Profit 2 <span id="mk-tp2">--</span></div>
-
-<div class="approval-field">Lot Size <span id="mk-lot">0.01</span></div>
-
-<button id="mk-approve" class="approve-button">APPROVE TRADE</button>
-
-<button id="mk-reject" class="reject-button">REJECT TRADE</button>
-
-<div id="approvalStatus">Waiting for a trading signal.</div>
+<div id="approvalStatus">Each approval applies only to its own trade setup.</div>
 
 <hr>
 
-<p>Approval is recorded locally only. It does not place an order on Exness or MT5.</p>
+<p>Approvals are recorded on this device for manual review only. Mktradehome does not place, modify or close Exness trades.</p>
 
 </div>
 
@@ -286,25 +277,59 @@ header{align-items:flex-start}
 
 <div id="safetyStatus" class="status">Risk monitoring active.</div>
 
-<label>Maximum daily loss</label>
+<label>Maximum daily loss (GH₵)</label>
 
-<input id="dailyLimit" type="number" min="0.01" step="0.01" value="20">
+<input id="maxDailyLoss" type="number" min="1" step="0.01" value="5">
+
+<label>Maximum trades per day</label>
+
+<input id="maxTrades" type="number" min="1" step="1" value="5">
 
 <label>Maximum consecutive losing trades</label>
 
-<input id="lossLimit" type="number" min="1" step="1" value="3">
+<input id="maxConsecutiveLosses" type="number" min="1" step="1" value="3">
 
-<button id="saveRiskBtn">Save Safety Settings</button>
+<button id="saveSafetyBtn">Save Safety Settings</button>
+
+<button id="resetRiskBtn" type="button">Reset Daily Safety Counters</button>
+
+<div id="safetyMessage" class="status"></div>
 
 <hr>
 
 <h2>Record a Completed Trade</h2>
 
-<label>Profit or loss (use minus for a loss)</label>
+<label>Market</label>
 
-<input id="tradeResult" type="number" step="0.01" placeholder="Example: -5 or 8">
+<select id="recordSymbol">
+<option value="BTCUSD">BTC/USD</option>
+<option value="EURUSD">EUR/USD</option>
+<option value="XAUUSD">XAU/USD</option>
+<option value="USDJPY">USD/JPY</option>
+</select>
 
-<button id="recordTradeBtn">Record Trade Result</button>
+<label>Direction</label>
+
+<select id="recordDirection">
+<option value="BUY">BUY</option>
+<option value="SELL">SELL</option>
+</select>
+
+<label>Result</label>
+
+<select id="recordResult">
+<option value="Win">Win</option>
+<option value="Loss">Loss</option>
+<option value="Break-even">Break-even</option>
+</select>
+
+<label>Profit or loss in GH₵ (use minus for a loss)</label>
+
+<input id="recordPnl" type="number" step="0.01" placeholder="Example: -5 or 8">
+
+<button id="recordTradeBtn" type="button">Record Trade Result</button>
+
+<div id="recordMessage" class="status"></div>
 
 <div id="tradeHistory"></div>
 
@@ -363,6 +388,8 @@ let rejectedSnapshot=null;
 let approved=false;
 
 let approvalExpiry=0;
+
+let currentExnessPositions=[];
 
 const $=id=>document.getElementById(id);
 
@@ -696,6 +723,112 @@ ${profit!==null?`<div class="row"><span>Profit / Loss</span><strong>${money(prof
 
 }
 
+function escapeApprovalText(value){
+return String(value??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
+}
+
+function getSignalReviews(){
+try{return JSON.parse(localStorage.getItem("mktradehome_signal_reviews")||"{}");}
+catch(e){return {};}
+}
+
+function saveSignalReview(key,status,signal){
+const reviews=getSignalReviews();
+reviews[key]={status,updatedAt:Date.now(),signal};
+localStorage.setItem("mktradehome_signal_reviews",JSON.stringify(reviews));
+}
+
+function makeSignalKey(symbol,a){
+return [symbol,a.overall,a.entry,a.sl,a.tp1,a.tp2].join("|");
+}
+
+function renderApprovalCentre(){
+const container=$("approvalTrades");
+if(!container)return;
+
+const positions=Array.isArray(currentExnessPositions)?currentExnessPositions:[];
+const profitable=positions.filter(p=>Number(p.profit??p.pnl??0)>0);
+const reviews=getSignalReviews();
+
+const positionCards=profitable.map((p,index)=>{
+const symbol=p.symbol||p.instrument||p.market||"Unknown market";
+const direction=p.type||p.side||p.direction||"Not specified";
+const volume=p.volume??p.lots??p.amount??"--";
+const open=p.open_price??p.openPrice??p.price??"--";
+const sl=p.stop_loss??p.stopLoss??"--";
+const tp=p.take_profit??p.takeProfit??"--";
+const profit=Number(p.profit??p.pnl??0);
+return `<div class="approval-trade">
+<h3>${escapeApprovalText(symbol)} · OPEN ${escapeApprovalText(direction)}</h3>
+<div class="trade-status">PROFITABLE OPEN POSITION · MONITOR ONLY</div>
+<div class="row"><span>Volume</span><strong>${escapeApprovalText(volume)}</strong></div>
+<div class="row"><span>Open Price</span><strong>${escapeApprovalText(open)}</strong></div>
+<div class="row"><span>Stop Loss</span><strong>${escapeApprovalText(sl)}</strong></div>
+<div class="row"><span>Take Profit</span><strong>${escapeApprovalText(tp)}</strong></div>
+<div class="row"><span>Current Profit</span><strong class="position-profit">${money(profit)}</strong></div>
+</div>`;
+}).join("");
+
+const signals=marketList.map(m=>({market:m,a:analyses[m.symbol]}))
+.filter(x=>x.a&&["BUY","SELL"].includes(x.a.overall));
+
+const signalCards=signals.map(({market,a})=>{
+const key=makeSignalKey(market.symbol,a);
+const review=reviews[key];
+const status=review?.status||"awaiting_review";
+const statusText=status==="approved_for_manual_review"?"APPROVED FOR MANUAL REVIEW":status==="rejected"?"REJECTED — THIS SETUP DISMISSED":"AWAITING YOUR REVIEW";
+return `<div class="approval-trade">
+<h3>${escapeApprovalText(market.name)} · ${escapeApprovalText(a.overall)}</h3>
+<div class="trade-status">${statusText}</div>
+<div class="row"><span>Entry Price</span><strong>${formatPrice(a.entry)}</strong></div>
+<div class="row"><span>Stop Loss</span><strong>${formatPrice(a.sl)}</strong></div>
+<div class="row"><span>Take Profit 1</span><strong>${formatPrice(a.tp1)}</strong></div>
+<div class="row"><span>Take Profit 2</span><strong>${formatPrice(a.tp2)}</strong></div>
+<div class="row"><span>Lot Size Reference</span><strong>0.01</strong></div>
+${status==="awaiting_review"?`<button class="approve-button" data-approval-action="approve" data-symbol="${market.symbol}">APPROVE THIS SETUP</button><button class="reject-button" data-approval-action="reject" data-symbol="${market.symbol}">REJECT THIS SETUP</button>`:""}
+</div>`;
+}).join("");
+
+if(!positionCards&&!signalCards){
+container.innerHTML="<p>No profitable open Exness position or confirmed BUY/SELL setup right now. WAIT signals are not approval opportunities.</p>";
+return;
+}
+container.innerHTML=
+(positionCards?`<h3>Profitable Open Exness Positions</h3>${positionCards}`:"")+
+(signalCards?`<h3>Separate Market Setups</h3>${signalCards}`:"");
+}
+
+function handleSignalReview(action,symbol){
+const market=marketList.find(m=>m.symbol===symbol);
+const a=analyses[symbol];
+if(!market||!a||!["BUY","SELL"].includes(a.overall)){
+showMessage("approvalStatus","That setup is no longer active. Refresh the analysis.");
+return;
+}
+if(action==="approve"){
+const safety=getSafetyState();
+if(safety.locked){
+showMessage("approvalStatus","Safety lock is active. Approval blocked.");
+return;
+}
+if(!a.quoteFresh){
+showMessage("approvalStatus","Price data is not fresh. Approval blocked.");
+return;
+}
+const snapshot={symbol,signal:a.overall,entry:a.entry,sl:a.sl,tp1:a.tp1,tp2:a.tp2,createdAt:Date.now()};
+const key=makeSignalKey(symbol,a);
+saveSignalReview(key,"approved_for_manual_review",snapshot);
+localStorage.setItem("mktradehome_last_approval",JSON.stringify({...snapshot,approvedAt:Date.now(),status:"approved_for_manual_review"}));
+showMessage("approvalStatus",market.name+" "+a.overall+" approved for manual review only. No order was placed.");
+sendTelegramAlert("Mktradehome setup approved for manual review:\\n"+market.name+" "+a.overall+"\\nEntry: "+formatPrice(a.entry)+"\\nSL: "+formatPrice(a.sl)+"\\nTP1: "+formatPrice(a.tp1)+"\\nTP2: "+formatPrice(a.tp2)+"\\nNo trade was automatically placed.");
+}else{
+const key=makeSignalKey(symbol,a);
+saveSignalReview(key,"rejected",{symbol,signal:a.overall,entry:a.entry,sl:a.sl,tp1:a.tp1,tp2:a.tp2});
+showMessage("approvalStatus",market.name+" "+a.overall+" setup rejected. Other markets are unchanged.");
+}
+renderApprovalCentre();
+}
+
 async function refreshExnessTrades(){
 
 const btn=$("exnessTradesBtn");
@@ -732,6 +865,8 @@ throw new Error("Exness did not return account state.");
 
 const state=snapshot.account_state;
 
+currentExnessPositions=Array.isArray(snapshot.positions)?snapshot.positions:[];
+
 $("exBalance").textContent=money(state.balance);
 
 $("exEquity").textContent=money(state.equity);
@@ -747,6 +882,8 @@ state.leverage||"--"
 displayTradeList("exnessPositions",snapshot.positions,"position");
 
 displayTradeList("exnessOrders",snapshot.orders,"order");
+
+renderApprovalCentre();
 
 $("exnessTradingData").classList.remove("hidden");
 
@@ -1469,169 +1606,7 @@ showMessage("safetyMessage","Daily safety counters reset.");
 /* SIGNAL REVIEW AND APPROVAL */
 
 function approveSignal(symbol){
-
-const a=analyses[symbol];
-
-if(!a||a.overall==="WAIT"){
-
-alert("No confirmed signal is available.");
-
-return;
-
-}
-
-const safety=getSafetyState();
-
-if(safety.locked){
-
-alert("Trading is locked: "+safety.reason);
-
-return;
-
-}
-
-if(!a.quoteFresh){
-
-alert("Price data is not fresh. Wait for an update.");
-
-return;
-
-}
-
-approvalSnapshot={
-
-symbol,
-
-signal:a.overall,
-
-entry:a.entry,
-
-sl:a.sl,
-
-tp1:a.tp1,
-
-tp2:a.tp2,
-
-createdAt:Date.now()
-
-};
-
-approved=false;
-
-approvalExpiry=Date.now()+60000;
-
-const message=
-
-`${symbol} ${a.overall}\n`+
-
-`Entry: ${formatPrice(a.entry)}\n`+
-
-`Stop Loss: ${formatPrice(a.sl)}\n`+
-
-`TP1: ${formatPrice(a.tp1)}\n`+
-
-`TP2: ${formatPrice(a.tp2)}\n\n`+
-
-`This is an analysis signal, not an executed trade.`;
-
-if($("approvalDetails"))$("approvalDetails").textContent=message;
-
-if($("approvalPanel"))$("approvalPanel").classList.remove("hidden");
-
-showMessage("approvalStatus","Review this signal carefully before approving.");
-
-}
-
-function confirmApproval(){
-
-if(!approvalSnapshot){
-
-showMessage("approvalStatus","No signal is waiting for approval.");
-
-return;
-
-}
-
-if(Date.now()>approvalExpiry){
-
-showMessage("approvalStatus","This signal has expired. Refresh the analysis.");
-
-$("approvalPanel").classList.add("hidden");
-
-approvalSnapshot=null;
-
-return;
-
-}
-
-if(getSafetyState().locked){
-
-showMessage("approvalStatus","Safety lock is active. Approval blocked.");
-
-return;
-
-}
-
-approved=true;
-
-localStorage.setItem(
-
-"mktradehome_last_approval",
-
-JSON.stringify({
-
-...approvalSnapshot,
-
-approvedAt:Date.now(),
-
-status:"approved_for_manual_review"
-
-})
-
-);
-
-showMessage(
-
-"approvalStatus",
-
-"Signal approved for manual review. No trade was placed on Exness."
-
-);
-
-$("approvalPanel").classList.add("hidden");
-
-sendTelegramAlert(
-
-"Mktradehome signal approved for manual review:\n"+
-
-approvalSnapshot.symbol+" "+approvalSnapshot.signal+
-
-"\nEntry: "+formatPrice(approvalSnapshot.entry)+
-
-"\nSL: "+formatPrice(approvalSnapshot.sl)+
-
-"\nTP1: "+formatPrice(approvalSnapshot.tp1)+
-
-"\nTP2: "+formatPrice(approvalSnapshot.tp2)+
-
-"\nNo trade was automatically placed."
-
-);
-
-approvalSnapshot=null;
-
-}
-
-function cancelApproval(){
-
-approvalSnapshot=null;
-
-approved=false;
-
-$("approvalPanel").classList.add("hidden");
-
-showMessage("approvalStatus","Signal approval cancelled.");
-
+handleSignalReview("approve",symbol);
 }
 
 /* LOCAL TRADE RECORDING */
@@ -1796,6 +1771,8 @@ renderMarkets();
 
 renderAnalysis();
 
+renderApprovalCentre();
+
 showMessage(
 
 "lastUpdate",
@@ -1872,9 +1849,11 @@ $("saveSafetyBtn")?.addEventListener("click",saveSafetySettings);
 
 $("resetRiskBtn")?.addEventListener("click",resetDailyRisk);
 
-$("approveBtn")?.addEventListener("click",confirmApproval);
-
-$("cancelApprovalBtn")?.addEventListener("click",cancelApproval);
+$("approvalTrades")?.addEventListener("click",event=>{
+const button=event.target.closest("[data-approval-action]");
+if(!button)return;
+handleSignalReview(button.dataset.approvalAction,button.dataset.symbol);
+});
 
 $("recordTradeBtn")?.addEventListener("click",recordTrade);
 

@@ -291,9 +291,7 @@ header{align-items:flex-start}
 
 <button id="saveSafetyBtn">Save Safety Settings</button>
 
-<button id="resetRiskBtn" type="button">Reset Daily Safety Counters</but
- ton>
-
+<button id="resetRiskBtn" type="button">Reset Daily Safety Counters</button>
 <div id="safetyMessage" class="status"></div>
 
 <hr>
@@ -716,7 +714,8 @@ return `
 
 <div class="row"><span>Take Profit</span><strong>${tp}</strong></div>
 
-${profit!==null?`<div class="row"><span>Profit / Loss</span><strong>${money(profit)}</s
+${profit!==null?`<div class="row"><span>Profit / Loss</span><strong>${money(profit)}</stro
+/s
 trong></div>`:""}
 
 </div>`;
@@ -920,8 +919,8 @@ displayTradeList("exnessOrders",snapshot.orders,"order");
 
 renderApprovalCentre();
 
-$("exnessTradingData").classList.rem
-  ove("hidden");
+$("exnessTradingData").classList
+ .remove("hidden");
 
 $("exnessDataUpdated").textContent=
 
@@ -1286,205 +1285,7 @@ Number.isFinite(q.quoteAgeSeconds)&&
 q.quoteAgeSeconds<=120;
 
 }
-
-async function analyzeMarket(m){
-
-const [b5,b15,b1,b4]=await Promise.all([
-
-fetchCandles(m.symbol,"5m"),
-
-fetchCandles(m.symbol,"15m"),
-
-fetchCandles(m.symbol,"1h"),
-
-fetchCandles(m.symbol,"4h")
-
-]);
-
-const results={
-
-"5M":analyzeTimeframe(b5),
-
-"15M":analyzeTimeframe(b15),
-
-"1H":analyzeTimeframe(b1),
-
-"4H":analyzeTimeframe(b4)
-
-};
-
-const q=quotes[m.symbol];
-
-const fresh=isQuoteFresh(q);
-
-const safety=getSafetyState();
-
-let overall="WAIT";
-
-let reason="Timeframes do not fully agree. Wait for confirmation.";
-
-const agree=
-
-results["1H"].signal!=="WAIT"&&
-
-results["1H"].signal===results["4H"].signal&&
-
-results["1H"].signal===results["15M"].signal&&
-
-results["1H"].signal===results["5M"].signal;
-
-if(!fresh){
-
-reason="Price is stale or market is closed.";
-
-}else if(safety.locked){
-
-reason="Trading safety lock: "+safety.reason;
-
-}else if(agree){
-
-overall=results["1H"].signal;
-
-reason="4H, 1H, 15M and 5M confirmation.";
-
-}
-
-const price=fresh?q.price:null;
-
-const atr=results["1H"].atr||0;
-
-let entry=null;
-
-let sl=null;
-
-let tp1=null;
-
-let tp2=null;
-
-if(overall!=="WAIT"&&price&&atr>0){
-
-entry=price;
-
-const risk=atr*1.5;
-
-if(overall==="BUY"){
-
-sl=entry-risk;
-
-tp1=entry+risk*2;
-
-tp2=entry+risk*3;
-
-}else{
-
-sl=entry+risk;
-
-tp1=entry-risk*2;
-
-tp2=entry-risk*3;
-
-}
-
-}
-
-return {
-
-results,
-
-overall,
-
-reason,
-
-entry,
-
-sl,
-
-tp1,
-
-tp2,
-
-quoteFresh:fresh,
-
-safetyLocked:safety.locked
-
-};
-
-}
-
-/* MARKET DISPLAY */
-
-function renderMarkets(){
-
-const container=$("marketsGrid")||$("markets");
-
-if(!container)return;
-
-container.innerHTML=marketList.map(m=>{
-
-const q=quotes[m.symbol];
-
-const a=analyses[m.symbol];
-
-return `
-
-<div class="market-card">
-
-<h3>${m.name}</h3>
-
-<div class="market-price">${q?formatPrice(q.price):"Loading..."}</div>
-
-<div class="muted">${q?.marketState||"Waiting for price"}</div>
-
-<div class="muted">Bid: ${q?formatPrice(q.bid):"--"}</div>
-
-<div class="muted">Ask: ${q?formatPrice(q.ask):"--"}</div>
-
-<div class="signal">${a?.overall||"WAIT"}</div>
-
-</div>`;
-
-}).join("");
-
-}
-
-/* ANALYSIS DISPLAY */
-
-function renderAnalysis(){
-
-const container=$("analysisGrid")||$("analysis");
-
-if(!container)return;
-
-container.innerHTML=marketList.map(m=>{
-
-const a=analyses[m.symbol];
-
-if(!a){
-
-return `<div class="analysis-card"><h3>${m.name}</h3><p>Analysis loading...</p></div>`;
-
-}
-
-return `
-
-<div class="analysis-card">
-
-<h3>${m.name}</h3>
-
-<div class="signal">${a.overall}</div>
-
-<p>${a.reason}</p>
-
-<div class="row"><span>Entry</span><strong>${a.entry?formatPrice(a.entry):"--"}</strong></div>
-
-<div class="row"><span>Stop Loss</span><strong>${a.sl?formatPrice(a.sl):"--"}</strong></div>
-
-<div class="row"><span>Take Profit 1</span><strong>${a.tp1?formatPrice(a.tp1):"--"}</strong></div>
-
-<div class="row"><span>Take Profit 2</span><strong>${a.tp2?formatPrice(a.tp2):"--"}</strong></div>
-
-<div class="muted">4H: ${a.results["4H"].signal} · 1H: ${a.resu
-                                                         lts["1H"].signal}</div>
+ results["1H"].signal}</div>
 
 <div class="muted">15M: ${a.results["15M"].signal} · 5M: ${a.results["5M"].signal}</div>
 

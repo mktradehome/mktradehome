@@ -1798,7 +1798,7 @@ renderAnalysis();
 
 showMessage(
 
-"lastAnalysis",
+"lastAnalysis"
 
 "Analysis refreshed: "+new Date().toLocaleString()
 
@@ -1838,7 +1838,7 @@ previousSignals[m.symbol]=a?.overall||"WAIT";
 
 console.error("Refresh error:",e);
 
-showMessage("lastAnalysis","Market refresh failed. Please try again.");
+showMessage("lastUpdate","Market refresh failed. Please try again.");
 
 }finally{
 

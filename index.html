@@ -291,7 +291,8 @@ header{align-items:flex-start}
 
 <button id="saveSafetyBtn">Save Safety Settings</button>
 
-<button id="resetRiskBtn" type="button">Reset Daily Safety Counters</button>
+<button id="resetRiskBtn" type="button">Reset Daily Safety Counters</but
+ ton>
 
 <div id="safetyMessage" class="status"></div>
 
@@ -715,7 +716,8 @@ return `
 
 <div class="row"><span>Take Profit</span><strong>${tp}</strong></div>
 
-${profit!==null?`<div class="row"><span>Profit / Loss</span><strong>${money(profit)}</strong></div>`:""}
+${profit!==null?`<div class="row"><span>Profit / Loss</span><strong>${money(profit)}</s
+trong></div>`:""}
 
 </div>`;
 
@@ -728,18 +730,40 @@ return String(value??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&g
 }
 
 function getSignalReviews(){
-try{return JSON.parse(localStorage.getItem("mktradehome_signal_reviews")||"{}");}
-catch(e){return {};}
+const storageKey="mktradehome_signal_reviews";
+const maxAge=30*60*1000;
+const now=Date.now();
+let stored={};
+try{stored=JSON.parse(localStorage.getItem(storageKey)||"{}");}
+catch(e){stored={};}
+const reviews={};
+for(const [oldKey,review] of Object.entries(stored)){
+if(!review||!review.updatedAt||now-Number(review.updatedAt)>maxAge)continue;
+const snapshot=review.signal||{};
+const symbol=snapshot.symbol;
+const direction=snapshot.signal;
+if(!symbol||!["BUY","SELL"].includes(direction))continue;
+const stableKey=symbol+"|"+direction;
+if(!reviews[stableKey]||Number(review.updatedAt)>Number(reviews[stableKey].updatedAt)){
+reviews[stableKey]=review;
+}
+}
+localStorage.setItem(storageKey,JSON.stringify(reviews));
+return reviews;
 }
 
 function saveSignalReview(key,status,signal){
 const reviews=getSignalReviews();
+const symbol=signal.symbol;
+for(const existingKey of Object.keys(reviews)){
+if(existingKey.startsWith(symbol+"|"))delete reviews[existingKey];
+}
 reviews[key]={status,updatedAt:Date.now(),signal};
 localStorage.setItem("mktradehome_signal_reviews",JSON.stringify(reviews));
 }
 
 function makeSignalKey(symbol,a){
-return [symbol,a.overall,a.entry,a.sl,a.tp1,a.tp2].join("|");
+return symbol+"|"+a.overall;
 }
 
 function renderApprovalCentre(){
@@ -772,18 +796,29 @@ return `<div class="approval-trade">
 const signals=marketList.map(m=>({market:m,a:analyses[m.symbol]}))
 .filter(x=>x.a&&["BUY","SELL"].includes(x.a.overall));
 
+/* A changed direction is a new setup; remove the previous direction's review. */
+for(const {market,a} of signals){
+const activeKey=makeSignalKey(market.symbol,a);
+for(const oldKey of Object.keys(reviews)){
+if(oldKey.startsWith(market.symbol+"|")&&oldKey!==activeKey)delete reviews[oldKey];
+}
+}
+localStorage.setItem("mktradehome_signal_reviews",JSON.stringify(reviews));
+
 const signalCards=signals.map(({market,a})=>{
 const key=makeSignalKey(market.symbol,a);
 const review=reviews[key];
 const status=review?.status||"awaiting_review";
-const statusText=status==="approved_for_manual_review"?"APPROVED FOR MANUAL REVIEW":status==="rejected"?"REJECTED — THIS SETUP DISMISSED":"AWAITING YOUR REVIEW";
+const saved=review?.signal||{};
+const shown=status!=="awaiting_review"&&saved.entry!==undefined?saved:a;
+const statusText=status==="approved_for_manual_review"?"APPROVED FOR MANUAL REVIEW · SAVED SETUP":status==="rejected"?"REJECTED — THIS SETUP DISMISSED":"AWAITING YOUR REVIEW";
 return `<div class="approval-trade">
 <h3>${escapeApprovalText(market.name)} · ${escapeApprovalText(a.overall)}</h3>
 <div class="trade-status">${statusText}</div>
-<div class="row"><span>Entry Price</span><strong>${formatPrice(a.entry)}</strong></div>
-<div class="row"><span>Stop Loss</span><strong>${formatPrice(a.sl)}</strong></div>
-<div class="row"><span>Take Profit 1</span><strong>${formatPrice(a.tp1)}</strong></div>
-<div class="row"><span>Take Profit 2</span><strong>${formatPrice(a.tp2)}</strong></div>
+<div class="row"><span>Entry Price</span><strong>${formatPrice(shown.entry)}</strong></div>
+<div class="row"><span>Stop Loss</span><strong>${formatPrice(shown.sl)}</strong></div>
+<div class="row"><span>Take Profit 1</span><strong>${formatPrice(shown.tp1)}</strong></div>
+<div class="row"><span>Take Profit 2</span><strong>${formatPrice(shown.tp2)}</strong></div>
 <div class="row"><span>Lot Size Reference</span><strong>0.01</strong></div>
 ${status==="awaiting_review"?`<button class="approve-button" data-approval-action="approve" data-symbol="${market.symbol}">APPROVE THIS SETUP</button><button class="reject-button" data-approval-action="reject" data-symbol="${market.symbol}">REJECT THIS SETUP</button>`:""}
 </div>`;
@@ -885,7 +920,8 @@ displayTradeList("exnessOrders",snapshot.orders,"order");
 
 renderApprovalCentre();
 
-$("exnessTradingData").classList.remove("hidden");
+$("exnessTradingData").classList.rem
+  ove("hidden");
 
 $("exnessDataUpdated").textContent=
 
@@ -1447,7 +1483,8 @@ return `
 
 <div class="row"><span>Take Profit 2</span><strong>${a.tp2?formatPrice(a.tp2):"--"}</strong></div>
 
-<div class="muted">4H: ${a.results["4H"].signal} · 1H: ${a.results["1H"].signal}</div>
+<div class="muted">4H: ${a.results["4H"].signal} · 1H: ${a.resu
+                                                         lts["1H"].signal}</div>
 
 <div class="muted">15M: ${a.results["15M"].signal} · 5M: ${a.results["5M"].signal}</div>
 

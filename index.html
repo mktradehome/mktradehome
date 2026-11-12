@@ -81,23 +81,6 @@ label{display:block;font-size:13px;color:#c4ccda;margin-top:10px}
 </div>
 
 <div class="card">
-<h2>Exness Demo Connection</h2>
-<p>Connect your verified Exness Demo account to Mktradehome.</p>
-<button id="exnessBtn">Connect Exness Demo</button>
-<div id="exnessStatus" class="status">Exness account connection has not been checked.</div>
-<div id="exnessAccount" class="hidden">
-<hr>
-<div class="row"><span>Account name</span><strong id="exName">--</strong></div>
-<div class="row"><span>Account ID</span><strong id="exId">--</strong></div>
-<div class="row"><span>Account type</span><strong id="exType">--</strong></div>
-<div class="row"><span>Currency</span><strong id="exCurrency">--</strong></div>
-<div class="row"><span>Leverage</span><strong id="exLeverage">--</strong></div>
-<div class="row"><span>Status</span><strong id="exAccountStatus">--</strong></div>
-</div>
-<p class="small">This connection is read-only. It does not place or close trades.</p>
-</div>
-
-<div class="card">
 <h2>Exness Demo Account Monitor</h2>
 <p>Account information saved by your MT5 bridge.</p>
 <button id="exnessTradesBtn" class="secondary">Refresh Demo Account Data</button>
@@ -319,7 +302,6 @@ $("logoutBtn").classList.remove("hidden");
 loadRiskSettings();
 renderHistory();
 refreshAll();
-refreshExness();
 refreshExnessTrades();
 
 if(refreshTimer)clearInterval(refreshTimer);
@@ -328,43 +310,6 @@ refreshTimer=setInterval(()=>{
 refreshAll();
 refreshExnessTrades();
 },60000);
-}
-
-/* EXNESS CONNECTION */
-
-async function refreshExness(){
-const btn=$("exnessBtn");
-btn.disabled=true;
-showMessage("exnessStatus","Checking Exness connection...");
-
-try{
-const {data,error}=await supabaseClient.functions.invoke("exness-connect",{body:{}});
-if(error)throw error;
-
-if(!data||data.success!==true)
-throw new Error(data?.message||data?.error||"Exness connection failed.");
-
-const account=data.account;
-if(!account)throw new Error("No account information returned.");
-
-$("exName").textContent=account.account_name||"Mktradehome";
-$("exId").textContent=account.account_id||"--";
-$("exType").textContent=account.is_demo===true?"DEMO":"LIVE / UNCONFIRMED";
-$("exCurrency").textContent=account.settings?.currency||"--";
-$("exLeverage").textContent=account.settings?.leverage?"1:"+account.settings.leverage:"--";
-$("exAccountStatus").textContent=account.settings?.account_status||"Connected";
-$("exnessAccount").classList.remove("hidden");
-
-showMessage("exnessStatus",account.is_demo===true
-?"Exness API connection reports a Demo account."
-:"Connection returned, but Demo status is unconfirmed.");
-
-}catch(e){
-console.error(e);
-showMessage("exnessStatus","Connection failed: "+(e.message||"Unknown error"));
-}finally{
-btn.disabled=false;
-}
 }
 
 /* SECURE MT5 DASHBOARD SNAPSHOT */
@@ -428,14 +373,7 @@ $("exTradeCurrency").textContent=snapshot.currency||"--";
 $("exTradeLeverage").textContent="1:"+leverage;
 $("exPositionCount").textContent=String(openPositions);
 $("exServer").textContent=accountServer;
-$("exId").textContent=accountNumber;
-$("exCurrency").textContent=snapshot.currency||"--";
-$("exLeverage").textContent="1:"+leverage;
-$("exType").textContent="DEMO";
-$("exAccountStatus").textContent="MT5 snapshot connected";
-$("exName").textContent="Mktradehome Demo";
 
-$("exnessAccount").classList.remove("hidden");
 $("exnessTradingData").classList.remove("hidden");
 
 const captured=snapshot.captured_at||snapshot.capturedAt;
@@ -1110,7 +1048,6 @@ $("loginBtn").addEventListener("click",login);
 $("signupBtn").addEventListener("click",signup);
 $("resetBtn").addEventListener("click",resetPassword);
 $("logoutBtn").addEventListener("click",logout);
-$("exnessBtn").addEventListener("click",refreshExness);
 $("exnessTradesBtn").addEventListener("click",refreshExnessTrades);
 $("telegramBtn").addEventListener("click",connectTelegram);
 $("refreshBtn").addEventListener("click",refreshAll);

@@ -1,1744 +1,942 @@
+
 <!DOCTYPE html>
-
 <html lang="en">
-
 <head>
-
 <meta charset="UTF-8">
-
 <meta name="viewport" content="width=device-width, initial-scale=1">
-
 <meta name="theme-color" content="#101827">
-
 <link rel="manifest" href="/manifest.json">
-
 <title>Mktradehome | Trading Assistant</title>
-
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
 <style>
-
 *{box-sizing:border-box;margin:0;padding:0}
-
 body{font-family:Arial,sans-serif;background:#101827;color:#fff;padding:16px}
-
 .container{max-width:900px;margin:auto}
-
 header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
-
 h1{font-size:23px;color:#f5c542}
-
 h2{font-size:18px;margin-bottom:12px}
-
+h3{font-size:15px;margin:12px 0 8px}
 p{color:#aeb9ca;font-size:13px;line-height:1.5}
-
 .card{background:#1b2738;border:1px solid #344258;border-radius:13px;padding:16px;margin-bottom:14px}
-
-input,button{width:100%;padding:13px;border-radius:8px;border:1px solid #40516a;background:#101827;color:white;font-size:15px;margin-top:9px}
-
+input,button,select{width:100%;padding:13px;border-radius:8px;border:1px solid #40516a;background:#101827;color:white;font-size:15px;margin-top:9px}
 button{background:#e9b928;color:#111;font-weight:bold;border:0;cursor:pointer}
-
 button.secondary{background:#344258;color:white}
-
-button:disabled{opacity:.6}
-
-.small{font-size:12px;color:#aeb9ca}
-
+button:disabled{opacity:.6;cursor:not-allowed}
+.small,.muted{font-size:12px;color:#aeb9ca}
 .hidden{display:none!important}
-
-.status{padding:10px;border-radius:8px;background:#26364b;margin:10px 0;font-size:13px}
-
+.status{padding:10px;border-radius:8px;background:#26364b;margin:10px 0;font-size:13px;overflow-wrap:anywhere}
 .market{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-
 .marketbox{background:#26364b;padding:13px;border-radius:10px}
-
 .price{font-size:21px;font-weight:bold;margin:8px 0}
-
 .signal{font-size:19px;font-weight:bold;margin:8px 0}
-
-.buy{color:#42d392}
-
-.sell{color:#ff7373}
-
-.wait{color:#f5c542}
-
+.buy{color:#42d392}.sell{color:#ff7373}.wait{color:#f5c542}
 .row{display:flex;justify-content:space-between;gap:10px;margin:8px 0;font-size:13px}
-
+.row strong{text-align:right;overflow-wrap:anywhere}
 hr{border:0;border-top:1px solid #344258;margin:12px 0}
-
 label{display:block;font-size:13px;color:#c4ccda;margin-top:10px}
-
 .approval-field{background:#26364b;padding:12px;margin:9px 0;border-radius:9px;font-size:14px}
-
 .approval-field span{color:#f5c542;float:right;font-weight:bold}
-
 .approve-button{background:#16a36a;color:white}
-
 .reject-button{background:#c0392b;color:white}
-
 #approvalStatus{text-align:center;color:#f5c542;margin-top:14px;font-size:13px}
-
 .trade-item{background:#26364b;padding:12px;border-radius:9px;margin:8px 0;font-size:13px}
-
 .approval-trade{background:#26364b;border:1px solid #40516a;padding:13px;border-radius:10px;margin:10px 0}
 .approval-trade h3{font-size:16px;margin-bottom:8px}
 .approval-trade .trade-status{font-size:12px;color:#f5c542;margin:7px 0}
 .approval-trade .approve-button,.approval-trade .reject-button{width:100%;margin-top:8px}
-.approval-trade .position-profit{color:#42d392;font-weight:bold}
-.approval-trade .position-loss{color:#ff7373;font-weight:bold}
-
-@media(max-width:500px){
-
-.market{grid-template-columns:1fr}
-
-header{align-items:flex-start}
-
-}
-
+.position-profit{color:#42d392;font-weight:bold}
+.position-loss{color:#ff7373;font-weight:bold}
+@media(max-width:500px){.market{grid-template-columns:1fr}header{align-items:flex-start}}
 </style>
-
 </head>
-
 <body>
-
 <div class="container">
-
 <header>
-
-<div>
-
-<h1>Mktradehome</h1>
-
-<p>Personal Trading Analysis Assistant</p>
-
-</div>
-
+<div><h1>Mktradehome</h1><p>Personal Trading Analysis Assistant</p></div>
 <button id="logoutBtn" class="secondary hidden" style="width:auto">Sign Out</button>
-
 </header>
 
 <div id="loginPanel" class="card">
-
 <h2>Login to Mktradehome</h2>
-
 <input id="email" type="email" autocomplete="username" placeholder="Email address">
-
 <input id="password" type="password" autocomplete="current-password" placeholder="Password">
-
 <button id="loginBtn">Sign In</button>
-
 <button id="signupBtn" class="secondary">Create Account</button>
-
 <button id="resetBtn" class="secondary">Forgot Password</button>
-
 <div id="loginMessage" class="status">Sign in to open your trading dashboard.</div>
-
 </div>
 
 <div id="dashboard" class="hidden">
-
 <div class="card">
-
 <h2>Trading Dashboard</h2>
-
 <p>Live market monitoring and analysis</p>
-
 <div id="systemStatus" class="status">Starting monitoring...</div>
-
 <div class="row"><span>Last analysis</span><span id="lastUpdate">Waiting...</span></div>
-
 <button id="refreshBtn">Refresh Prices &amp; Analysis</button>
-
 <hr>
-
 <h2>Telegram Alerts</h2>
-
 <p>Connect your Telegram bot to receive trading signals and safety warnings.</p>
-
 <button id="telegramBtn">Connect Telegram Alerts</button>
-
 <div id="telegramStatus" class="status">Telegram is not connected yet.</div>
-
 </div>
 
 <div class="card">
-
 <h2>Exness Demo Connection</h2>
-
 <p>Connect your verified Exness Demo account to Mktradehome.</p>
-
 <button id="exnessBtn">Connect Exness Demo</button>
-
-<div id="exnessStatus" class="status">Exness is not connected yet.</div>
-
+<div id="exnessStatus" class="status">Exness account connection has not been checked.</div>
 <div id="exnessAccount" class="hidden">
-
 <hr>
-
 <div class="row"><span>Account name</span><strong id="exName">--</strong></div>
-
 <div class="row"><span>Account ID</span><strong id="exId">--</strong></div>
-
 <div class="row"><span>Account type</span><strong id="exType">--</strong></div>
-
 <div class="row"><span>Currency</span><strong id="exCurrency">--</strong></div>
-
 <div class="row"><span>Leverage</span><strong id="exLeverage">--</strong></div>
-
 <div class="row"><span>Status</span><strong id="exAccountStatus">--</strong></div>
-
 </div>
-
-<p class="small">Read-only connection. Mktradehome cannot place or close trades through this connection.</p>
-
+<p class="small">This connection is read-only. It does not place or close trades.</p>
 </div>
-
-<!-- EXNESS DEMO ACCOUNT DATA -->
 
 <div class="card">
-
 <h2>Exness Demo Account Monitor</h2>
-
-<p>Account information retrieved directly through your secure Exness connection.</p>
-
+<p>Account information saved by your MT5 bridge.</p>
 <button id="exnessTradesBtn" class="secondary">Refresh Demo Account Data</button>
-
 <div id="exnessTradesStatus" class="status">Waiting for Demo account data...</div>
-
 <div id="exnessTradingData" class="hidden">
-
 <hr>
-
 <div class="row"><span>Demo balance</span><strong id="exBalance">--</strong></div>
-
 <div class="row"><span>Demo equity</span><strong id="exEquity">--</strong></div>
-
 <div class="row"><span>Used margin</span><strong id="exMargin">--</strong></div>
-
+<div class="row"><span>Free margin</span><strong id="exFreeMargin">--</strong></div>
+<div class="row"><span>Currency</span><strong id="exTradeCurrency">--</strong></div>
 <div class="row"><span>Leverage</span><strong id="exTradeLeverage">--</strong></div>
-
-<hr>
-
-<h2>Open Positions</h2>
-
-<div id="exnessPositions"><p>No position data yet.</p></div>
-
-<hr>
-
-<h2>Pending Orders</h2>
-
-<div id="exnessOrders"><p>No order data yet.</p></div>
-
+<div class="row"><span>Open position count</span><strong id="exPositionCount">--</strong></div>
+<div class="row"><span>Account server</span><strong id="exServer">--</strong></div>
 <div class="small" id="exnessDataUpdated"></div>
-
 </div>
-
-<p class="small">Read-only monitoring. This section does not place, modify or close trades.</p>
-
+<p class="small">The current bridge snapshot supplies account totals and an open-position count. It does not supply individual position or pending-order details.</p>
 </div>
 
 <div class="card">
-
 <h2>Markets</h2>
-
 <div id="markets" class="market"></div>
-
 </div>
 
 <div class="card">
-
 <h2>Market Analysis</h2>
-
 <p>5M entry timing · 15M confirmation · 1H and 4H trend direction.</p>
-
 <div id="analysis">Waiting for market data...</div>
-
 </div>
 
 <div class="card" id="approvalCentre">
-
 <h2>Trade Approval Centre</h2>
-
-<p>Every market setup is shown separately. Profitable open Exness positions appear first. Review and approve each signal independently.</p>
-
-<div id="approvalTrades"><p>Waiting for market analysis and Exness position data...</p></div>
-
-<div id="approvalStatus">Each approval applies only to its own trade setup.</div>
-
+<p>Review each market setup separately. Approval here is for manual review only.</p>
+<div id="approvalTrades"><p>Waiting for market analysis...</p></div>
+<div id="approvalStatus">Each approval applies only to its own setup.</div>
 <hr>
-
-<p>Approvals are recorded on this device for manual review only. Mktradehome does not place, modify or close Exness trades.</p>
-
+<p>Approvals are saved on this device. No trade is automatically placed.</p>
 </div>
 
 <div class="card">
-
 <h2>Trading Safety</h2>
-
 <div id="safetyStatus" class="status">Risk monitoring active.</div>
-
+<div class="row"><span>Today's recorded loss</span><strong id="dailyLossDisplay">GH₵ 0.00</strong></div>
+<div class="row"><span>Trades recorded today</span><strong id="tradeCountDisplay">0</strong></div>
+<div class="row"><span>Consecutive losses</span><strong id="lossCountDisplay">0</strong></div>
 <label>Maximum daily loss (GH₵)</label>
-
 <input id="maxDailyLoss" type="number" min="1" step="0.01" value="5">
-
 <label>Maximum trades per day</label>
-
 <input id="maxTrades" type="number" min="1" step="1" value="5">
-
 <label>Maximum consecutive losing trades</label>
-
 <input id="maxConsecutiveLosses" type="number" min="1" step="1" value="3">
-
 <button id="saveSafetyBtn">Save Safety Settings</button>
-
-<button id="resetRiskBtn" type="button">Reset Daily Safety Counters</button>
+<button id="resetRiskBtn" class="secondary" type="button">Reset Daily Safety Counters</button>
 <div id="safetyMessage" class="status"></div>
-
 <hr>
-
 <h2>Record a Completed Trade</h2>
-
 <label>Market</label>
-
 <select id="recordSymbol">
 <option value="BTCUSD">BTC/USD</option>
 <option value="EURUSD">EUR/USD</option>
 <option value="XAUUSD">XAU/USD</option>
 <option value="USDJPY">USD/JPY</option>
 </select>
-
 <label>Direction</label>
-
-<select id="recordDirection">
-<option value="BUY">BUY</option>
-<option value="SELL">SELL</option>
-</select>
-
+<select id="recordDirection"><option>BUY</option><option>SELL</option></select>
 <label>Result</label>
-
-<select id="recordResult">
-<option value="Win">Win</option>
-<option value="Loss">Loss</option>
-<option value="Break-even">Break-even</option>
-</select>
-
+<select id="recordResult"><option>Win</option><option>Loss</option><option>Break-even</option></select>
 <label>Profit or loss in GH₵ (use minus for a loss)</label>
-
 <input id="recordPnl" type="number" step="0.01" placeholder="Example: -5 or 8">
-
 <button id="recordTradeBtn" type="button">Record Trade Result</button>
-
 <div id="recordMessage" class="status"></div>
-
 <div id="tradeHistory"></div>
-
 </div>
 
 <div class="card">
-
 <h2>Trading Reminder</h2>
-
-<p>Mktradehome provides analysis only. It does not automatically place trades. Exness account monitoring is read-only. Signals are not guaranteed. Verify prices and manage your risk before entering a trade.</p>
-
+<p>Mktradehome provides analysis, not guaranteed trading results. Confirm prices and manage risk before entering any trade. The MT5 bridge account monitor is read-only. Trade execution remains disabled.</p>
 </div>
-
+</div>
 </div>
 
 <script>
-
 "use strict";
 
 const SUPABASE_URL="https://pjwqyveitncygamaaybi.supabase.co";
-
 const SUPABASE_KEY="sb_publishable_Ny_yyLQYsjyCNuGAn25ybw_ahxLPjwk";
-
 const supabaseClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+
+const DASHBOARD_USER_ID="eb254614-cc9d-4846-adb6-fd45e5594a96";
+const MT5_ACCOUNT="486163696";
+const MT5_SERVER="Exness-MT5Trial10";
 
 const QUOTE_URL="https://biquote.io/api/latest?symbols=BTCUSD&symbols=EURUSD&symbols=XAUUSD&symbols=USDJPY";
 
 const marketList=[
-
 {symbol:"BTCUSD",name:"BTC/USD"},
-
 {symbol:"EURUSD",name:"EUR/USD"},
-
 {symbol:"XAUUSD",name:"XAU/USD"},
-
 {symbol:"USDJPY",name:"USD/JPY"}
-
 ];
 
 let quotes={};
-
 let analyses={};
-
 let refreshTimer=null;
-
 let previousSignals={};
-
-let previousSafetyState="";
-
-let refreshing=false;
-
-let approvalSnapshot=null;
-
-let rejectedSnapshot=null;
-
-let approved=false;
-
-let approvalExpiry=0;
-
 let currentExnessPositions=[];
+let refreshing=false;
 
 const $=id=>document.getElementById(id);
 
 function showMessage(id,message){
+if($(id))$(id).textContent=message;
+}
 
-$(id).textContent=message;
-
+function escapeHTML(value){
+return String(value??"").replace(/[&<>"']/g,ch=>({
+"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+}[ch]));
 }
 
 function formatPrice(value){
+const n=Number(value);
+if(!Number.isFinite(n)||n<=0)return "Unavailable";
+return n.toLocaleString("en-US",{maximumFractionDigits:5});
+}
 
-if(!Number.isFinite(Number(value)))return "Unavailable";
-
-return Number(value).toLocaleString("en-US",{maximumFractionDigits:5});
-
+function money(value){
+const n=Number(value);
+return Number.isFinite(n)
+?n.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})
+:"Unavailable";
 }
 
 /* AUTHENTICATION */
 
 async function login(){
-
 const email=$("email").value.trim();
-
 const password=$("password").value;
-
 if(!email||!password){
-
 showMessage("loginMessage","Enter your email and password.");
-
 return;
-
 }
-
 $("loginBtn").disabled=true;
-
 showMessage("loginMessage","Signing in...");
-
 try{
-
 const {data,error}=await supabaseClient.auth.signInWithPassword({email,password});
-
 if(error)throw error;
-
 if(!data.session)throw new Error("Login did not create a session.");
-
 openDashboard();
-
 }catch(e){
-
 showMessage("loginMessage",e.message||"Unable to sign in.");
-
-}finally{
-
-$("loginBtn").disabled=false;
-
-}
-
+}finally{$("loginBtn").disabled=false;}
 }
 
 async function signup(){
-
 const email=$("email").value.trim();
-
 const password=$("password").value;
-
 if(!email||!password){
-
 showMessage("loginMessage","Enter your email and password.");
-
 return;
-
 }
-
 if(password.length<6){
-
 showMessage("loginMessage","Password must contain at least 6 characters.");
-
 return;
-
 }
-
 $("signupBtn").disabled=true;
-
 showMessage("loginMessage","Creating account...");
-
 try{
-
 const {data,error}=await supabaseClient.auth.signUp({email,password});
-
 if(error)throw error;
-
-showMessage(
-
-"loginMessage",
-
-data.session
-
+showMessage("loginMessage",data.session
 ?"Account created. You can now sign in."
-
-:"Account request sent. Check your email if confirmation is required."
-
-);
-
+:"Account request sent. Check your email if confirmation is required.");
 }catch(e){
-
 showMessage("loginMessage",e.message||"Could not create account.");
-
-}finally{
-
-$("signupBtn").disabled=false;
-
-}
-
+}finally{$("signupBtn").disabled=false;}
 }
 
 async function resetPassword(){
-
 const email=$("email").value.trim();
-
 if(!email){
-
 showMessage("loginMessage","Enter your email address first.");
-
 return;
-
 }
-
-showMessage("loginMessage","Sending password reset request...");
-
 try{
-
 const {error}=await supabaseClient.auth.resetPasswordForEmail(email,{
-
 redirectTo:window.location.origin
-
 });
-
 if(error)throw error;
-
 showMessage("loginMessage","Password reset request sent. Check your email.");
-
 }catch(e){
-
 showMessage("loginMessage",e.message||"Password reset failed.");
-
 }
-
 }
 
 async function logout(){
-
 await supabaseClient.auth.signOut();
-
 location.reload();
-
 }
 
 function openDashboard(){
-
 $("loginPanel").classList.add("hidden");
-
 $("dashboard").classList.remove("hidden");
-
 $("logoutBtn").classList.remove("hidden");
-
 loadRiskSettings();
-
 renderHistory();
-
-if(refreshTimer)clearInterval(refreshTimer);
-
 refreshAll();
-
 refreshExness();
-
 refreshExnessTrades();
-
+if(refreshTimer)clearInterval(refreshTimer);
 refreshTimer=setInterval(()=>{
-
 refreshAll();
-
 refreshExnessTrades();
-
-},15000);
-
+},60000);
 }
 
-/* EXNESS ACCOUNT CONNECTION */
+/* EXNESS CONNECTION */
 
 async function refreshExness(){
-
 const btn=$("exnessBtn");
-
 btn.disabled=true;
-
-showMessage("exnessStatus","Connecting securely to your Exness Demo account...");
-
+showMessage("exnessStatus","Checking Exness connection...");
 try{
-
-const {data,error}=await supabaseClient.functions.invoke(
-
-"exness-connect",
-
-{body:{}}
-
-);
-
+const {data,error}=await supabaseClient.functions.invoke("exness-connect",{body:{}});
 if(error)throw error;
-
-if(!data||data.success!==true){
-
+if(!data||data.success!==true)
 throw new Error(data?.message||data?.error||"Exness connection failed.");
-
-}
-
 const account=data.account;
-
-if(!account){
-
-throw new Error("No account information returned.");
-
+if(!account)throw new Error("No account information returned.");
+$("exName").textContent=account.account_name||"Mktradehome";
+$("exId").textContent=account.account_id||"--";
+$("exType").textContent=account.is_demo===true?"DEMO":"LIVE / UNCONFIRMED";
+$("exCurrency").textContent=account.settings?.currency||"--";
+$("exLeverage").textContent=account.settings?.leverage?"1:"+account.settings.leverage:"--";
+$("exAccountStatus").textContent=account.settings?.account_status||"Connected";
+$("exnessAccount").classList.remove("hidden");
+showMessage("exnessStatus",account.is_demo===true
+?"Exness API connection reports a Demo account."
+:"Connection returned, but Demo status is unconfirmed.");
+}catch(e){
+console.error(e);
+showMessage("exnessStatus","Connection failed: "+(e.message||"Unknown error"));
+}finally{btn.disabled=false;}
 }
 
-$("exName").textContent=account.account_name||"Mktradehome";
+/* SECURE MT5 DASHBOARD SNAPSHOT */
 
-$("exId").textContent=account.account_id||"--";
+async function refreshExnessTrades(){
+const btn=$("exnessTradesBtn");
+btn.disabled=true;
+showMessage("exnessTradesStatus","Retrieving saved Demo account snapshot...");
+try{
+const {data:sessionData,error:sessionError}=await supabaseClient.auth.getSession();
+if(sessionError)throw sessionError;
+const session=sessionData?.session;
+if(!session?.access_token)throw new Error("Please sign in again.");
 
-$("exType").textContent=account.is_demo===true?"DEMO":"LIVE / UNCONFIRMED";
-
-$("exCurrency").textContent=account.settings?.currency||"--";
-
-$("exLeverage").textContent=account.settings?.leverage
-
-?"1:"+account.settings.leverage:"--";
-
-$("exAccountStatus").textContent=account.settings?.account_status||"Connected";
-
-$("exnessAccount").classList.remove("hidden");
-
-showMessage(
-
-"exnessStatus",
-
-account.is_demo===true
-
-?"Successfully connected to your Exness Demo account."
-
-:"Connected, but Demo status is unconfirmed. Do not use for live trading."
-
+const response=await fetch(
+SUPABASE_URL+"/functions/v1/mt5-bridge?action=dashboard_snapshot",
+{
+method:"GET",
+headers:{
+"Authorization":"Bearer "+session.access_token,
+"apikey":SUPABASE_KEY
+},
+cache:"no-store"
+}
 );
 
+const data=await response.json().catch(()=>({}));
+if(!response.ok)throw new Error(data.error||data.message||("Server returned "+response.status));
+if(data.success!==true)throw new Error(data.error||data.message||"Snapshot request failed.");
+
+const snapshot=data.snapshot||data.account||data;
+const accountNumber=String(snapshot.account_number||snapshot.accountNumber||"");
+const accountServer=String(snapshot.account_server||snapshot.accountServer||"");
+
+if(accountNumber!==MT5_ACCOUNT||accountServer!==MT5_SERVER){
+throw new Error("The returned account does not match your approved Demo account.");
+}
+
+const balance=Number(snapshot.balance);
+const equity=Number(snapshot.equity);
+const margin=Number(snapshot.margin);
+const freeMargin=Number(snapshot.free_margin??snapshot.freeMargin);
+const leverage=Number(snapshot.leverage);
+const openPositions=Number(snapshot.open_positions??snapshot.openPositions);
+
+if(![balance,equity,margin,freeMargin,leverage,openPositions].every(Number.isFinite)){
+throw new Error("The account snapshot is missing required values.");
+}
+
+$("exBalance").textContent=money(balance);
+$("exEquity").textContent=money(equity);
+$("exMargin").textContent=money(margin);
+$("exFreeMargin").textContent=money(freeMargin);
+$("exTradeCurrency").textContent=snapshot.currency||"--";
+$("exTradeLeverage").textContent="1:"+leverage;
+$("exPositionCount").textContent=String(openPositions);
+$("exServer").textContent=accountServer;
+$("exId").textContent=accountNumber;
+$("exCurrency").textContent=snapshot.currency||"--";
+$("exLeverage").textContent="1:"+leverage;
+$("exType").textContent="DEMO";
+$("exAccountStatus").textContent="MT5 snapshot connected";
+$("exName").textContent="Mktradehome Demo";
+$("exnessAccount").classList.remove("hidden");
+$("exnessTradingData").classList.remove("hidden");
+
+const captured=snapshot.captured_at||snapshot.capturedAt;
+$("exnessDataUpdated").textContent="Snapshot time: "+(captured
+?new Date(captured).toLocaleString()
+:"Time not supplied by server.");
+
+showMessage("exnessTradesStatus","Demo account snapshot received successfully from MT5.");
 }catch(e){
-
-console.error("Exness connection error:",e);
-
-$("exnessAccount").classList.add("hidden");
-
-showMessage("exnessStatus","Connection failed: "+(e.message||"Unknown error"));
-
-}finally{
-
-btn.disabled=false;
-
+console.error("MT5 dashboard snapshot error:",e);
+showMessage("exnessTradesStatus","Unable to retrieve Demo data: "+(e.message||"Unknown error"));
+}finally{btn.disabled=false;}
 }
 
+/* TELEGRAM */
+
+async function sendTelegramAlert(message){
+try{
+const {data,error}=await supabaseClient.functions.invoke("telegram-alerts",{body:{message}});
+if(error)throw error;
+if(!data?.success)throw new Error(data?.error||"Telegram alert failed.");
+return true;
+}catch(e){
+console.error("Telegram alert error:",e);
+return false;
+}
 }
 
-/* EXNESS OPEN POSITIONS AND ACCOUNT SNAPSHOT */
-
-function money(value){
-
-const number=Number(value);
-
-return Number.isFinite(number)
-
-?number.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})
-
-:"Unavailable";
-
+async function connectTelegram(){
+const btn=$("telegramBtn");
+btn.disabled=true;
+showMessage("telegramStatus","Connecting to Telegram...");
+try{
+const {data,error}=await supabaseClient.functions.invoke("telegram-connect",{body:{}});
+if(error)throw error;
+if(!data?.success)throw new Error(data?.message||data?.error||"Telegram connection failed.");
+showMessage("telegramStatus","Telegram connection accepted. Sending test message...");
+const test=await supabaseClient.functions.invoke("telegram-alerts",{
+body:{message:"Mktradehome Telegram connected successfully. Trading alerts are for manual review only."}
+});
+if(test.error)throw test.error;
+if(!test.data?.success)throw new Error(test.data?.error||"Test message failed.");
+showMessage("telegramStatus","Telegram connected. Check your Telegram for the test message.");
+}catch(e){
+showMessage("telegramStatus","Connection failed: "+(e.message||"Unknown error"));
+}finally{btn.disabled=false;}
 }
 
-function displayTradeList(elementId,items,type){
+/* MARKET DATA */
 
-const container=$(elementId);
-
-if(!Array.isArray(items)||items.length===0){
-
-container.innerHTML="<p>No "+(type==="position"?"open positions":"pending orders")+" reported by Exness.</p>";
-
-return;
-
+async function fetchQuotes(){
+const response=await fetch(QUOTE_URL,{cache:"no-store"});
+if(!response.ok)throw new Error("Price service returned "+response.status);
+const data=await response.json();
+const output={};
+for(const m of marketList){
+const item=data[m.symbol];
+if(!item)continue;
+const bid=Number(item.bid);
+const ask=Number(item.ask);
+const price=Number(item.mid||((bid+ask)/2));
+if(Number.isFinite(price)&&price>0){
+output[m.symbol]={
+price,bid,ask,
+stale:item.stale,
+marketState:item.marketState,
+quoteAgeSeconds:Number(item.quoteAgeSeconds),
+time:item.timestamp
+};
+}
+}
+quotes={...quotes,...output};
 }
 
-container.innerHTML=items.map(item=>{
+async function fetchCandles(symbol,interval){
+const response=await fetch(
+"https://biquote.io/api/"+encodeURIComponent(symbol)+"/ohlc?interval="+encodeURIComponent(interval)+"&limit=200",
+{cache:"no-store"}
+);
+if(!response.ok)throw new Error(symbol+" "+interval+" candle request failed ("+response.status+")");
+const data=await response.json();
+const rows=Array.isArray(data)?data:(data.bars||data.data||data.candles||data.results||[]);
+return rows.map(c=>({
+open:Number(c.open),
+high:Number(c.high),
+low:Number(c.low),
+close:Number(c.close),
+time:c.openTime||c.time||c.timestamp,
+isOpen:c.isOpen===true
+})).filter(c=>
+[c.open,c.high,c.low,c.close].every(Number.isFinite)&&
+c.high>=c.low&&!c.isOpen
+).sort((a,b)=>new Date(a.time)-new Date(b.time));
+}
 
-const symbol=item.symbol||item.instrument||item.market||"Unknown market";
+function isQuoteFresh(q){
+return !!q&&q.stale===false&&q.marketState==="open"&&
+Number.isFinite(q.quoteAgeSeconds)&&q.quoteAgeSeconds<=120;
+}
 
-const direction=item.type||item.side||item.direction||"Not specified";
+/* TECHNICAL ANALYSIS */
 
-const volume=item.volume??item.lots??item.amount??"--";
+function calculateATR(bars){
+if(!bars||bars.length<15)return 0;
+const recent=bars.slice(-15);
+let total=0;
+for(let i=1;i<recent.length;i++){
+const c=recent[i],p=recent[i-1];
+total+=Math.max(c.high-c.low,Math.abs(c.high-p.close),Math.abs(c.low-p.close));
+}
+return total/(recent.length-1);
+}
 
-const price=item.open_price??item.openPrice??item.price??"--";
+function calculateEMA(values,period){
+if(values.length<period)return 0;
+const k=2/(period+1);
+let result=values[0];
+for(let i=1;i<values.length;i++)result=values[i]*k+result*(1-k);
+return result;
+}
 
-const sl=item.stop_loss??item.stopLoss??"--";
+function analyzeTimeframe(bars){
+if(!bars||bars.length<60){
+return {signal:"WAIT",reason:"Need at least 60 completed candles",bars:bars?.length||0};
+}
+const closes=bars.map(b=>b.close);
+const last=closes[closes.length-1];
+const ema20=calculateEMA(closes.slice(-100),20);
+const ema50=calculateEMA(closes.slice(-120),50);
+const recentAverage=closes.slice(-5).reduce((a,b)=>a+b,0)/5;
+let score=0;
+if(last>ema20)score++;
+if(last>ema50)score++;
+if(ema20>ema50)score++;
+if(last>recentAverage)score++;
+const signal=score>=3?"BUY":score<=1?"SELL":"WAIT";
+return {
+signal,price:last,ema20,ema50,atr:calculateATR(bars),bars:bars.length,
+reason:signal==="BUY"?"Bullish trend":signal==="SELL"?"Bearish trend":"Mixed market conditions"
+};
+}
 
-const tp=item.take_profit??item.takeProfit??"--";
+async function analyzeMarket(market){
+const intervals=["4h","1h","15m","5m"];
+const results={};
+for(const interval of intervals){
+const bars=await fetchCandles(market.symbol,interval);
+results[interval.toUpperCase()]=analyzeTimeframe(bars);
+}
+const q=quotes[market.symbol];
+const fresh=isQuoteFresh(q);
+const trend=results["1H"].signal;
+const confirm=results["15M"].signal;
+const entryTiming=results["5M"].signal;
+const higher=results["4H"].signal;
 
-const profit=item.profit??item.pnl??null;
+let overall="WAIT";
+if(fresh&&higher===trend&&trend===confirm&&confirm===entryTiming&&["BUY","SELL"].includes(trend)){
+overall=trend;
+}
 
-return `
+const current=Number(q?.price||results["5M"].price||results["1H"].price);
+const atr=Number(results["5M"].atr||results["15M"].atr||results["1H"].atr);
+let entry=current,sl=null,tp1=null,tp2=null;
 
-<div class="trade-item">
+if(overall!=="WAIT"&&Number.isFinite(current)&&atr>0){
+const direction=overall==="BUY"?1:-1;
+entry=current;
+sl=entry-direction*atr*1.5;
+tp1=entry+direction*atr*2;
+tp2=entry+direction*atr*3;
+}
 
-<strong>${symbol}</strong>
+let reason="Timeframes do not fully agree. Wait for confirmation.";
+if(!fresh)reason="Quote is stale, unavailable, or market is not confirmed open.";
+else if(overall!=="WAIT")reason="4H, 1H, 15M and 5M signals agree. Confirm price and risk before any trade.";
 
-<div class="row"><span>Direction</span><strong>${direction}</strong></div>
+return {
+symbol:market.symbol,
+overall,entry,sl,tp1,tp2,
+quoteFresh:fresh,
+reason,
+results,
+updatedAt:Date.now()
+};
+}
 
-<div class="row"><span>Volume</span><strong>${volume}</strong></div>
+/* DISPLAY MARKETS */
 
-<div class="row"><span>Price</span><strong>${price}</strong></div>
-
-<div class="row"><span>Stop Loss</span><strong>${sl}</strong></div>
-
-<div class="row"><span>Take Profit</span><strong>${tp}</strong></div>
-
-${profit!==null?`<div class="row"><span>Profit / Loss</span><strong>${money(profit)}</stro
-/s
-trong></div>`:""}
-
+function renderMarkets(){
+const container=$("markets");
+if(!container)return;
+container.innerHTML=marketList.map(m=>{
+const q=quotes[m.symbol];
+const a=analyses[m.symbol];
+const signal=a?.overall||"WAIT";
+const cls=signal==="BUY"?"buy":signal==="SELL"?"sell":"wait";
+return `<div class="marketbox">
+<strong>${escapeHTML(m.name)}</strong>
+<div class="price">${q?formatPrice(q.price):"Price unavailable"}</div>
+<div class="signal ${cls}">${signal}</div>
+<div class="small">${q&&Number.isFinite(q.quoteAgeSeconds)?"Quote age: "+q.quoteAgeSeconds+" sec":"Quote age unavailable"}</div>
+<div class="small">${escapeHTML(a?.reason||"Waiting for analysis")}</div>
 </div>`;
-
 }).join("");
-
 }
 
-function escapeApprovalText(value){
-return String(value??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
+function renderAnalysis(){
+const container=$("analysis");
+if(!container)return;
+container.innerHTML=marketList.map(m=>{
+const a=analyses[m.symbol];
+if(!a)return `<div class="trade-item"><strong>${escapeHTML(m.name)}</strong><p>Waiting for analysis...</p></div>`;
+const cls=a.overall==="BUY"?"buy":a.overall==="SELL"?"sell":"wait";
+return `<div class="trade-item">
+<strong>${escapeHTML(m.name)}</strong>
+<div class="signal ${cls}">${a.overall}</div>
+<div class="small">${escapeHTML(a.reason)}</div>
+<div class="row"><span>Entry reference</span><strong>${formatPrice(a.entry)}</strong></div>
+<div class="row"><span>Stop Loss</span><strong>${formatPrice(a.sl)}</strong></div>
+<div class="row"><span>Take Profit 1</span><strong>${formatPrice(a.tp1)}</strong></div>
+<div class="row"><span>Take Profit 2</span><strong>${formatPrice(a.tp2)}</strong></div>
+<div class="small">4H: ${a.results["4H"].signal} · 1H: ${a.results["1H"].signal}</div>
+<div class="small">15M: ${a.results["15M"].signal} · 5M: ${a.results["5M"].signal}</div>
+<div class="small">${a.quoteFresh?"Fresh quote check passed":"Fresh quote check failed"}</div>
+</div>`;
+}).join("");
 }
+
+/* TRADE APPROVALS */
 
 function getSignalReviews(){
-const storageKey="mktradehome_signal_reviews";
+const key="mktradehome_signal_reviews";
 const maxAge=30*60*1000;
-const now=Date.now();
 let stored={};
-try{stored=JSON.parse(localStorage.getItem(storageKey)||"{}");}
-catch(e){stored={};}
+try{stored=JSON.parse(localStorage.getItem(key)||"{}");}catch(e){}
 const reviews={};
-for(const [oldKey,review] of Object.entries(stored)){
-if(!review||!review.updatedAt||now-Number(review.updatedAt)>maxAge)continue;
-const snapshot=review.signal||{};
-const symbol=snapshot.symbol;
-const direction=snapshot.signal;
-if(!symbol||!["BUY","SELL"].includes(direction))continue;
-const stableKey=symbol+"|"+direction;
-if(!reviews[stableKey]||Number(review.updatedAt)>Number(reviews[stableKey].updatedAt)){
-reviews[stableKey]=review;
+for(const [k,v] of Object.entries(stored)){
+if(!v||!v.updatedAt||Date.now()-Number(v.updatedAt)>maxAge)continue;
+reviews[k]=v;
 }
-}
-localStorage.setItem(storageKey,JSON.stringify(reviews));
+localStorage.setItem(key,JSON.stringify(reviews));
 return reviews;
 }
 
 function saveSignalReview(key,status,signal){
 const reviews=getSignalReviews();
-const symbol=signal.symbol;
-for(const existingKey of Object.keys(reviews)){
-if(existingKey.startsWith(symbol+"|"))delete reviews[existingKey];
-}
 reviews[key]={status,updatedAt:Date.now(),signal};
 localStorage.setItem("mktradehome_signal_reviews",JSON.stringify(reviews));
-}
-
-function makeSignalKey(symbol,a){
-return symbol+"|"+a.overall;
 }
 
 function renderApprovalCentre(){
 const container=$("approvalTrades");
 if(!container)return;
-
-const positions=Array.isArray(currentExnessPositions)?currentExnessPositions:[];
-const profitable=positions.filter(p=>Number(p.profit??p.pnl??0)>0);
 const reviews=getSignalReviews();
-
-const positionCards=profitable.map((p,index)=>{
-const symbol=p.symbol||p.instrument||p.market||"Unknown market";
-const direction=p.type||p.side||p.direction||"Not specified";
-const volume=p.volume??p.lots??p.amount??"--";
-const open=p.open_price??p.openPrice??p.price??"--";
-const sl=p.stop_loss??p.stopLoss??"--";
-const tp=p.take_profit??p.takeProfit??"--";
-const profit=Number(p.profit??p.pnl??0);
-return `<div class="approval-trade">
-<h3>${escapeApprovalText(symbol)} · OPEN ${escapeApprovalText(direction)}</h3>
-<div class="trade-status">PROFITABLE OPEN POSITION · MONITOR ONLY</div>
-<div class="row"><span>Volume</span><strong>${escapeApprovalText(volume)}</strong></div>
-<div class="row"><span>Open Price</span><strong>${escapeApprovalText(open)}</strong></div>
-<div class="row"><span>Stop Loss</span><strong>${escapeApprovalText(sl)}</strong></div>
-<div class="row"><span>Take Profit</span><strong>${escapeApprovalText(tp)}</strong></div>
-<div class="row"><span>Current Profit</span><strong class="position-profit">${money(profit)}</strong></div>
-</div>`;
-}).join("");
-
 const signals=marketList.map(m=>({market:m,a:analyses[m.symbol]}))
 .filter(x=>x.a&&["BUY","SELL"].includes(x.a.overall));
 
-/* A changed direction is a new setup; remove the previous direction's review. */
-for(const {market,a} of signals){
-const activeKey=makeSignalKey(market.symbol,a);
-for(const oldKey of Object.keys(reviews)){
-if(oldKey.startsWith(market.symbol+"|")&&oldKey!==activeKey)delete reviews[oldKey];
+if(!signals.length){
+container.innerHTML="<p>No confirmed BUY or SELL setups right now. WAIT signals are not approval opportunities.</p>";
+return;
 }
-}
-localStorage.setItem("mktradehome_signal_reviews",JSON.stringify(reviews));
 
-const signalCards=signals.map(({market,a})=>{
-const key=makeSignalKey(market.symbol,a);
+container.innerHTML=signals.map(({market,a})=>{
+const key=market.symbol+"|"+a.overall;
 const review=reviews[key];
 const status=review?.status||"awaiting_review";
-const saved=review?.signal||{};
-const shown=status!=="awaiting_review"&&saved.entry!==undefined?saved:a;
-const statusText=status==="approved_for_manual_review"?"APPROVED FOR MANUAL REVIEW · SAVED SETUP":status==="rejected"?"REJECTED — THIS SETUP DISMISSED":"AWAITING YOUR REVIEW";
+const saved=review?.signal||a;
+const shown=status==="approved_for_manual_review"||status==="rejected"?saved:a;
+const statusText=status==="approved_for_manual_review"
+?"APPROVED FOR MANUAL REVIEW ONLY"
+:status==="rejected"?"REJECTED":"AWAITING YOUR REVIEW";
+
 return `<div class="approval-trade">
-<h3>${escapeApprovalText(market.name)} · ${escapeApprovalText(a.overall)}</h3>
+<h3>${escapeHTML(market.name)} · ${a.overall}</h3>
 <div class="trade-status">${statusText}</div>
-<div class="row"><span>Entry Price</span><strong>${formatPrice(shown.entry)}</strong></div>
+<div class="row"><span>Entry reference</span><strong>${formatPrice(shown.entry)}</strong></div>
 <div class="row"><span>Stop Loss</span><strong>${formatPrice(shown.sl)}</strong></div>
 <div class="row"><span>Take Profit 1</span><strong>${formatPrice(shown.tp1)}</strong></div>
 <div class="row"><span>Take Profit 2</span><strong>${formatPrice(shown.tp2)}</strong></div>
-<div class="row"><span>Lot Size Reference</span><strong>0.01</strong></div>
-${status==="awaiting_review"?`<button class="approve-button" data-approval-action="approve" data-symbol="${market.symbol}">APPROVE THIS SETUP</button><button class="reject-button" data-approval-action="reject" data-symbol="${market.symbol}">REJECT THIS SETUP</button>`:""}
+<div class="row"><span>Lot size reference</span><strong>0.01</strong></div>
+${status==="awaiting_review"?`
+<button class="approve-button" data-action="approve" data-symbol="${market.symbol}">APPROVE FOR MANUAL REVIEW</button>
+<button class="reject-button" data-action="reject" data-symbol="${market.symbol}">REJECT THIS SETUP</button>`:""}
 </div>`;
 }).join("");
-
-if(!positionCards&&!signalCards){
-container.innerHTML="<p>No profitable open Exness position or confirmed BUY/SELL setup right now. WAIT signals are not approval opportunities.</p>";
-return;
-}
-container.innerHTML=
-(positionCards?`<h3>Profitable Open Exness Positions</h3>${positionCards}`:"")+
-(signalCards?`<h3>Separate Market Setups</h3>${signalCards}`:"");
 }
 
 function handleSignalReview(action,symbol){
 const market=marketList.find(m=>m.symbol===symbol);
 const a=analyses[symbol];
 if(!market||!a||!["BUY","SELL"].includes(a.overall)){
-showMessage("approvalStatus","That setup is no longer active. Refresh the analysis.");
+showMessage("approvalStatus","This setup is no longer active. Refresh analysis.");
 return;
 }
 if(action==="approve"){
 const safety=getSafetyState();
 if(safety.locked){
-showMessage("approvalStatus","Safety lock is active. Approval blocked.");
+showMessage("approvalStatus","Safety lock active. Approval blocked.");
 return;
 }
 if(!a.quoteFresh){
-showMessage("approvalStatus","Price data is not fresh. Approval blocked.");
+showMessage("approvalStatus","Quote is not fresh. Approval blocked.");
 return;
 }
-const snapshot={symbol,signal:a.overall,entry:a.entry,sl:a.sl,tp1:a.tp1,tp2:a.tp2,createdAt:Date.now()};
-const key=makeSignalKey(symbol,a);
-saveSignalReview(key,"approved_for_manual_review",snapshot);
-localStorage.setItem("mktradehome_last_approval",JSON.stringify({...snapshot,approvedAt:Date.now(),status:"approved_for_manual_review"}));
-showMessage("approvalStatus",market.name+" "+a.overall+" approved for manual review only. No order was placed.");
-sendTelegramAlert("Mktradehome setup approved for manual review:\\n"+market.name+" "+a.overall+"\\nEntry: "+formatPrice(a.entry)+"\\nSL: "+formatPrice(a.sl)+"\\nTP1: "+formatPrice(a.tp1)+"\\nTP2: "+formatPrice(a.tp2)+"\\nNo trade was automatically placed.");
+const snapshot={
+symbol,signal:a.overall,entry:a.entry,sl:a.sl,tp1:a.tp1,tp2:a.tp2,
+createdAt:Date.now()
+};
+saveSignalReview(symbol+"|"+a.overall,"approved_for_manual_review",snapshot);
+showMessage("approvalStatus",market.name+" approved for manual review only. No order was placed.");
+sendTelegramAlert("Mktradehome setup approved for manual review:\n"+market.name+" "+a.overall+
+"\nEntry: "+formatPrice(a.entry)+"\nSL: "+formatPrice(a.sl)+
+"\nTP1: "+formatPrice(a.tp1)+"\nTP2: "+formatPrice(a.tp2)+
+"\nNo trade was automatically placed.");
 }else{
-const key=makeSignalKey(symbol,a);
-saveSignalReview(key,"rejected",{symbol,signal:a.overall,entry:a.entry,sl:a.sl,tp1:a.tp1,tp2:a.tp2});
-showMessage("approvalStatus",market.name+" "+a.overall+" setup rejected. Other markets are unchanged.");
+saveSignalReview(symbol+"|"+a.overall,"rejected",{
+symbol,signal:a.overall,entry:a.entry,sl:a.sl,tp1:a.tp1,tp2:a.tp2
+});
+showMessage("approvalStatus",market.name+" setup rejected.");
 }
 renderApprovalCentre();
-}
-
-async function refreshExnessTrades(){
-
-const btn=$("exnessTradesBtn");
-
-btn.disabled=true;
-
-showMessage("exnessTradesStatus","Retrieving Demo account information...");
-
-try{
-
-const {data,error}=await supabaseClient.functions.invoke(
-
-"exness-trades",
-
-{body:{}}
-
-);
-
-if(error)throw error;
-
-if(!data||data.success!==true){
-
-throw new Error(data?.message||"Could not retrieve Demo account data.");
-
-}
-
-const snapshot=data.snapshot;
-
-if(!snapshot||!snapshot.account_state){
-
-throw new Error("Exness did not return account state.");
-
-}
-
-const state=snapshot.account_state;
-
-currentExnessPositions=Array.isArray(snapshot.positions)?snapshot.positions:[];
-
-$("exBalance").textContent=money(state.balance);
-
-$("exEquity").textContent=money(state.equity);
-
-$("exMargin").textContent=money(state.used_margin);
-
-$("exTradeLeverage").textContent="1:"+(
-
-state.leverage||"--"
-
-);
-
-displayTradeList("exnessPositions",snapshot.positions,"position");
-
-displayTradeList("exnessOrders",snapshot.orders,"order");
-
-renderApprovalCentre();
-
-$("exnessTradingData").classList
- .remove("hidden");
-
-$("exnessDataUpdated").textContent=
-
-"Last retrieved: "+new Date().toLocaleString();
-
-showMessage(
-
-"exnessTradesStatus",
-
-"Successfully retrieved Exness Demo account data. Read-only."
-
-);
-
-}catch(e){
-
-console.error("Exness trading data error:",e);
-
-showMessage(
-
-"exnessTradesStatus",
-
-"Unable to retrieve Demo data: "+(e.message||"Unknown error")
-
-);
-
-}finally{
-
-btn.disabled=false;
-
-}
-
-}
-
-/* TELEGRAM ALERTS */
-
-async function sendTelegramAlert(message){
-
-try{
-
-const {data,error}=await supabaseClient.functions.invoke(
-
-"telegram-alerts",
-
-{body:{message}}
-
-);
-
-if(error)throw error;
-
-if(!data?.success)throw new Error(data?.error||"Telegram alert failed.");
-
-return true;
-
-}catch(e){
-
-console.error("Telegram alert error:",e);
-
-return false;
-
-}
-
-}
-
-async function connectTelegram(){
-
-const btn=$("telegramBtn");
-
-btn.disabled=true;
-
-showMessage("telegramStatus","Connecting to Telegram...");
-
-try{
-
-const {data,error}=await supabaseClient.functions.invoke(
-
-"telegram-connect",
-
-{body:{}}
-
-);
-
-if(error)throw error;
-
-if(!data?.success){
-
-throw new Error(data?.message||data?.error||"Telegram connection failed.");
-
-}
-
-showMessage("telegramStatus","Telegram connected. Sending a test message...");
-
-const test=await supabaseClient.functions.invoke(
-
-"telegram-alerts",
-
-{
-
-body:{
-
-message:"Mktradehome Telegram connected successfully! You will receive trading signals and safety alerts here."
-
-}
-
-}
-
-);
-
-if(test.error)throw test.error;
-
-if(!test.data?.success){
-
-throw new Error(test.data?.error||"Telegram test message failed.");
-
-}
-
-showMessage("telegramStatus","Success! Telegram is connected. Check your Telegram for the test message.");
-
-}catch(e){
-
-console.error("Telegram connection error:",e);
-
-showMessage("telegramStatus","Connection failed: "+(e.message||"Unknown error"));
-
-}finally{
-
-btn.disabled=false;
-
-}
-
-}
-
-/* MARKET DATA */
-
-async function fetchQuotes(){
-
-const response=await fetch(QUOTE_URL,{cache:"no-store"});
-
-if(!response.ok){
-
-throw new Error("Price service returned "+response.status);
-
-}
-
-const data=await response.json();
-
-const output={};
-
-for(const m of marketList){
-
-const item=data[m.symbol];
-
-if(!item)continue;
-
-const bid=Number(item.bid);
-
-const ask=Number(item.ask);
-
-const price=Number(item.mid||((bid+ask)/2));
-
-if(Number.isFinite(price)&&price>0){
-
-output[m.symbol]={
-
-price,
-
-bid,
-
-ask,
-
-stale:item.stale,
-
-marketState:item.marketState,
-
-quoteAgeSeconds:Number(item.quoteAgeSeconds),
-
-time:item.timestamp
-
-};
-
-}
-
-}
-
-quotes={...quotes,...output};
-
-}
-
-async function fetchCandles(symbol,interval){
-
-const response=await fetch(
-
-`https://biquote.io/api/${symbol}/ohlc?interval=${interval}&limit=200`,
-
-{cache:"no-store"}
-
-);
-
-if(!response.ok){
-
-throw new Error(symbol+" "+interval+" candle request failed");
-
-}
-
-const data=await response.json();
-
-const rows=Array.isArray(data)
-
-?data
-
-:data.bars||data.data||data.candles||data.results||[];
-
-return rows.map(c=>({
-
-open:Number(c.open),
-
-high:Number(c.high),
-
-low:Number(c.low),
-
-close:Number(c.close),
-
-time:c.openTime||c.time||c.timestamp,
-
-isOpen:c.isOpen===true
-
-})).filter(c=>
-
-[c.open,c.high,c.low,c.close].every(Number.isFinite)&&
-
-c.high>=c.low&&!c.isOpen
-
-).sort((a,b)=>new Date(a.time)-new Date(b.time));
-
-}
-
-/* TECHNICAL ANALYSIS */
-
-function calculateATR(bars){
-
-if(bars.length<15)return 0;
-
-const r=bars.slice(-15);
-
-let total=0;
-
-for(let i=1;i<r.length;i++){
-
-const c=r[i];
-
-const p=r[i-1];
-
-total+=Math.max(
-
-c.high-c.low,
-
-Math.abs(c.high-p.close),
-
-Math.abs(c.low-p.close)
-
-);
-
-}
-
-return total/(r.length-1);
-
-}
-
-function calculateEMA(values,period){
-
-if(values.length<period)return 0;
-
-const k=2/(period+1);
-
-let result=values[0];
-
-for(let i=1;i<values.length;i++){
-
-result=values[i]*k+result*(1-k);
-
-}
-
-return result;
-
-}
-
-function analyzeTimeframe(bars){
-
-if(!bars||bars.length<60){
-
-return {
-
-signal:"WAIT",
-
-reason:"Need at least 60 completed candles",
-
-bars:bars?.length||0
-
-};
-
-}
-
-const closes=bars.map(b=>b.close);
-
-const last=closes[closes.length-1];
-
-const ema20=calculateEMA(closes.slice(-100),20);
-
-const ema50=calculateEMA(closes.slice(-120),50);
-
-const avg=closes.slice(-5).reduce((a,b)=>a+b,0)/5;
-
-let score=0;
-
-if(last>ema20)score++;
-
-if(last>ema50)score++;
-
-if(ema20>ema50)score++;
-
-if(last>avg)score++;
-
-const signal=score>=3?"BUY":score<=1?"SELL":"WAIT";
-
-return {
-
-signal,
-
-price:last,
-
-ema20,
-
-ema50,
-
-atr:calculateATR(bars),
-
-bars:bars.length,
-
-reason:signal==="BUY"
-
-?"Bullish trend"
-
-:signal==="SELL"
-
-?"Bearish trend"
-
-:"Mixed market conditions"
-
-};
-
-}
-
-function isQuoteFresh(q){
-
-return !!q&&
-
-q.stale===false&&
-
-q.marketState==="open"&&
-
-Number.isFinite(q.quoteAgeSeconds)&&
-
-q.quoteAgeSeconds<=120;
-
-}
- results["1H"].signal}</div>
-
-<div class="muted">15M: ${a.results["15M"].signal} · 5M: ${a.results["5M"].signal}</div>
-
-<button onclick="approveSignal('${m.symbol}')" ${a.overall==="WAIT"?"disabled":""}>Review Signal</button>
-
-</div>`;
-
-}).join("");
-
 }
 
 /* TRADING SAFETY */
 
 const defaultRisk={
-
-maxDailyLoss:5,
-
-maxTrades:5,
-
-maxConsecutiveLosses:3,
-
-dailyLoss:0,
-
-tradeCount:0,
-
-consecutiveLosses:0,
-
-locked:false
-
+maxDailyLoss:5,maxTrades:5,maxConsecutiveLosses:3,
+dailyLoss:0,tradeCount:0,consecutiveLosses:0,locked:false
 };
 
 function loadRiskSettings(){
-
 try{
-
 const saved=JSON.parse(localStorage.getItem("mktradehome_risk")||"{}");
-
 window.riskSettings={...defaultRisk,...saved};
-
-}catch(e){
-
-window.riskSettings={...defaultRisk};
-
-}
-
+}catch(e){window.riskSettings={...defaultRisk};}
 updateRiskDisplay();
-
 }
 
 function saveRiskSettings(){
-
-localStorage.setItem(
-
-"mktradehome_risk",
-
-JSON.stringify(window.riskSettings)
-
-);
-
+localStorage.setItem("mktradehome_risk",JSON.stringify(window.riskSettings));
 updateRiskDisplay();
-
 }
 
 function getSafetyState(){
-
-const r=window.riskSettings||defaultRisk;
-
+const r=window.riskSettings||{...defaultRisk};
 let reason="Safety limits are clear.";
-
 let locked=false;
-
 if(Number(r.dailyLoss)>=Number(r.maxDailyLoss)){
-
-locked=true;
-
-reason="Maximum daily loss reached.";
-
+locked=true;reason="Maximum daily loss reached.";
 }else if(Number(r.tradeCount)>=Number(r.maxTrades)){
-
-locked=true;
-
-reason="Maximum daily trade count reached.";
-
+locked=true;reason="Maximum daily trade count reached.";
 }else if(Number(r.consecutiveLosses)>=Number(r.maxConsecutiveLosses)){
-
-locked=true;
-
-reason="Maximum consecutive losses reached.";
-
+locked=true;reason="Maximum consecutive losses reached.";
 }
-
-r.locked=locked;
-
-r.reason=reason;
-
+r.locked=locked;r.reason=reason;
 return {locked,reason};
-
 }
 
 function updateRiskDisplay(){
-
 const r=window.riskSettings||defaultRisk;
-
 const safety=getSafetyState();
-
-if($("dailyLossDisplay"))$("dailyLossDisplay").textContent="GH₵ "+money(r.dailyLoss);
-
-if($("tradeCountDisplay"))$("tradeCountDisplay").textContent=r.tradeCount;
-
-if($("lossCountDisplay"))$("lossCountDisplay").textContent=r.consecutiveLosses;
-
-if($("safetyStatus"))$("safetyStatus").textContent=safety.locked?"LOCKED: "+safety.reason:"ACTIVE: Trading limits clear";
-
-if($("maxDailyLoss"))$("maxDailyLoss").value=r.maxDailyLoss;
-
-if($("maxTrades"))$("maxTrades").value=r.maxTrades;
-
-if($("maxConsecutiveLosses"))$("maxConsecutiveLosses").value=r.maxConsecutiveLosses;
-
+$("dailyLossDisplay").textContent="GH₵ "+money(r.dailyLoss);
+$("tradeCountDisplay").textContent=r.tradeCount;
+$("lossCountDisplay").textContent=r.consecutiveLosses;
+$("safetyStatus").textContent=safety.locked?"LOCKED: "+safety.reason:"ACTIVE: "+safety.reason;
+$("maxDailyLoss").value=r.maxDailyLoss;
+$("maxTrades").value=r.maxTrades;
+$("maxConsecutiveLosses").value=r.maxConsecutiveLosses;
 }
 
 function saveSafetySettings(){
-
 const r=window.riskSettings;
-
 r.maxDailyLoss=Math.max(1,Number($("maxDailyLoss").value)||5);
-
 r.maxTrades=Math.max(1,Number($("maxTrades").value)||5);
-
 r.maxConsecutiveLosses=Math.max(1,Number($("maxConsecutiveLosses").value)||3);
-
 saveRiskSettings();
-
-showMessage("safetyMessage","Safety settings saved.");
-
+showMessage("safetyMessage","Safety settings saved on this device.");
 }
 
 function resetDailyRisk(){
-
 if(!confirm("Reset today's local safety counters? Only do this when starting a new trading day."))return;
-
 window.riskSettings.dailyLoss=0;
-
 window.riskSettings.tradeCount=0;
-
 window.riskSettings.consecutiveLosses=0;
-
 window.riskSettings.locked=false;
-
 saveRiskSettings();
-
 showMessage("safetyMessage","Daily safety counters reset.");
-
 }
 
-/* SIGNAL REVIEW AND APPROVAL */
-
-function approveSignal(symbol){
-handleSignalReview("approve",symbol);
-}
-
-/* LOCAL TRADE RECORDING */
+/* TRADE HISTORY */
 
 function getHistory(){
-
-try{
-
-return JSON.parse(localStorage.getItem("mktradehome_history")||"[]");
-
-}catch(e){
-
-return [];
-
-}
-
+try{return JSON.parse(localStorage.getItem("mktradehome_history")||"[]");}
+catch(e){return [];}
 }
 
 function renderHistory(){
-
 const history=getHistory();
-
 const container=$("tradeHistory");
-
-if(!container)return;
-
-if(history.length===0){
-
+if(!history.length){
 container.innerHTML="<p>No trades recorded yet.</p>";
-
 return;
-
 }
-
 container.innerHTML=history.slice(0,30).map(item=>`
-
 <div class="trade-item">
-
-<strong>${item.symbol} ${item.direction}</strong>
-
-<div class="row"><span>Result</span><strong>${item.result}</strong></div>
-
+<strong>${escapeHTML(item.symbol)} ${escapeHTML(item.direction)}</strong>
+<div class="row"><span>Result</span><strong>${escapeHTML(item.result)}</strong></div>
 <div class="row"><span>Profit / Loss</span><strong>GH₵ ${money(item.pnl)}</strong></div>
-
-<div class="muted">${new Date(item.time).toLocaleString()}</div>
-
-</div>
-
-`).join("");
-
+<div class="small">${new Date(item.time).toLocaleString()}</div>
+</div>`).join("");
 }
 
 function recordTrade(){
-
-const symbol=$("recordSymbol")?.value;
-
-const direction=$("recordDirection")?.value;
-
-const result=$("recordResult")?.value;
-
-const pnl=Number($("recordPnl")?.value);
-
+const symbol=$("recordSymbol").value;
+const direction=$("recordDirection").value;
+const result=$("recordResult").value;
+const pnl=Number($("recordPnl").value);
 if(!symbol||!direction||!result||!Number.isFinite(pnl)){
-
 showMessage("recordMessage","Complete all trade record fields.");
-
 return;
-
 }
-
 const history=getHistory();
-
-history.unshift({
-
-symbol,
-
-direction,
-
-result,
-
-pnl,
-
-time:new Date().toISOString()
-
-});
-
+history.unshift({symbol,direction,result,pnl,time:new Date().toISOString()});
 localStorage.setItem("mktradehome_history",JSON.stringify(history));
-
 const r=window.riskSettings;
-
 r.tradeCount++;
-
 if(result==="Loss"){
-
 r.dailyLoss+=Math.abs(pnl);
-
 r.consecutiveLosses++;
-
 }else if(result==="Win"){
-
 r.consecutiveLosses=0;
-
 }
-
 saveRiskSettings();
-
 renderHistory();
-
+$("recordPnl").value="";
 showMessage("recordMessage","Trade result recorded on this device.");
-
 }
 
 /* MAIN REFRESH */
 
 async function refreshAll(){
-
 if(refreshing)return;
-
 refreshing=true;
-
+showMessage("systemStatus","Refreshing market prices and analysis...");
 try{
-
-showMessage("lastUpdate","Refreshing market prices and analysis...");
-
 await fetchQuotes();
-
 for(const m of marketList){
-
 try{
-
 analyses[m.symbol]=await analyzeMarket(m);
-
 }catch(e){
-
 console.error("Analysis failed for "+m.symbol,e);
-
 analyses[m.symbol]={
-
-overall:"WAIT",
-
-reason:"Market data unavailable. Try refreshing.",
-
+overall:"WAIT",entry:null,sl:null,tp1:null,tp2:null,
+quoteFresh:false,reason:"Market data unavailable. Try refreshing.",
 results:{
-
-"4H":{signal:"WAIT"},
-
-"1H":{signal:"WAIT"},
-
-"15M":{signal:"WAIT"},
-
-"5M":{signal:"WAIT"}
-
+"4H":{signal:"WAIT"},"1H":{signal:"WAIT"},
+"15M":{signal:"WAIT"},"5M":{signal:"WAIT"}
 }
-
 };
-
 }
-
 }
-
 renderMarkets();
-
 renderAnalysis();
-
 renderApprovalCentre();
-
-showMessage(
-
-"lastUpdate",
-
-"Analysis refreshed: "+new Date().toLocaleString()
-
-);
+showMessage("systemStatus","Market analysis updated. Signals are for manual review.");
+showMessage("lastUpdate",new Date().toLocaleString());
 
 for(const m of marketList){
-
 const a=analyses[m.symbol];
-
 const old=previousSignals[m.symbol];
-
 if(a?.overall&&a.overall!=="WAIT"&&a.overall!==old){
-
-sendTelegramAlert(
-
-"Mktradehome new "+a.overall+" signal: "+m.name+
-
+sendTelegramAlert("Mktradehome new "+a.overall+" signal: "+m.name+
 "\nEntry: "+formatPrice(a.entry)+
-
 "\nStop Loss: "+formatPrice(a.sl)+
-
 "\nTP1: "+formatPrice(a.tp1)+
-
 "\nTP2: "+formatPrice(a.tp2)+
-
-"\nPlease review manually. No trade has been placed."
-
-);
-
+"\nPlease review manually. No trade has been placed.");
 }
-
 previousSignals[m.symbol]=a?.overall||"WAIT";
-
 }
-
 }catch(e){
-
 console.error("Refresh error:",e);
-
-showMessage("lastUpdate","Market refresh failed. Please try again.");
-
-}finally{
-
-refreshing=false;
-
+showMessage("systemStatus","Market refresh failed: "+(e.message||"Please try again."));
+showMessage("lastUpdate","Refresh failed.");
+}finally{refreshing=false;}
 }
 
-}
-
-/* BUTTONS AND EVENTS */
+/* BUTTONS */
 
 $("loginBtn").addEventListener("click",login);
-
 $("signupBtn").addEventListener("click",signup);
-
 $("resetBtn").addEventListener("click",resetPassword);
-
 $("logoutBtn").addEventListener("click",logout);
-
 $("exnessBtn").addEventListener("click",refreshExness);
-
 $("exnessTradesBtn").addEventListener("click",refreshExnessTrades);
-
 $("telegramBtn").addEventListener("click",connectTelegram);
+$("refreshBtn").addEventListener("click",refreshAll);
+$("saveSafetyBtn").addEventListener("click",saveSafetySettings);
+$("resetRiskBtn").addEventListener("click",resetDailyRisk);
+$("recordTradeBtn").addEventListener("click",recordTrade);
 
-$("refreshBtn")?.addEventListener("click",refreshAll);
-
-$("refreshAnalysisBtn")?.addEventListener("click",refreshAll);
-
-$("saveSafetyBtn")?.addEventListener("click",saveSafetySettings);
-
-$("resetRiskBtn")?.addEventListener("click",resetDailyRisk);
-
-$("approvalTrades")?.addEventListener("click",event=>{
-const button=event.target.closest("[data-approval-action]");
+$("approvalTrades").addEventListener("click",event=>{
+const button=event.target.closest("[data-action]");
 if(!button)return;
-handleSignalReview(button.dataset.approvalAction,button.dataset.symbol);
+handleSignalReview(button.dataset.action,button.dataset.symbol);
 });
-
-$("recordTradeBtn")?.addEventListener("click",recordTrade);
 
 /* AUTH SESSION */
 
 async function checkSession(){
-
 try{
-
 const {data,error}=await supabaseClient.auth.getSession();
-
 if(error)throw error;
-
 if(data.session){
-
 openDashboard();
-
 }else{
-
 $("loginPanel").classList.remove("hidden");
-
 $("dashboard").classList.add("hidden");
-
 $("logoutBtn").classList.add("hidden");
-
 }
-
 }catch(e){
-
 console.error("Session check failed:",e);
-
 showMessage("loginMessage","Unable to check login session. Refresh the page.");
-
+}
 }
 
-}
-
-supabaseClient.auth.onAuthStateChange((event,session)=>{
-
+supabaseClient.auth.onAuthStateChange((event)=>{
 if(event==="SIGNED_OUT"){
-
 if(refreshTimer)clearInterval(refreshTimer);
-
 location.reload();
-
 }
-
 });
 
 checkSession();
@@ -1746,19 +944,11 @@ checkSession();
 /* SERVICE WORKER */
 
 if("serviceWorker" in navigator){
-
 window.addEventListener("load",()=>{
-
 navigator.serviceWorker.register("/service-worker.js")
-
 .catch(error=>console.log("Service worker:",error));
-
 });
-
 }
-
 </script>
-
 </body>
-
 </html>

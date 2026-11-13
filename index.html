@@ -182,7 +182,8 @@ const marketList=[
 
 let quotes={};
 let analyses={};
-let refreshTimer=null;
+let marketRefreshTimer=null;
+let accountRefreshTimer=null;
 let previousSignals={};
 let refreshing=false;
 
@@ -305,12 +306,14 @@ renderHistory();
 refreshAll();
 refreshSelectedAccount();
 
-if(refreshTimer)clearInterval(refreshTimer);
+if(marketRefreshTimer)clearInterval(marketRefreshTimer);
+if(accountRefreshTimer)clearInterval(accountRefreshTimer);
 
-refreshTimer=setInterval(()=>{
-refreshAll();
-refreshSelectedAccount();
-},60000);
+/* Market candles include a 5-minute timeframe, so avoid a full GPT run every minute. */
+marketRefreshTimer=setInterval(refreshAll,300000);
+
+/* Account snapshots remain on a separate one-minute refresh. */
+accountRefreshTimer=setInterval(refreshSelectedAccount,60000);
 }
 
 /* UNIFIED DEMO / REAL MT5 ACCOUNT MONITOR */
@@ -1156,22 +1159,14 @@ showMessage("loginMessage","Unable to check login session. Refresh the page.");
 
 supabaseClient.auth.onAuthStateChange((event)=>{
 if(event==="SIGNED_OUT"){
-if(refreshTimer)clearInterval(refreshTimer);
+if(marketRefreshTimer)clearInterval(marketRefreshTimer);
+if(accountRefreshTimer)clearInterval(accountRefreshTimer);
 location.reload();
 }
 });
 
 checkSession();
 
-/* SERVICE WORKER */
-
-if("serviceWorker" in navigator){
-window.addEventListener("load",()=>{
-navigator.serviceWorker.register("/service-worker.js")
-.catch(error=>console.log("Service worker:",error));
-});
-}
 </script>
 </body>
 </html>
-```

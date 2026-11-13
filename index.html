@@ -9,14 +9,14 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:Arial,sans-serif;background:#05080f;color:#f4f8ff;padding:16px}
+body{font-family:Arial,sans-serif;background-color:#05080f;background-image:linear-gradient(rgba(3,8,18,.56),rgba(3,8,18,.64)),url("https://images.unsplash.com/photo-1695453463057-aa5d48d9e3d4?auto=format&fit=crop&fm=jpg&ixlib=rb-4.1.0&q=85&w=2400");background-size:cover;background-position:center bottom;background-attachment:fixed;background-repeat:no-repeat;color:#f4f8ff;padding:16px}
 .container{max-width:900px;margin:auto}
 header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
 h1{font-size:23px;color:#60a5fa}
 h2{font-size:18px;margin-bottom:12px}
 h3{font-size:15px;margin:12px 0 8px}
 p{color:#a9bdd8;font-size:13px;line-height:1.5}
-.card{background:#0b1422;border:1px solid #1d3554;border-radius:13px;padding:16px;margin-bottom:14px}
+.card{background:rgba(5,13,27,.84);backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);border:1px solid #1d5b91;border-radius:13px;padding:16px;margin-bottom:14px}
 input,button,select{width:100%;padding:13px;border-radius:8px;border:1px solid #29476d;background:#050b15;color:white;font-size:15px;margin-top:9px}
 button{background:#2563eb;color:white;font-weight:bold;border:0;cursor:pointer}
 button.secondary{background:#17365f;color:white}
@@ -25,7 +25,7 @@ button:disabled{opacity:.6;cursor:not-allowed}
 .hidden{display:none!important}
 .status{padding:10px;border-radius:8px;background:#101f33;margin:10px 0;font-size:13px;overflow-wrap:anywhere}
 .market{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.marketbox{background:#26364b;padding:13px;border-radius:10px}
+.marketbox{background:rgba(8,26,48,.86);padding:13px;border-radius:10px}
 .price{font-size:21px;font-weight:bold;margin:8px 0}
 .signal{font-size:19px;font-weight:bold;margin:8px 0}
 .buy{color:#42d392}.sell{color:#ff7373}.wait{color:#60a5fa}
@@ -36,8 +36,8 @@ label{display:block;font-size:13px;color:#c7d8ee;margin-top:10px}
 .approve-button{background:#1677d2;color:white}
 .reject-button{background:#9f303b;color:white}
 #approvalStatus{text-align:center;color:#60a5fa;margin-top:14px;font-size:13px}
-.trade-item{background:#26364b;padding:12px;border-radius:9px;margin:8px 0;font-size:13px}
-.approval-trade{background:#26364b;border:1px solid #40516a;padding:13px;border-radius:10px;margin:10px 0}
+.trade-item{background:rgba(8,26,48,.86);padding:12px;border-radius:9px;margin:8px 0;font-size:13px}
+.approval-trade{background:rgba(8,26,48,.9);border:1px solid #24528a;padding:13px;border-radius:10px;margin:10px 0}
 .approval-trade h3{font-size:16px;margin-bottom:8px}
 .approval-trade .trade-status{font-size:12px;color:#60a5fa;margin:7px 0}
 .approval-trade button{width:100%;margin-top:8px}

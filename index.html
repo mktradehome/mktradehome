@@ -6,54 +6,7 @@
 <meta name="theme-color" content="#101827">
 <link rel="manifest" href="/manifest.json">
 <title>Mktradehome | Trading Assistant</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
-/* AI Support chat */
-(()=>{
-const fab=document.getElementById("mkSupportFab");
-const panel=document.getElementById("mkSupportPanel");
-const close=document.getElementById("mkSupportClose");
-const form=document.getElementById("mkSupportForm");
-const input=document.getElementById("mkSupportInput");
-const send=document.getElementById("mkSupportSend");
-const messagesBox=document.getElementById("mkSupportMessages");
-if(!fab||!panel||!form)return;
-let history=[];
-function addMessage(role,text){
-const item=document.createElement("div");
-item.className="mkSupportMsg "+(role==="user"?"user":"bot");
-item.textContent=text;
-messagesBox.appendChild(item);
-messagesBox.scrollTop=messagesBox.scrollHeight;
-}
-fab.addEventListener("click",()=>{panel.classList.add("open");input.focus();});
-close.addEventListener("click",()=>panel.classList.remove("open"));
-form.addEventListener("submit",async(event)=>{
-event.preventDefault();
-const message=input.value.trim();
-if(!message||send.disabled)return;
-input.value="";
-addMessage("user",message);
-history.push({role:"user",content:message});
-history=history.slice(-16);
-send.disabled=true;send.textContent="...";
-try{
-const {data,error}=await supabaseClient.functions.invoke("mktradehome-support",{body:{messages:history}});
-if(error)throw error;
-if(!data||!data.reply)throw new Error(data?.error||"No reply received.");
-history.push({role:"assistant",content:data.reply});
-history=history.slice(-16);
-addMessage("assistant",data.reply);
-}catch(error){
-console.error("Mktradehome AI Support:",error);
-history.pop();
-addMessage("assistant","Sorry, I couldn't connect just now. Please check that you're signed in, then try again.");
-}finally{
-send.disabled=false;send.textContent="Send";input.focus();
-}
-});
-})();
-
-</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:Arial,sans-serif;background-color:#05080f;background-image:linear-gradient(rgba(3,8,18,.32),rgba(3,8,18,.40)),url("https://images.unsplash.com/photo-1695453463057-aa5d48d9e3d4?auto=format&fit=crop&fm=jpg&ixlib=rb-4.1.0&q=85&w=2400");background-size:cover;background-position:center bottom;background-attachment:fixed;background-repeat:no-repeat;color:#f4f8ff;padding:16px}
@@ -99,7 +52,7 @@ label{display:block;font-size:13px;color:#c7d8ee;margin-top:10px}
 
 /* Mktradehome AI Support chat */
 #mkSupportFab{position:fixed;right:22px;bottom:22px;z-index:9998;border:0;border-radius:999px;padding:14px 19px;background:linear-gradient(135deg,#f5c542,#d99b16);color:#171717;font-weight:800;box-shadow:0 8px 28px #0008;cursor:pointer}
-#mkSupportPanel{position:fixed;right:22px;bottom:84px;width:min(370px,calc(100vw - 28px));height:min(540px,calc(100vh - 120px));z-index:9999;background:#10151e;border:1px solid #3a4658;border-radius:18px;box-shadow:0 18px 60px #000b;display:none;overflow:hidden;color:#f5f6f8}
+#mkSupportPanel{position:fixed;right:18px;bottom:70px;width:min(310px,calc(100vw - 32px));height:min(390px,calc(100vh - 110px));z-index:9999;background:#10151e;border:1px solid #3a4658;border-radius:18px;box-shadow:0 18px 60px #000b;display:none;overflow:hidden;color:#f5f6f8}
 #mkSupportPanel.open{display:flex;flex-direction:column}
 #mkSupportHead{display:flex;align-items:center;justify-content:space-between;padding:14px 15px;background:#171f2b;border-bottom:1px solid #303b4c}
 #mkSupportHead strong{color:#f5c542}
@@ -112,7 +65,7 @@ label{display:block;font-size:13px;color:#c7d8ee;margin-top:10px}
 #mkSupportInput{min-width:0;flex:1;background:#0c1119;color:#fff;border:1px solid #465368;border-radius:12px;padding:11px;font:inherit}
 #mkSupportSend{border:0;border-radius:12px;padding:0 15px;background:#e6b637;color:#171717;font-weight:800;cursor:pointer}
 #mkSupportSend:disabled{opacity:.5;cursor:wait}
-@media(max-width:520px){#mkSupportFab{right:14px;bottom:14px}#mkSupportPanel{right:10px;bottom:76px;width:calc(100vw - 20px);height:min(570px,calc(100vh - 100px))}}
+@media(max-width:520px){#mkSupportFab{right:12px;bottom:12px;padding:10px 13px;font-size:12px}#mkSupportPanel{right:12px;bottom:58px;width:min(300px,calc(100vw - 24px));height:min(360px,calc(100vh - 80px))}}
 
 </style>
 </head>
@@ -1240,6 +1193,54 @@ checkSession();
   <div id="mkSupportMessages"><div class="mkSupportMsg bot">Hi! I'm your Mktradehome support assistant. Ask me about your dashboard, Demo/Real account display, MT5 connection or market analysis.</div></div>
   <form id="mkSupportForm"><input id="mkSupportInput" type="text" maxlength="2500" autocomplete="off" placeholder="Type your question..." aria-label="Your message"><button id="mkSupportSend" type="submit">Send</button></form>
 </section>
+
+<script>
+/* Mktradehome AI Support - load after Supabase client and chat elements */
+(()=>{
+const fab=document.getElementById("mkSupportFab");
+const panel=document.getElementById("mkSupportPanel");
+const close=document.getElementById("mkSupportClose");
+const form=document.getElementById("mkSupportForm");
+const input=document.getElementById("mkSupportInput");
+const send=document.getElementById("mkSupportSend");
+const messagesBox=document.getElementById("mkSupportMessages");
+if(!fab||!panel||!form||!window.supabase)return;
+let history=[];
+function addMessage(role,text){
+ const item=document.createElement("div");
+ item.className="mkSupportMsg "+(role==="user"?"user":"bot");
+ item.textContent=text;
+ messagesBox.appendChild(item);
+ messagesBox.scrollTop=messagesBox.scrollHeight;
+}
+fab.addEventListener("click",()=>{panel.classList.add("open");input.focus();});
+close.addEventListener("click",()=>panel.classList.remove("open"));
+form.addEventListener("submit",async(event)=>{
+ event.preventDefault();
+ const message=input.value.trim();
+ if(!message||send.disabled)return;
+ input.value="";
+ addMessage("user",message);
+ history.push({role:"user",content:message});
+ history=history.slice(-16);
+ send.disabled=true;send.textContent="...";
+ try{
+  const {data,error}=await supabaseClient.functions.invoke("mktradehome-support",{body:{messages:history}});
+  if(error)throw error;
+  if(!data||!data.reply)throw new Error(data?.error||"No reply received.");
+  history.push({role:"assistant",content:data.reply});
+  history=history.slice(-16);
+  addMessage("assistant",data.reply);
+ }catch(error){
+  console.error("Mktradehome AI Support:",error);
+  history.pop();
+  addMessage("assistant","I couldn't connect: "+(error?.message||"Please try again. If it continues, sign out and sign in again."));
+ }finally{
+  send.disabled=false;send.textContent="Send";input.focus();
+ }
+});
+})();
+</script>
 
 </body>
 </html>

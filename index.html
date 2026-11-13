@@ -484,8 +484,6 @@ reason:signal==="BUY"?"Bullish trend":signal==="SELL"?"Bearish trend":"Mixed mar
 
 async function analyzeMarket(market){
 const intervals=["4h","1h","15m","5m"];
-
-/* Fetch all four timeframes together. */
 const candleSets=await Promise.all(
 intervals.map(interval=>fetchCandles(market.symbol,interval))
 );
@@ -497,53 +495,71 @@ results[interval.toUpperCase()]=analyzeTimeframe(candleSets[index]);
 
 const q=quotes[market.symbol];
 const fresh=isQuoteFresh(q);
-const trend=results["1H"].signal;
-const confirm=results["15M"].signal;
-const entryTiming=results["5M"].signal;
-const higher=results["4H"].signal;
-
-let overall="WAIT";
-
-if(fresh&&higher===trend&&trend===confirm&&confirm===entryTiming&&["BUY","SELL"].includes(trend)){
-overall=trend;
-}
-
 const current=Number(q?.price||results["5M"].price||results["1H"].price);
-const atr=Number(results["5M"].atr||results["15M"].atr||results["1H"].atr);
 
-let entry=current,sl=null,tp1=null,tp2=null;
+let aiResult;
 
-if(overall!=="WAIT"&&Number.isFinite(current)&&atr>0){
-const direction=overall==="BUY"?1:-1;
-const riskDistance=atr*1.5;
+try{
+const {data,error}=await supabaseClient.functions.invoke(
+"gpt-market-analysis",
+{
+body:{
+symbol:market.symbol,
+quote:q,
+timeframes:results
+}
+}
+);
 
-entry=current;
-sl=entry-direction*riskDistance;
-tp1=entry+direction*riskDistance*2;
-tp2=entry+direction*riskDistance*3;
+if(error)throw error;
+if(!data||data.success!==true||!data.analysis) {
+throw new Error(data?.error||"GPT analysis returned no result.");
+}
+aiResult=data.analysis;
+}catch(error){
+console.error("GPT analysis failed for "+market.symbol,error);
+aiResult={
+signal:"WAIT",
+entry:null,
+stop_loss:null,
+take_profit_1:null,
+take_profit_2:null,
+confidence:0,
+explanation:"GPT analysis is unavailable. No trade setup should be used until the AI check succeeds.",
+risk_note:"Refresh later. Do not use the previous local signal as a trade instruction."
+};
 }
 
-let reason="Timeframes do not fully agree. Wait for confirmation.";
+const overall=fresh?aiResult.signal:"WAIT";
+const entry=overall==="WAIT"?null:Number(aiResult.entry);
+const sl=overall==="WAIT"?null:Number(aiResult.stop_loss);
+const tp1=overall==="WAIT"?null:Number(aiResult.take_profit_1);
+const tp2=overall==="WAIT"?null:Number(aiResult.take_profit_2);
+
+let reason=aiResult.explanation||"GPT analysis completed.";
 
 if(!fresh){
-reason="Quote is stale, unavailable, or market is not confirmed open.";
-}else if(overall!=="WAIT"&&atr>0){
-reason="4H, 1H, 15M and 5M signals agree. Confirm price and risk before any trade.";
-}else if(overall!=="WAIT"){
-overall="WAIT";
-reason="ATR data is insufficient to calculate trade levels.";
+reason="Quote is stale, unavailable, or market is not confirmed open. GPT signal blocked.";
+}else if(overall==="WAIT"&&!aiResult.explanation){
+reason="GPT recommends waiting for confirmation.";
 }
 
 return {
 symbol:market.symbol,
-overall,entry,sl,tp1,tp2,
+overall,
+entry:Number.isFinite(entry)?entry:null,
+sl:Number.isFinite(sl)?sl:null,
+tp1:Number.isFinite(tp1)?tp1:null,
+tp2:Number.isFinite(tp2)?tp2:null,
 quoteFresh:fresh,
 reason,
 results,
+aiModel:"GPT-6 Luna",
+aiConfidence:Number(aiResult.confidence)||0,
+aiRiskNote:aiResult.risk_note||"AI analysis is not a guarantee.",
 updatedAt:Date.now()
 };
 }
-
 /* DISPLAY MARKETS */
 
 function renderMarkets(){
@@ -583,6 +599,8 @@ return `<div class="trade-item">
 <strong>${escapeHTML(m.name)}</strong>
 <div class="signal ${cls}">${a.overall}</div>
 <div class="small">${escapeHTML(a.reason)}</div>
+<div class="small">AI engine: ${escapeHTML(a.aiModel||"GPT")} · Confidence: ${Number(a.aiConfidence)||0}/100</div>
+<div class="small">${escapeHTML(a.aiRiskNote||"AI analysis is not a guarantee.")}</div>
 <div class="row"><span>Entry reference</span><strong>${formatPrice(a.entry)}</strong></div>
 <div class="row"><span>Stop Loss</span><strong>${formatPrice(a.sl)}</strong></div>
 <div class="row"><span>Take Profit 1 (1:2)</span><strong>${formatPrice(a.tp1)}</strong></div>

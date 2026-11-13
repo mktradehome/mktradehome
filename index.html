@@ -28,7 +28,7 @@ button:disabled{opacity:.6;cursor:not-allowed}
 .marketbox{background:#26364b;padding:13px;border-radius:10px}
 .price{font-size:21px;font-weight:bold;margin:8px 0}
 .signal{font-size:19px;font-weight:bold;margin:8px 0}
-.buy{color:#42d392}.sell{color:#ff7373}.wait{color:#f5c542}
+.buy{color:#42d392}.sell{color:#ff7373}.wait{color:#60a5fa}
 .row{display:flex;justify-content:space-between;gap:10px;margin:8px 0;font-size:13px}
 .row strong{text-align:right;overflow-wrap:anywhere}
 hr{border:0;border-top:1px solid #1d3554;margin:12px 0}
@@ -74,6 +74,9 @@ label{display:block;font-size:13px;color:#c7d8ee;margin-top:10px}
 
 <div id="dashboard" class="hidden">
 
+<div class="page-nav"><button type="button" class="active" data-page="tradingPage">1 · Trading</button><button type="button" data-page="recordsPage">2 · Records</button></div>
+<div class="pages-track" id="pagesTrack">
+<section class="page" id="tradingPage">
 <div class="card">
 <h2>Trading Dashboard</h2>
 <p>Live market monitoring and analysis</p>
@@ -127,8 +130,10 @@ label{display:block;font-size:13px;color:#c7d8ee;margin-top:10px}
 <p>Execution remains protected by the two independent switches and the EA's price-deviation check. Do not enable execution until server-side live-price validation is completed.</p>
 </div>
 
+</section>
+<section class="page" id="recordsPage">
 <div class="card">
-<h2>Trading Safety</h2>
+<h2>Trading Safety &amp; Records</h2>
 <div id="safetyStatus" class="status">Risk monitoring active.</div>
 <div class="row"><span>Today's recorded loss</span><strong id="dailyLossDisplay">GH₵ 0.00</strong></div>
 <div class="row"><span>Trades recorded today</span><strong id="tradeCountDisplay">0</strong></div>
@@ -167,6 +172,8 @@ label{display:block;font-size:13px;color:#c7d8ee;margin-top:10px}
 <p>Mktradehome provides analysis, not guaranteed trading results. Confirm prices and manage risk before any trade. The local safety counters are for tracking and are not enforced by the MT5 EA. Keep server-side execution disabled until the final Demo safety checks are complete.</p>
 </div>
 
+</div>
+</section>
 </div>
 </div>
 

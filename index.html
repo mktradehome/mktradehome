@@ -1,4 +1,4 @@
-
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -803,7 +803,21 @@ take_profit:a.tp1
 }
 );
 
-if(error)throw error;
+/* Read the actual JSON error returned by the Supabase Edge Function. */
+if(error){
+let message=error.message||"Approval request failed.";
+
+try{
+if(error.context&&typeof error.context.clone==="function"){
+const details=await error.context.clone().json();
+message=details?.error||details?.message||message;
+}
+}catch(readError){
+console.error("Could not read approval error details:",readError);
+}
+
+throw new Error(message);
+}
 
 if(!data||data.success!==true){
 throw new Error(data?.error||"Approval was not saved.");
@@ -1144,3 +1158,4 @@ navigator.serviceWorker.register("/service-worker.js")
 </script>
 </body>
 </html>
+```

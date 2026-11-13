@@ -140,7 +140,12 @@ label{display:block;font-size:13px;color:#c7d8ee;margin-top:10px}
 
 <div class="card" id="approvalCentre">
 <h2>Trade Approval Centre</h2>
-<p>Review each confirmed setup. Approval sends it to your secure Supabase MT5 queue. The EA can act on an approved setup only when both the server and terminal execution switches are enabled.</p>
+<p>Choose which MT5 account should receive the exact setup. Every approval is tied to that account and still requires the separate server and MT5 safety switches.</p>
+<label for="tradeAccountTarget">Send approved setup to</label>
+<select id="tradeAccountTarget">
+<option value="demo">Exness Demo · Trial10</option>
+<option value="real">Exness Real · Real30 (LIVE ACCOUNT)</option>
+</select>
 <div id="approvalTrades"><p>Waiting for market analysis...</p></div>
 <div id="approvalStatus">Each approval applies only to its exact price setup.</div>
 <hr>
@@ -745,7 +750,8 @@ return values.map(v=>Number(v).toPrecision(10)).join("|");
 }
 
 function reviewKey(symbol,a){
-return symbol+"|"+a.overall+"|"+signalFingerprint(a);
+const target=$("tradeAccountTarget")?.value||"demo";
+return target+"|"+symbol+"|"+a.overall+"|"+signalFingerprint(a);
 }
 
 function getSignalReviews(){
@@ -843,9 +849,12 @@ showMessage("approvalStatus","Invalid trade prices. Approval blocked.");
 return;
 }
 
+const target=$("tradeAccountTarget")?.value||"demo";
+const isReal=target==="real";
+const targetAccount=isReal?"224224761 · Exness-MT5Real30":MT5_ACCOUNT+" · "+MT5_SERVER;
 const approvalSummary =
-"CONFIRM EXNESS DEMO TRADE APPROVAL\\n\\n"+
-"Account: "+MT5_ACCOUNT+" · "+MT5_SERVER+"\\n"+
+"CONFIRM EXNESS "+(isReal?"REAL":"DEMO")+" TRADE APPROVAL\n\n"+
+"Account: "+targetAccount+"\n"+
 "Market: "+market.name+"\\n"+
 "Direction: "+a.overall+"\\n"+
 "Entry: "+formatPrice(a.entry)+"\\n"+
@@ -869,7 +878,7 @@ showMessage("approvalStatus","Sending approval securely to Supabase...");
 
 try{
 const {data,error}=await supabaseClient.functions.invoke(
-"create-mt5-approval",
+isReal?"create-mt5-real-approval":"create-mt5-approval",
 {
 body:{
 symbol:symbol,
@@ -914,11 +923,11 @@ createdAt:Date.now()
 
 showMessage(
 "approvalStatus",
-market.name+" setup saved in the secure Supabase queue. The EA's two execution switches still control whether it can act."
+market.name+" setup saved for the "+(isReal?"REAL":"DEMO")+" account. No order is placed unless the matching MT5 terminal and server execution gates are enabled."
 );
 
 await sendTelegramAlert(
-"Mktradehome setup approved:\n"+market.name+" "+a.overall+
+"Mktradehome "+(isReal?"REAL":"DEMO")+" setup approved:\n"+market.name+" "+a.overall+
 "\nEntry: "+formatPrice(a.entry)+
 "\nSL: "+formatPrice(a.sl)+
 "\nTP1: "+formatPrice(a.tp1)+
@@ -1052,11 +1061,14 @@ const container=$("tradeHistory");
 container.innerHTML="<p>Loading closed Demo trades from MT5...</p>";
 
 try{
+const target=$("tradeAccountTarget")?.value||"demo";
+const accountNumber=target==="real"?"224224761":MT5_ACCOUNT;
+const accountServer=target==="real"?"Exness-MT5Real30":MT5_SERVER;
 const {data,error}=await supabaseClient
 .from("trades")
 .select("symbol,direction,entry_price,exit_price,stop_loss,take_profit,lot_size,status,profit_loss,currency,opened_at,closed_at,mt5_position_id")
-.eq("account_number",MT5_ACCOUNT)
-.eq("account_server",MT5_SERVER)
+.eq("account_number",accountNumber)
+.eq("account_server",accountServer)
 .eq("status","CLOSED")
 .order("closed_at",{ascending:false})
 .limit(50);
@@ -1208,6 +1220,7 @@ $("logoutBtn").addEventListener("click",logout);
 $("exnessTradesBtn").addEventListener("click",refreshExnessTrades);
 $("realAccountBtn").addEventListener("click",refreshRealAccount);
 $("telegramBtn").addEventListener("click",connectTelegram);
+$("tradeAccountTarget").addEventListener("change",()=>{renderApprovalCentre();renderHistory();});
 $("refreshBtn").addEventListener("click",refreshAll);
 $("saveSafetyBtn").addEventListener("click",saveSafetySettings);
 $("resetRiskBtn").addEventListener("click",resetDailyRisk);

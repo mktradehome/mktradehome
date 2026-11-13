@@ -90,42 +90,8 @@ label{display:block;font-size:13px;color:#c7d8ee;margin-top:10px}
 <div id="telegramStatus" class="status">Telegram is not connected yet.</div>
 </div>
 
-<div class="card">
-<h2>Exness Demo Account Monitor</h2>
-<p>Account information saved by your MT5 bridge.</p>
-<button id="exnessTradesBtn" class="secondary">Refresh Demo Account Data</button>
-<div id="exnessTradesStatus" class="status">Waiting for Demo account data...</div>
-<div id="exnessTradingData" class="hidden">
-<hr>
-<div class="row"><span>Demo balance</span><strong id="exBalance">--</strong></div>
-<div class="row"><span>Demo equity</span><strong id="exEquity">--</strong></div>
-<div class="row"><span>Used margin</span><strong id="exMargin">--</strong></div>
-<div class="row"><span>Free margin</span><strong id="exFreeMargin">--</strong></div>
-<div class="row"><span>Currency</span><strong id="exTradeCurrency">--</strong></div>
-<div class="row"><span>Leverage</span><strong id="exTradeLeverage">--</strong></div>
-<div class="row"><span>Open position count</span><strong id="exPositionCount">--</strong></div>
-<div class="row"><span>Account server</span><strong id="exServer">--</strong></div>
-<div class="small" id="exnessDataUpdated"></div>
-</div>
-<p class="small">The bridge snapshot supplies account totals and an open-position count. It does not supply individual position or pending-order details.</p>
-</div>
-
-<div class="card">
-<h2>Exness Real Account Monitor</h2>
-<p>Read-only connection using your existing Exness API. It cannot place, modify, or close trades.</p>
-<button id="realAccountBtn" class="secondary">Connect / Refresh Real Account</button>
-<div id="realAccountStatus" class="status">Real account is not connected yet.</div>
-<div id="realAccountData" class="hidden">
-<hr>
-<div class="row"><span>Real balance</span><strong id="realBalance">--</strong></div>
-<div class="row"><span>Real equity</span><strong id="realEquity">--</strong></div>
-<div class="row"><span>Used margin</span><strong id="realMargin">--</strong></div>
-<div class="row"><span>Free margin</span><strong id="realFreeMargin">--</strong></div>
-<div class="row"><span>Open positions</span><strong id="realPositions">--</strong></div>
-<div class="row"><span>Account server</span><strong id="realServer">Exness-MT5Real30</strong></div>
-<div class="small" id="realUpdated"></div>
-</div>
-</div>
+<div class="card" id="accountSelectorCard"><h2>Trading Account</h2><p>Switch the whole dashboard between Demo and Real MT5 accounts.</p><label for="accountSelector">Selected account</label><select id="accountSelector"><option value="demo">Exness Demo · Trial10</option><option value="real">Exness Real · Real30 (LIVE ACCOUNT)</option></select><div class="small">This changes displayed account information and approval destination only. It does not enable trading.</div></div>
+<div class="card" id="accountMonitor"><h2 id="accountMonitorTitle">Exness Demo Account Monitor</h2><p>Live account information received from the selected MT5 bridge.</p><button id="accountRefreshBtn" class="secondary">Refresh Demo Account Data</button><div id="accountStatus" class="status">Waiting for selected MT5 account data...</div><div id="accountData" class="hidden"><hr><div class="row"><span>Balance</span><strong id="accountBalance">--</strong></div><div class="row"><span>Equity</span><strong id="accountEquity">--</strong></div><div class="row"><span>Used margin</span><strong id="accountMargin">--</strong></div><div class="row"><span>Free margin</span><strong id="accountFreeMargin">--</strong></div><div class="row"><span>Currency</span><strong id="accountCurrency">--</strong></div><div class="row"><span>Leverage</span><strong id="accountLeverage">--</strong></div><div class="row"><span>Open position count</span><strong id="accountPositions">--</strong></div><div class="row"><span>Account server</span><strong id="accountServer">--</strong></div><div class="small" id="accountUpdated"></div></div><p class="small">Account details follow the selector. This snapshot gives account totals and an open-position count, not individual position details.</p></div>
 
 <div class="card">
 <h2>Markets</h2>
@@ -141,11 +107,7 @@ label{display:block;font-size:13px;color:#c7d8ee;margin-top:10px}
 <div class="card" id="approvalCentre">
 <h2>Trade Approval Centre</h2>
 <p>Choose which MT5 account should receive the exact setup. Every approval is tied to that account and still requires the separate server and MT5 safety switches.</p>
-<label for="tradeAccountTarget">Send approved setup to</label>
-<select id="tradeAccountTarget">
-<option value="demo">Exness Demo · Trial10</option>
-<option value="real">Exness Real · Real30 (LIVE ACCOUNT)</option>
-</select>
+<p>Approvals are sent to the account selected above.</p>
 <div id="approvalTrades"><p>Waiting for market analysis...</p></div>
 <div id="approvalStatus">Each approval applies only to its exact price setup.</div>
 <hr>
@@ -338,130 +300,30 @@ $("dashboard").classList.remove("hidden");
 $("logoutBtn").classList.remove("hidden");
 
 loadRiskSettings();
+updateAccountLabels();
 renderHistory();
 refreshAll();
-refreshExnessTrades();
+refreshSelectedAccount();
 
 if(refreshTimer)clearInterval(refreshTimer);
 
 refreshTimer=setInterval(()=>{
 refreshAll();
-refreshExnessTrades();
+refreshSelectedAccount();
 },60000);
 }
 
-/* SECURE MT5 DASHBOARD SNAPSHOT */
-
-async function refreshExnessTrades(){
-const btn=$("exnessTradesBtn");
-btn.disabled=true;
-showMessage("exnessTradesStatus","Retrieving saved Demo account snapshot...");
-
-try{
-const {data:sessionData,error:sessionError}=await supabaseClient.auth.getSession();
-if(sessionError)throw sessionError;
-
-const session=sessionData?.session;
-if(!session?.access_token)throw new Error("Please sign in again.");
-
-const response=await fetch(
-SUPABASE_URL+"/functions/v1/mt5-bridge?action=dashboard_snapshot",
-{
-method:"GET",
-headers:{
-"Authorization":"Bearer "+session.access_token,
-"apikey":SUPABASE_KEY
-},
-cache:"no-store"
-}
-);
-
-const data=await response.json().catch(()=>({}));
-
-if(!response.ok)
-throw new Error(data.error||data.message||("Server returned "+response.status));
-
-if(data.success!==true)
-throw new Error(data.error||data.message||"Snapshot request failed.");
-
-const snapshot=data.snapshot||data.account||data;
-const accountNumber=String(snapshot.account_number||snapshot.accountNumber||"");
-const accountServer=String(snapshot.account_server||snapshot.accountServer||"");
-
-if(accountNumber!==MT5_ACCOUNT||accountServer!==MT5_SERVER){
-throw new Error("The returned account does not match your approved Demo account.");
-}
-
-const balance=Number(snapshot.balance);
-const equity=Number(snapshot.equity);
-const margin=Number(snapshot.margin);
-const freeMargin=Number(snapshot.free_margin??snapshot.freeMargin);
-const leverage=Number(snapshot.leverage);
-const openPositions=Number(snapshot.open_positions??snapshot.openPositions);
-
-if(![balance,equity,margin,freeMargin,leverage,openPositions].every(Number.isFinite)){
-throw new Error("The account snapshot is missing required values.");
-}
-
-$("exBalance").textContent=money(balance);
-$("exEquity").textContent=money(equity);
-$("exMargin").textContent=money(margin);
-$("exFreeMargin").textContent=money(freeMargin);
-$("exTradeCurrency").textContent=snapshot.currency||"--";
-$("exTradeLeverage").textContent="1:"+leverage;
-$("exPositionCount").textContent=String(openPositions);
-$("exServer").textContent=accountServer;
-
-$("exnessTradingData").classList.remove("hidden");
-
-const captured=snapshot.captured_at||snapshot.capturedAt;
-
-$("exnessDataUpdated").textContent="Snapshot time: "+(captured
-?new Date(captured).toLocaleString()
-:"Time not supplied by server.");
-
-showMessage("exnessTradesStatus","Demo account snapshot received successfully from MT5.");
-
-}catch(e){
-console.error("MT5 dashboard snapshot error:",e);
-showMessage("exnessTradesStatus","Unable to retrieve Demo data: "+(e.message||"Unknown error"));
-}finally{
-btn.disabled=false;
-}
-}
-
-/* EXNESS REAL ACCOUNT - READ ONLY */
-async function refreshRealAccount(){
-const btn=$("realAccountBtn");
-btn.disabled=true;
-showMessage("realAccountStatus","Connecting to your Exness Real account using the existing API...");
-try{
-const {data,error}=await supabaseClient.functions.invoke("exness-trades",{body:{}});
-if(error)throw error;
-if(!data||data.success!==true||data.read_only!==true)throw new Error(data?.message||"Real account connection failed.");
-if(String(data.account_id)!=="224224761"||String(data.account_server)!=="Exness-MT5Real30")throw new Error("The returned account does not match your Real account.");
-const snapshot=data.snapshot||{};
-const state=snapshot.account_state||snapshot.accountState||{};
-const balance=Number(state.balance);
-const equity=Number(state.equity);
-const margin=Number(state.used_margin??state.usedMargin??0);
-const positions=Array.isArray(snapshot.positions)?snapshot.positions.filter(p=>p.state==="open").length:0;
-if(![balance,equity,margin].every(Number.isFinite))throw new Error("Exness returned incomplete account totals.");
-$("realBalance").textContent=money(balance);
-$("realEquity").textContent=money(equity);
-$("realMargin").textContent=money(margin);
-$("realFreeMargin").textContent=money(equity-margin);
-$("realPositions").textContent=String(positions);
-$("realServer").textContent="Exness-MT5Real30";
-$("realUpdated").textContent="Last checked: "+new Date().toLocaleString()+" · Read-only";
-$("realAccountData").classList.remove("hidden");
-showMessage("realAccountStatus","Real account connected successfully. Read-only monitoring is active.");
-}catch(e){
-console.error("Real account connection error:",e);
-showMessage("realAccountStatus","Could not connect Real account: "+(e.message||"Unknown error"));
-}finally{btn.disabled=false;}
-}
-
+/* UNIFIED DEMO / REAL MT5 ACCOUNT MONITOR */
+function selectedAccount(){return $("accountSelector")?.value==="real"?"real":"demo";}
+function updateAccountLabels(){const real=selectedAccount()==="real";$("accountMonitorTitle").textContent=real?"Exness Real Account Monitor":"Exness Demo Account Monitor";$("accountRefreshBtn").textContent=real?"Refresh Real Account Data":"Refresh Demo Account Data";}
+async function refreshSelectedAccount(){
+const btn=$("accountRefreshBtn"),real=selectedAccount()==="real",num=real?"224224761":MT5_ACCOUNT,server=real?"Exness-MT5Real30":MT5_SERVER;btn.disabled=true;updateAccountLabels();showMessage("accountStatus","Retrieving "+(real?"Real":"Demo")+" MT5 snapshot...");
+try{const {data:sd,error:se}=await supabaseClient.auth.getSession();if(se)throw se;const token=sd?.session?.access_token;if(!token)throw Error("Please sign in again.");
+const path=real?"mt5-real-bridge?action=dashboard_snapshot":"mt5-bridge?action=dashboard_snapshot";const res=await fetch(SUPABASE_URL+"/functions/v1/"+path,{method:"GET",headers:{"Authorization":"Bearer "+token,"apikey":SUPABASE_KEY},cache:"no-store"});const data=await res.json().catch(()=>({}));if(!res.ok||data.success!==true)throw Error(data.message||data.error||("Server returned "+res.status));
+const x=data.snapshot||data.account||data,got=String(x.account_number||num),gotServer=String(x.account_server||x.accountServer||data.account_server||"");if(got!==num||gotServer!==server)throw Error("Snapshot does not match selected account.");
+const vals=[Number(x.balance),Number(x.equity),Number(x.margin),Number(x.free_margin??x.freeMargin),Number(x.leverage),Number(x.open_positions??x.openPositions)];if(!vals.every(Number.isFinite))throw Error("Snapshot is missing required values.");
+["accountBalance","accountEquity","accountMargin","accountFreeMargin","accountLeverage","accountPositions"].forEach((id,i)=>$(id).textContent=i===4?"1:"+vals[i]:i===5?String(vals[i]):money(vals[i]));$("accountCurrency").textContent=x.currency||"--";$("accountServer").textContent=server;$("accountData").classList.remove("hidden");const t=x.captured_at||x.capturedAt;$("accountUpdated").textContent="Snapshot time: "+(t?new Date(t).toLocaleString():"Not supplied")+(data.age_seconds!==undefined?" · Age: "+data.age_seconds+" sec":"");showMessage("accountStatus",data.stale?"Snapshot is stale. Check MT5.":(real?"Real":"Demo")+" account snapshot received successfully from MT5.");
+}catch(e){console.error(e);$("accountData").classList.add("hidden");showMessage("accountStatus","Unable to retrieve "+(real?"Real":"Demo")+" data: "+(e.message||"Unknown error"));}finally{btn.disabled=false;}}
 /* TELEGRAM */
 
 async function sendTelegramAlert(message){
@@ -750,7 +612,7 @@ return values.map(v=>Number(v).toPrecision(10)).join("|");
 }
 
 function reviewKey(symbol,a){
-const target=$("tradeAccountTarget")?.value||"demo";
+const target=$("accountSelector")?.value||"demo";
 return target+"|"+symbol+"|"+a.overall+"|"+signalFingerprint(a);
 }
 
@@ -849,7 +711,7 @@ showMessage("approvalStatus","Invalid trade prices. Approval blocked.");
 return;
 }
 
-const target=$("tradeAccountTarget")?.value||"demo";
+const target=$("accountSelector")?.value||"demo";
 const isReal=target==="real";
 const targetAccount=isReal?"224224761 · Exness-MT5Real30":MT5_ACCOUNT+" · "+MT5_SERVER;
 const approvalSummary =
@@ -972,7 +834,7 @@ locked:false
 
 function loadRiskSettings(){
 try{
-const saved=JSON.parse(localStorage.getItem("mktradehome_risk")||"{}");
+const saved=JSON.parse(localStorage.getItem("mktradehome_risk_"+selectedAccount())||"{}");
 window.riskSettings={...defaultRisk,...saved};
 }catch(e){
 window.riskSettings={...defaultRisk};
@@ -981,7 +843,7 @@ updateRiskDisplay();
 }
 
 function saveRiskSettings(){
-localStorage.setItem("mktradehome_risk",JSON.stringify(window.riskSettings));
+localStorage.setItem("mktradehome_risk_"+selectedAccount(),JSON.stringify(window.riskSettings));
 updateRiskDisplay();
 }
 
@@ -1050,7 +912,7 @@ showMessage("safetyMessage","Daily safety counters reset.");
 
 function getHistory(){
 try{
-return JSON.parse(localStorage.getItem("mktradehome_history")||"[]");
+return JSON.parse(localStorage.getItem("mktradehome_history_"+selectedAccount())||"[]");
 }catch(e){
 return [];
 }
@@ -1058,10 +920,10 @@ return [];
 
 async function renderHistory(){
 const container=$("tradeHistory");
-container.innerHTML="<p>Loading closed Demo trades from MT5...</p>";
+container.innerHTML="<p>Loading closed "+(selectedAccount()==="real"?"Real":"Demo")+" trades from MT5...</p>";
 
 try{
-const target=$("tradeAccountTarget")?.value||"demo";
+const target=$("accountSelector")?.value||"demo";
 const accountNumber=target==="real"?"224224761":MT5_ACCOUNT;
 const accountServer=target==="real"?"Exness-MT5Real30":MT5_SERVER;
 const {data,error}=await supabaseClient
@@ -1076,7 +938,7 @@ const {data,error}=await supabaseClient
 if(error)throw error;
 
 if(!data||!data.length){
-container.innerHTML="<p>No MT5 closed trades have reached the journal yet. Once the bridge successfully reports a closed Demo position, it will appear here automatically.</p>";
+container.innerHTML="<p>No MT5 closed trades have reached the selected account journal yet.</p>";
 return;
 }
 
@@ -1113,7 +975,7 @@ return;
 const history=getHistory();
 history.unshift({symbol,direction,result,pnl,time:new Date().toISOString()});
 
-localStorage.setItem("mktradehome_history",JSON.stringify(history));
+localStorage.setItem("mktradehome_history_"+selectedAccount(),JSON.stringify(history));
 
 const r=window.riskSettings;
 r.tradeCount++;
@@ -1217,10 +1079,10 @@ $("loginBtn").addEventListener("click",login);
 $("signupBtn").addEventListener("click",signup);
 $("resetBtn").addEventListener("click",resetPassword);
 $("logoutBtn").addEventListener("click",logout);
-$("exnessTradesBtn").addEventListener("click",refreshExnessTrades);
-$("realAccountBtn").addEventListener("click",refreshRealAccount);
+$("accountRefreshBtn").addEventListener("click",refreshSelectedAccount);
+
 $("telegramBtn").addEventListener("click",connectTelegram);
-$("tradeAccountTarget").addEventListener("change",()=>{renderApprovalCentre();renderHistory();});
+$("accountSelector").addEventListener("change",()=>{updateAccountLabels();loadRiskSettings();refreshSelectedAccount();renderApprovalCentre();renderHistory();});
 $("refreshBtn").addEventListener("click",refreshAll);
 $("saveSafetyBtn").addEventListener("click",saveSafetySettings);
 $("resetRiskBtn").addEventListener("click",resetDailyRisk);

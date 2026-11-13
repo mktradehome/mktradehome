@@ -111,6 +111,23 @@ label{display:block;font-size:13px;color:#c7d8ee;margin-top:10px}
 </div>
 
 <div class="card">
+<h2>Exness Real Account Monitor</h2>
+<p>Read-only connection using your existing Exness API. It cannot place, modify, or close trades.</p>
+<button id="realAccountBtn" class="secondary">Connect / Refresh Real Account</button>
+<div id="realAccountStatus" class="status">Real account is not connected yet.</div>
+<div id="realAccountData" class="hidden">
+<hr>
+<div class="row"><span>Real balance</span><strong id="realBalance">--</strong></div>
+<div class="row"><span>Real equity</span><strong id="realEquity">--</strong></div>
+<div class="row"><span>Used margin</span><strong id="realMargin">--</strong></div>
+<div class="row"><span>Free margin</span><strong id="realFreeMargin">--</strong></div>
+<div class="row"><span>Open positions</span><strong id="realPositions">--</strong></div>
+<div class="row"><span>Account server</span><strong id="realServer">Exness-MT5Real30</strong></div>
+<div class="small" id="realUpdated"></div>
+</div>
+</div>
+
+<div class="card">
 <h2>Markets</h2>
 <div id="markets" class="market"></div>
 </div>
@@ -406,6 +423,38 @@ showMessage("exnessTradesStatus","Unable to retrieve Demo data: "+(e.message||"U
 }finally{
 btn.disabled=false;
 }
+}
+
+/* EXNESS REAL ACCOUNT - READ ONLY */
+async function refreshRealAccount(){
+const btn=$("realAccountBtn");
+btn.disabled=true;
+showMessage("realAccountStatus","Connecting to your Exness Real account using the existing API...");
+try{
+const {data,error}=await supabaseClient.functions.invoke("exness-trades",{body:{}});
+if(error)throw error;
+if(!data||data.success!==true||data.read_only!==true)throw new Error(data?.message||"Real account connection failed.");
+if(String(data.account_id)!=="224224761"||String(data.account_server)!=="Exness-MT5Real30")throw new Error("The returned account does not match your Real account.");
+const snapshot=data.snapshot||{};
+const state=snapshot.account_state||snapshot.accountState||{};
+const balance=Number(state.balance);
+const equity=Number(state.equity);
+const margin=Number(state.used_margin??state.usedMargin??0);
+const positions=Array.isArray(snapshot.positions)?snapshot.positions.filter(p=>p.state==="open").length:0;
+if(![balance,equity,margin].every(Number.isFinite))throw new Error("Exness returned incomplete account totals.");
+$("realBalance").textContent=money(balance);
+$("realEquity").textContent=money(equity);
+$("realMargin").textContent=money(margin);
+$("realFreeMargin").textContent=money(equity-margin);
+$("realPositions").textContent=String(positions);
+$("realServer").textContent="Exness-MT5Real30";
+$("realUpdated").textContent="Last checked: "+new Date().toLocaleString()+" · Read-only";
+$("realAccountData").classList.remove("hidden");
+showMessage("realAccountStatus","Real account connected successfully. Read-only monitoring is active.");
+}catch(e){
+console.error("Real account connection error:",e);
+showMessage("realAccountStatus","Could not connect Real account: "+(e.message||"Unknown error"));
+}finally{btn.disabled=false;}
 }
 
 /* TELEGRAM */
@@ -1157,6 +1206,7 @@ $("signupBtn").addEventListener("click",signup);
 $("resetBtn").addEventListener("click",resetPassword);
 $("logoutBtn").addEventListener("click",logout);
 $("exnessTradesBtn").addEventListener("click",refreshExnessTrades);
+$("realAccountBtn").addEventListener("click",refreshRealAccount);
 $("telegramBtn").addEventListener("click",connectTelegram);
 $("refreshBtn").addEventListener("click",refreshAll);
 $("saveSafetyBtn").addEventListener("click",saveSafetySettings);

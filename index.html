@@ -1,4 +1,3 @@
-```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -969,22 +968,44 @@ return [];
 }
 }
 
-function renderHistory(){
-const history=getHistory();
+async function renderHistory(){
 const container=$("tradeHistory");
+container.innerHTML="<p>Loading closed Demo trades from MT5...</p>";
 
-if(!history.length){
-container.innerHTML="<p>No trades recorded yet.</p>";
+try{
+const {data,error}=await supabaseClient
+.from("trades")
+.select("symbol,direction,entry_price,exit_price,stop_loss,take_profit,lot_size,status,profit_loss,currency,opened_at,closed_at,mt5_position_id")
+.eq("account_number",MT5_ACCOUNT)
+.eq("account_server",MT5_SERVER)
+.eq("status","CLOSED")
+.order("closed_at",{ascending:false})
+.limit(50);
+
+if(error)throw error;
+
+if(!data||!data.length){
+container.innerHTML="<p>No MT5 closed trades have reached the journal yet. Once the bridge successfully reports a closed Demo position, it will appear here automatically.</p>";
 return;
 }
 
-container.innerHTML=history.slice(0,30).map(item=>`
-<div class="trade-item">
+container.innerHTML="<h3>MT5 Closed Trade Journal</h3>"+data.map(item=>{
+const pnl=Number(item.profit_loss);
+const pnlText=(pnl>=0?"+":"")+money(pnl)+" "+escapeHTML(item.currency||"USD");
+return `<div class="trade-item">
 <strong>${escapeHTML(item.symbol)} ${escapeHTML(item.direction)}</strong>
-<div class="row"><span>Result</span><strong>${escapeHTML(item.result)}</strong></div>
-<div class="row"><span>Profit / Loss</span><strong>GH₵ ${money(item.pnl)}</strong></div>
-<div class="small">${new Date(item.time).toLocaleString()}</div>
-</div>`).join("");
+<div class="row"><span>Result</span><strong>${pnl>=0?"PROFIT":"LOSS"}</strong></div>
+<div class="row"><span>Entry</span><strong>${formatPrice(item.entry_price)}</strong></div>
+<div class="row"><span>Exit</span><strong>${formatPrice(item.exit_price)}</strong></div>
+<div class="row"><span>Lot size</span><strong>${escapeHTML(item.lot_size??"--")}</strong></div>
+<div class="row"><span>Profit / Loss</span><strong>${pnlText}</strong></div>
+<div class="small">Closed: ${item.closed_at?new Date(item.closed_at).toLocaleString():"Time unavailable"} · MT5 position: ${escapeHTML(item.mt5_position_id??"--")}</div>
+</div>`;
+}).join("");
+}catch(e){
+console.error("Closed MT5 trade journal error:",e);
+container.innerHTML="<p>Could not load MT5 closed trades: "+escapeHTML(e.message||"Unknown error")+"</p>";
+}
 }
 
 function recordTrade(){

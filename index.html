@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -97,7 +98,7 @@ label{display:block;font-size:13px;color:#c4ccda;margin-top:10px}
 <div class="row"><span>Account server</span><strong id="exServer">--</strong></div>
 <div class="small" id="exnessDataUpdated"></div>
 </div>
-<p class="small">The current bridge snapshot supplies account totals and an open-position count. It does not supply individual position or pending-order details.</p>
+<p class="small">The bridge snapshot supplies account totals and an open-position count. It does not supply individual position or pending-order details.</p>
 </div>
 
 <div class="card">
@@ -113,11 +114,11 @@ label{display:block;font-size:13px;color:#c4ccda;margin-top:10px}
 
 <div class="card" id="approvalCentre">
 <h2>Trade Approval Centre</h2>
-<p>Review each market setup separately. Approval sends the setup to your secure Supabase queue for manual approval tracking. It does not place an MT5 order.</p>
+<p>Review each confirmed setup. Approval sends it to your secure Supabase MT5 queue. The EA can act on an approved setup only when both the server and terminal execution switches are enabled.</p>
 <div id="approvalTrades"><p>Waiting for market analysis...</p></div>
-<div id="approvalStatus">Each approval applies only to its own setup.</div>
+<div id="approvalStatus">Each approval applies only to its exact price setup.</div>
 <hr>
-<p>Approvals are saved in Supabase. MT5 execution remains disabled.</p>
+<p>Execution remains protected by the two independent switches and the EA's price-deviation check. Do not enable execution until server-side live-price validation is completed.</p>
 </div>
 
 <div class="card">
@@ -157,7 +158,7 @@ label{display:block;font-size:13px;color:#c4ccda;margin-top:10px}
 
 <div class="card">
 <h2>Trading Reminder</h2>
-<p>Mktradehome provides analysis, not guaranteed trading results. Confirm prices and manage risk before entering any trade. The MT5 bridge account monitor is read-only. Trade execution remains disabled.</p>
+<p>Mktradehome provides analysis, not guaranteed trading results. Confirm prices and manage risk before any trade. The local safety counters are for tracking and are not enforced by the MT5 EA. Keep server-side execution disabled until the final Demo safety checks are complete.</p>
 </div>
 
 </div>
@@ -295,6 +296,8 @@ location.reload();
 }
 
 function openDashboard(){
+if(!$("dashboard").classList.contains("hidden"))return;
+
 $("loginPanel").classList.add("hidden");
 $("dashboard").classList.remove("hidden");
 $("logoutBtn").classList.remove("hidden");
@@ -419,7 +422,7 @@ if(!data?.success)throw new Error(data?.message||data?.error||"Telegram connecti
 showMessage("telegramStatus","Telegram connection accepted. Sending test message...");
 
 const test=await supabaseClient.functions.invoke("telegram-alerts",{
-body:{message:"Mktradehome Telegram connected successfully. Trading alerts are for manual review only."}
+body:{message:"Mktradehome Telegram connected successfully. Trading alerts are for manual review."}
 });
 
 if(test.error)throw test.error;
@@ -462,7 +465,8 @@ time:item.timestamp
 }
 }
 
-quotes={...quotes,...output};
+/* Do not retain an old quote when the provider omits a market. */
+quotes=output;
 }
 
 async function fetchCandles(symbol,interval){
@@ -551,12 +555,16 @@ reason:signal==="BUY"?"Bullish trend":signal==="SELL"?"Bearish trend":"Mixed mar
 
 async function analyzeMarket(market){
 const intervals=["4h","1h","15m","5m"];
-const results={};
 
-for(const interval of intervals){
-const bars=await fetchCandles(market.symbol,interval);
-results[interval.toUpperCase()]=analyzeTimeframe(bars);
-}
+/* Fetch all four timeframes together. */
+const candleSets=await Promise.all(
+intervals.map(interval=>fetchCandles(market.symbol,interval))
+);
+
+const results={};
+intervals.forEach((interval,index)=>{
+results[interval.toUpperCase()]=analyzeTimeframe(candleSets[index]);
+});
 
 const q=quotes[market.symbol];
 const fresh=isQuoteFresh(q);
@@ -578,18 +586,23 @@ let entry=current,sl=null,tp1=null,tp2=null;
 
 if(overall!=="WAIT"&&Number.isFinite(current)&&atr>0){
 const direction=overall==="BUY"?1:-1;
+const riskDistance=atr*1.5;
+
 entry=current;
-sl=entry-direction*atr*1.5;
-tp1=entry+direction*atr*2;
-tp2=entry+direction*atr*3;
+sl=entry-direction*riskDistance;
+tp1=entry+direction*riskDistance*2;
+tp2=entry+direction*riskDistance*3;
 }
 
 let reason="Timeframes do not fully agree. Wait for confirmation.";
 
 if(!fresh){
 reason="Quote is stale, unavailable, or market is not confirmed open.";
-}else if(overall!=="WAIT"){
+}else if(overall!=="WAIT"&&atr>0){
 reason="4H, 1H, 15M and 5M signals agree. Confirm price and risk before any trade.";
+}else if(overall!=="WAIT"){
+overall="WAIT";
+reason="ATR data is insufficient to calculate trade levels.";
 }
 
 return {
@@ -643,8 +656,8 @@ return `<div class="trade-item">
 <div class="small">${escapeHTML(a.reason)}</div>
 <div class="row"><span>Entry reference</span><strong>${formatPrice(a.entry)}</strong></div>
 <div class="row"><span>Stop Loss</span><strong>${formatPrice(a.sl)}</strong></div>
-<div class="row"><span>Take Profit 1</span><strong>${formatPrice(a.tp1)}</strong></div>
-<div class="row"><span>Take Profit 2</span><strong>${formatPrice(a.tp2)}</strong></div>
+<div class="row"><span>Take Profit 1 (1:2)</span><strong>${formatPrice(a.tp1)}</strong></div>
+<div class="row"><span>Take Profit 2 (1:3)</span><strong>${formatPrice(a.tp2)}</strong></div>
 <div class="small">4H: ${a.results["4H"].signal} · 1H: ${a.results["1H"].signal}</div>
 <div class="small">15M: ${a.results["15M"].signal} · 5M: ${a.results["5M"].signal}</div>
 <div class="small">${a.quoteFresh?"Fresh quote check passed":"Fresh quote check failed"}</div>
@@ -653,6 +666,25 @@ return `<div class="trade-item">
 }
 
 /* TRADE APPROVALS */
+
+/*
+A review is tied to its actual price setup.
+If the entry, stop or targets materially change, the old
+approval/rejection is not reused for the new setup.
+*/
+
+function signalFingerprint(a){
+if(!a)return "";
+const values=[a.entry,a.sl,a.tp1,a.tp2];
+
+if(!values.every(v=>Number.isFinite(Number(v))))return "";
+
+return values.map(v=>Number(v).toPrecision(10)).join("|");
+}
+
+function reviewKey(symbol,a){
+return symbol+"|"+a.overall+"|"+signalFingerprint(a);
+}
 
 function getSignalReviews(){
 const key="mktradehome_signal_reviews";
@@ -687,7 +719,8 @@ if(!container)return;
 const reviews=getSignalReviews();
 
 const signals=marketList.map(m=>({market:m,a:analyses[m.symbol]}))
-.filter(x=>x.a&&["BUY","SELL"].includes(x.a.overall));
+.filter(x=>x.a&&["BUY","SELL"].includes(x.a.overall)&&
+Number.isFinite(x.a.entry)&&Number.isFinite(x.a.sl)&&Number.isFinite(x.a.tp1));
 
 if(!signals.length){
 container.innerHTML="<p>No confirmed BUY or SELL setups right now. WAIT signals are not approval opportunities.</p>";
@@ -695,26 +728,23 @@ return;
 }
 
 container.innerHTML=signals.map(({market,a})=>{
-const key=market.symbol+"|"+a.overall;
+const key=reviewKey(market.symbol,a);
 const review=reviews[key];
 const status=review?.status||"awaiting_review";
-const saved=review?.signal||a;
-const shown=status==="approved_for_manual_review"||status==="rejected"?saved:a;
-
-const statusText=status==="approved_for_manual_review"
-?"SAVED IN SUPABASE — MANUAL REVIEW ONLY"
+const statusText=status==="approved"
+?"SAVED IN SECURE MT5 QUEUE"
 :status==="rejected"?"REJECTED":"AWAITING YOUR REVIEW";
 
 return `<div class="approval-trade">
 <h3>${escapeHTML(market.name)} · ${a.overall}</h3>
 <div class="trade-status">${statusText}</div>
-<div class="row"><span>Entry reference</span><strong>${formatPrice(shown.entry)}</strong></div>
-<div class="row"><span>Stop Loss</span><strong>${formatPrice(shown.sl)}</strong></div>
-<div class="row"><span>Take Profit 1</span><strong>${formatPrice(shown.tp1)}</strong></div>
-<div class="row"><span>Take Profit 2</span><strong>${formatPrice(shown.tp2)}</strong></div>
+<div class="row"><span>Entry reference</span><strong>${formatPrice(a.entry)}</strong></div>
+<div class="row"><span>Stop Loss</span><strong>${formatPrice(a.sl)}</strong></div>
+<div class="row"><span>Take Profit 1 (1:2)</span><strong>${formatPrice(a.tp1)}</strong></div>
+<div class="row"><span>Take Profit 2 (1:3)</span><strong>${formatPrice(a.tp2)}</strong></div>
 <div class="row"><span>Lot size reference</span><strong>0.01</strong></div>
 ${status==="awaiting_review"?`
-<button class="approve-button" data-action="approve" data-symbol="${market.symbol}">APPROVE FOR MANUAL REVIEW</button>
+<button class="approve-button" data-action="approve" data-symbol="${market.symbol}">APPROVE THIS SETUP</button>
 <button class="reject-button" data-action="reject" data-symbol="${market.symbol}">REJECT THIS SETUP</button>`:""}
 </div>`;
 }).join("");
@@ -731,16 +761,18 @@ showMessage("approvalStatus","This setup is no longer active. Refresh analysis."
 return;
 }
 
+if(!a.quoteFresh){
+showMessage("approvalStatus","Quote is not fresh. Approval blocked.");
+return;
+}
+
+const currentKey=reviewKey(symbol,a);
+
 if(action==="approve"){
 const safety=getSafetyState();
 
 if(safety.locked){
 showMessage("approvalStatus","Safety lock active. Approval blocked.");
-return;
-}
-
-if(!a.quoteFresh){
-showMessage("approvalStatus","Quote is not fresh. Approval blocked.");
 return;
 }
 
@@ -777,7 +809,7 @@ if(!data||data.success!==true){
 throw new Error(data?.error||"Approval was not saved.");
 }
 
-saveSignalReview(symbol+"|"+a.overall,"approved_for_manual_review",{
+saveSignalReview(currentKey,"approved",{
 symbol,
 signal:a.overall,
 entry:a.entry,
@@ -790,15 +822,16 @@ createdAt:Date.now()
 
 showMessage(
 "approvalStatus",
-market.name+" saved in Supabase. No MT5 order was placed."
+market.name+" setup saved in the secure Supabase queue. The EA's two execution switches still control whether it can act."
 );
 
 await sendTelegramAlert(
 "Mktradehome setup approved:\n"+market.name+" "+a.overall+
 "\nEntry: "+formatPrice(a.entry)+
 "\nSL: "+formatPrice(a.sl)+
-"\nTP: "+formatPrice(a.tp1)+
-"\nNo MT5 order has been placed."
+"\nTP1: "+formatPrice(a.tp1)+
+"\nTP2: "+formatPrice(a.tp2)+
+"\nSaved to the secure queue. EA execution remains controlled by its safety switches."
 );
 
 renderApprovalCentre();
@@ -810,7 +843,7 @@ if(button)button.disabled=false;
 }
 
 }else if(action==="reject"){
-saveSignalReview(symbol+"|"+a.overall,"rejected",{
+saveSignalReview(currentKey,"rejected",{
 symbol,
 signal:a.overall,
 entry:a.entry,
@@ -897,7 +930,7 @@ r.maxTrades=Math.max(1,Number($("maxTrades").value)||5);
 r.maxConsecutiveLosses=Math.max(1,Number($("maxConsecutiveLosses").value)||3);
 
 saveRiskSettings();
-showMessage("safetyMessage","Safety settings saved on this device.");
+showMessage("safetyMessage","Safety settings saved on this device. They are not enforced by the MT5 EA.");
 }
 
 function resetDailyRisk(){
@@ -946,7 +979,7 @@ const direction=$("recordDirection").value;
 const result=$("recordResult").value;
 const pnl=Number($("recordPnl").value);
 
-if(!symbol||!direction||!result||!Number.isFinite(pnl)){
+if(!symbol||!direction||!result||$("recordPnl").value.trim()===""||!Number.isFinite(pnl)){
 showMessage("recordMessage","Complete all trade record fields.");
 return;
 }
@@ -979,18 +1012,22 @@ async function refreshAll(){
 if(refreshing)return;
 
 refreshing=true;
+$("refreshBtn").disabled=true;
 showMessage("systemStatus","Refreshing market prices and analysis...");
 
 try{
 await fetchQuotes();
 
-for(const m of marketList){
+/* Analyze the four markets concurrently. */
+const results=await Promise.all(
+marketList.map(async market=>{
 try{
-analyses[m.symbol]=await analyzeMarket(m);
+return await analyzeMarket(market);
 }catch(e){
-console.error("Analysis failed for "+m.symbol,e);
+console.error("Analysis failed for "+market.symbol,e);
 
-analyses[m.symbol]={
+return {
+symbol:market.symbol,
 overall:"WAIT",
 entry:null,
 sl:null,
@@ -1006,6 +1043,11 @@ results:{
 }
 };
 }
+})
+);
+
+for(const result of results){
+analyses[result.symbol]=result;
 }
 
 renderMarkets();
@@ -1026,7 +1068,7 @@ sendTelegramAlert(
 "\nStop Loss: "+formatPrice(a.sl)+
 "\nTP1: "+formatPrice(a.tp1)+
 "\nTP2: "+formatPrice(a.tp2)+
-"\nPlease review manually. No trade has been placed."
+"\nPlease review manually. This alert does not place a trade."
 );
 }
 
@@ -1039,6 +1081,7 @@ showMessage("systemStatus","Market refresh failed: "+(e.message||"Please try aga
 showMessage("lastUpdate","Refresh failed.");
 }finally{
 refreshing=false;
+$("refreshBtn").disabled=false;
 }
 }
 

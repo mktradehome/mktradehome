@@ -596,6 +596,8 @@ reason,
 results,
 aiModel:"GPT-6 Luna",
 aiConfidence:Number(aiResult.confidence)||0,
+gptVerified:aiResult.gptVerified===true,
+verificationNote:aiResult.verificationNote||"Second GPT review status unavailable",
 aiRiskNote:aiResult.risk_note||"AI analysis is not a guarantee.",
 updatedAt:Date.now()
 };
@@ -640,6 +642,7 @@ return `<div class="trade-item">
 <div class="signal ${cls}">${a.overall}</div>
 <div class="small">${escapeHTML(a.reason)}</div>
 <div class="small">AI engine: ${escapeHTML(a.aiModel||"GPT")} · Confidence: ${Number(a.aiConfidence)||0}/100</div>
+<div class="small">Second GPT review: ${a.gptVerified?"PASSED":"NOT APPROVED"} · ${escapeHTML(a.verificationNote||"No verification details")}</div>
 <div class="small">${escapeHTML(a.aiRiskNote||"AI analysis is not a guarantee.")}</div>
 <div class="row"><span>Entry reference</span><strong>${formatPrice(a.entry)}</strong></div>
 <div class="row"><span>Stop Loss</span><strong>${formatPrice(a.sl)}</strong></div>

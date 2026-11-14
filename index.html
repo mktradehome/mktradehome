@@ -688,6 +688,55 @@ aiRiskNote:aiResult.risk_note||"AI analysis is not a guarantee.",
 updatedAt:Date.now()
 };
 }
+/* RESTORE RECENT GPT-VERIFIED CANDIDATES AFTER REFRESH */
+async function loadSavedVerifiedCandidates(){
+try{
+const {data,error}=await supabaseClient
+.from("trade_signals")
+.select("symbol,signal,entry_price,stop_loss,take_profit_1,take_profit_2,confidence,analysis,created_at")
+.in("symbol",marketList.map(m=>m.symbol))
+.order("created_at",{ascending:false})
+.limit(20);
+if(error)throw error;
+for(const row of (data||[])){
+if(analyses[row.symbol])continue;
+const created=Date.parse(row.created_at||"");
+const ageMs=Date.now()-created;
+if(!Number.isFinite(created)||ageMs<0||ageMs>30*60*1000)continue;
+let saved={};
+try{saved=JSON.parse(row.analysis||"{}");}catch(e){continue;}
+if(saved.source!=="gpt-market-analysis"||saved.gptVerified!==true||saved.verificationStatus!=="PASSED")continue;
+const entry=Number(row.entry_price),sl=Number(row.stop_loss),tp1=Number(row.take_profit_1),tp2=Number(row.take_profit_2);
+if(![entry,sl,tp1,tp2].every(Number.isFinite))continue;
+const q=quotes[row.symbol];
+const quoteFresh=isQuoteFresh(q,row.symbol);
+const risk=row.signal==="BUY"?entry-sl:sl-entry;
+const distance=Math.abs(Number(q?.price)-entry);
+const stillNearEntry=Number.isFinite(distance)&&risk>0&&distance<=risk*0.25;
+const timeframeResults=saved.timeframes||{};
+const results={
+"4H":timeframeResults["4H"]||{signal:"WAIT"},
+"1H":timeframeResults["1H"]||{signal:"WAIT"},
+"15M":timeframeResults["15M"]||{signal:"WAIT"},
+"5M":timeframeResults["5M"]||{signal:"WAIT"}
+};
+analyses[row.symbol]={
+symbol:row.symbol,overall:row.signal,entry,sl,tp1,tp2,
+quoteFresh:quoteFresh&&ageMs<=10*60*1000&&stillNearEntry,
+reason:"Restored from saved GPT-verified analysis. "+(saved.explanation||""),
+results,aiModel:"GPT-6",aiConfidence:Number(row.confidence)||0,
+strength:saved.strength==="STRONG"?"STRONG":"STANDARD",
+gptVerified:true,verificationStatus:"PASSED",
+verificationNote:saved.verificationNote||"Independent GPT review passed.",
+aiRiskNote:saved.risk_note||"Analysis is not a guarantee.",
+updatedAt:created
+};
+}
+}catch(error){
+console.error("Could not restore saved GPT candidates:",error);
+}
+}
+
 /* DISPLAY MARKETS */
 
 function renderMarkets(){
@@ -821,9 +870,9 @@ return `<div class="approval-trade">
 <div class="row"><span>Take Profit 1 (1:2)</span><strong>${formatPrice(a.tp1)}</strong></div>
 <div class="row"><span>Take Profit 2 (1:3)</span><strong>${formatPrice(a.tp2)}</strong></div>
 <div class="row"><span>Lot size reference</span><strong>0.01</strong></div>
-${status==="awaiting_review"?`
+${status==="awaiting_review"?(a.quoteFresh?`
 <button class="approve-button" data-action="approve" data-symbol="${market.symbol}">APPROVE THIS SETUP</button>
-<button class="reject-button" data-action="reject" data-symbol="${market.symbol}">REJECT THIS SETUP</button>`:""}
+<button class="reject-button" data-action="reject" data-symbol="${market.symbol}">REJECT THIS SETUP</button>`:"<p class='small'>Saved candidate restored, but the quote has moved or is no longer fresh. Approval is blocked; wait for a fresh setup.</p>"):""}
 </div>`;
 }).join("");
 }
@@ -1185,6 +1234,7 @@ results:{
 for(const result of results){
 analyses[result.symbol]=result;
 }
+await loadSavedVerifiedCandidates();
 
 renderMarkets();
 renderAnalysis();

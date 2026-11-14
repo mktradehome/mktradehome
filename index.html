@@ -48,7 +48,14 @@ label{display:block;font-size:13px;color:#c7d8ee;margin-top:10px}
 .page{flex:0 0 100%;min-width:0;scroll-snap-align:start}
 .pages-track::-webkit-scrollbar{height:5px}
 .pages-track::-webkit-scrollbar-thumb{background:#24528a;border-radius:8px}
-@media(max-width:500px){.market{grid-template-columns:1fr}header{align-items:flex-start}}
+.news-item{display:block;text-decoration:none;color:#eef5ff;background:rgba(8,26,48,.82);border:1px solid #24476c;border-radius:10px;padding:12px;margin:9px 0}
+.news-item:hover{border-color:#60a5fa;background:rgba(12,39,69,.94)}
+.news-item strong{display:block;font-size:14px;line-height:1.45;margin:6px 0}
+.news-meta{display:flex;flex-wrap:wrap;gap:7px;align-items:center;color:#9db5d2;font-size:11px}
+.news-market{display:inline-block;background:#17365f;color:#f5c542;border-radius:20px;padding:3px 8px;font-weight:bold}
+.news-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.news-head button{width:auto;min-width:92px;margin:0;padding:9px 12px;font-size:12px}
+@media(max-width:500px){.market{grid-template-columns:1fr}header{align-items:flex-start}.news-head{align-items:flex-start}}
 
 /* Mktradehome AI Support chat */
 #mkSupportFab{position:fixed;right:22px;bottom:22px;z-index:9998;width:auto;max-width:150px;margin:0;border:0;border-radius:14px;padding:10px 13px;background:linear-gradient(135deg,#f5c542,#d99b16);color:#171717;font-weight:800;box-shadow:0 8px 28px #0008;cursor:pointer}
@@ -194,6 +201,14 @@ label{display:block;font-size:13px;color:#c7d8ee;margin-top:10px}
 <hr>
 <p><strong>This journey is still being written.</strong> Every improvement, test and lesson becomes part of the story.</p>
 </div>
+
+<div class="card" id="marketNewsCard">
+<div class="news-head"><h2>Market News Updates</h2><button type="button" id="refreshNewsBtn">Refresh News</button></div>
+<p>Recent headlines related to BTC/USD, EUR/USD, Gold and USD/JPY. News is for context only and does not create trading signals.</p>
+<div id="marketNewsStatus" class="status">Loading market news...</div>
+<div id="marketNewsList"></div>
+<p class="small">Headlines are collected from Google News feeds. Open an article to read the full report from its publisher.</p>
+</div>
 </section>
 </div>
 </div>
@@ -221,6 +236,7 @@ let quotes={};
 let analyses={};
 let marketRefreshTimer=null;
 let accountRefreshTimer=null;
+let newsRefreshTimer=null;
 let previousSignals={};
 let refreshing=false;
 
@@ -247,6 +263,38 @@ const n=Number(value);
 return Number.isFinite(n)
 ?n.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})
 :"Unavailable";
+}
+
+async function refreshMarketNews(){
+const button=$("refreshNewsBtn");
+if(button)button.disabled=true;
+showMessage("marketNewsStatus","Fetching the latest market headlines...");
+try{
+const {data,error}=await supabaseClient.functions.invoke("mktradehome-market-news");
+if(error)throw error;
+const articles=Array.isArray(data?.articles)?data.articles:[];
+if(!articles.length){
+$("marketNewsList").innerHTML="";
+showMessage("marketNewsStatus",data?.message||"No headlines are available right now. Try again shortly.");
+return;
+}
+$("marketNewsList").innerHTML=articles.map(item=>{
+const published=Date.parse(item.publishedAt);
+const date=Number.isFinite(published)?new Date(published).toLocaleString():"Date unavailable";
+return `<a class="news-item" href="${escapeHTML(item.url)}" target="_blank" rel="noopener noreferrer">
+<div class="news-meta"><span class="news-market">${escapeHTML(item.market)}</span><span>${escapeHTML(item.source||"News source")}</span><span>${escapeHTML(date)}</span></div>
+<strong>${escapeHTML(item.title)}</strong>
+</a>`;
+}).join("");
+const stamp=data?.updatedAt?new Date(data.updatedAt).toLocaleTimeString():"just now";
+showMessage("marketNewsStatus",(data.partial?"Some feeds did not respond. ":"")+"Updated "+stamp+" · "+articles.length+" headlines");
+}catch(error){
+console.error("Market news failed:",error);
+$("marketNewsList").innerHTML="";
+showMessage("marketNewsStatus","Market news is temporarily unavailable. Please try Refresh News again.");
+}finally{
+if(button)button.disabled=false;
+}
 }
 
 /* AUTHENTICATION */
@@ -342,15 +390,18 @@ updateAccountLabels();
 renderHistory();
 refreshAll();
 refreshSelectedAccount();
+refreshMarketNews();
 
 if(marketRefreshTimer)clearInterval(marketRefreshTimer);
 if(accountRefreshTimer)clearInterval(accountRefreshTimer);
+if(newsRefreshTimer)clearInterval(newsRefreshTimer);
 
 /* Market candles include a 5-minute timeframe, so avoid a full GPT run every minute. */
 marketRefreshTimer=setInterval(refreshAll,300000);
 
 /* Account snapshots remain on a separate one-minute refresh. */
 accountRefreshTimer=setInterval(refreshSelectedAccount,60000);
+newsRefreshTimer=setInterval(refreshMarketNews,600000);
 }
 
 /* UNIFIED DEMO / REAL MT5 ACCOUNT MONITOR */
@@ -1149,6 +1200,7 @@ $("refreshBtn").addEventListener("click",refreshAll);
 $("saveSafetyBtn").addEventListener("click",saveSafetySettings);
 $("resetRiskBtn").addEventListener("click",resetDailyRisk);
 $("recordTradeBtn").addEventListener("click",recordTrade);
+$("refreshNewsBtn").addEventListener("click",refreshMarketNews);
 
 document.querySelectorAll("[data-page]").forEach(button=>{
 button.addEventListener("click",()=>{
@@ -1202,6 +1254,7 @@ supabaseClient.auth.onAuthStateChange((event)=>{
 if(event==="SIGNED_OUT"){
 if(marketRefreshTimer)clearInterval(marketRefreshTimer);
 if(accountRefreshTimer)clearInterval(accountRefreshTimer);
+if(newsRefreshTimer)clearInterval(newsRefreshTimer);
 location.reload();
 }
 });

@@ -1194,14 +1194,15 @@ for(const m of marketList){
 const a=analyses[m.symbol];
 const old=previousSignals[m.symbol];
 
-if(a?.overall&&a.overall!=="WAIT"&&a.overall!==old){
+if(a?.overall&&a.overall!=="WAIT"&&a.gptVerified===true&&a.verificationStatus==="PASSED"&&a.overall!==old){
 sendTelegramAlert(
-"Mktradehome new "+a.overall+" signal: "+m.name+
+"Mktradehome GPT-VERIFIED "+a.overall+" signal: "+m.name+
+"\nSecond GPT review: PASSED"+
 "\nEntry: "+formatPrice(a.entry)+
 "\nStop Loss: "+formatPrice(a.sl)+
 "\nTP1: "+formatPrice(a.tp1)+
 "\nTP2: "+formatPrice(a.tp2)+
-"\nPlease review manually. This alert does not place a trade."
+"\nOpen Mktradehome to review and approve this exact setup. This alert does not place a trade."
 );
 }
 

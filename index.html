@@ -759,6 +759,23 @@ return `<div class="marketbox">
 }).join("");
 }
 
+function getSignalQuality(a){
+if(!a||!["BUY","SELL"].includes(a.overall))return "NOT RATED";
+const tf=a.results||{};
+const higher=["4H","1H"].map(k=>tf[k]?.signal);
+const lower=["15M","5M"].map(k=>tf[k]?.signal);
+const higherAligned=higher[0]===a.overall&&higher[1]===a.overall;
+const lowerClear=lower.every(s=>s==="WAIT"||s===a.overall);
+const risk=a.overall==="BUY"?Number(a.entry)-Number(a.sl):Number(a.sl)-Number(a.entry);
+const reward=a.overall==="BUY"?Number(a.tp1)-Number(a.entry):Number(a.entry)-Number(a.tp1);
+const reward2=a.overall==="BUY"?Number(a.tp2)-Number(a.entry):Number(a.entry)-Number(a.tp2);
+const riskReward=risk>0&&reward>=risk*2&&reward2>=risk*3;
+const verified=(a.gptVerified===true&&a.verificationStatus==="PASSED")||
+(a.analysisMode==="MKTRADEHOME"&&a.fallbackVerified===true);
+return a.quoteFresh&&higherAligned&&lowerClear&&riskReward&&verified
+?"GOOD SIGNAL":"SETUP NEEDS CONFIRMATION";
+}
+
 function renderAnalysis(){
 const container=$("analysis");
 if(!container)return;
@@ -775,6 +792,7 @@ const cls=a.overall==="BUY"?"buy":a.overall==="SELL"?"sell":"wait";
 return `<div class="trade-item">
 <strong>${escapeHTML(m.name)}</strong>
 <div class="signal ${cls}">${a.strength==="STRONG"?"STRONG ":""}${a.overall}</div>
+<div class="trade-status">${getSignalQuality(a)}</div>
 <div class="small">${escapeHTML(a.reason)}</div>
 <div class="small">AI engine: ${escapeHTML(a.aiModel||"GPT")} · Confidence: ${Number(a.aiConfidence)||0}/100</div>
 <div class="small">Second GPT review: ${escapeHTML(a.verificationStatus||"NOT_RUN")} · ${escapeHTML(a.verificationNote||"No verification details")}</div>
@@ -864,6 +882,7 @@ const statusText=status==="approved"
 
 return `<div class="approval-trade">
 <h3>${escapeHTML(market.name)} · ${a.strength==="STRONG"?"STRONG ":""}${a.overall}</h3>
+<div class="trade-status">${getSignalQuality(a)}</div>
 <div class="trade-status">${statusText}</div>
 <div class="row"><span>Entry reference</span><strong>${formatPrice(a.entry)}</strong></div>
 <div class="row"><span>Stop Loss</span><strong>${formatPrice(a.sl)}</strong></div>

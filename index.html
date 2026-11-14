@@ -516,9 +516,10 @@ c.high>=c.low&&!c.isOpen
 ).sort((a,b)=>new Date(a.time)-new Date(b.time));
 }
 
-function isQuoteFresh(q){
-return !!q&&q.stale===false&&q.marketState==="open"&&
-Number.isFinite(q.quoteAgeSeconds)&&q.quoteAgeSeconds<=120;
+function isQuoteFresh(q,symbol){
+return !!q&&q.stale===false&&(symbol==="BTCUSD"||q.marketState==="open")&&
+Number.isFinite(q.quoteAgeSeconds)&&q.quoteAgeSeconds<=120&&
+Number.isFinite(Number(q.price))&&Number(q.price)>0;
 }
 
 /* TECHNICAL ANALYSIS */
@@ -587,7 +588,7 @@ results[interval.toUpperCase()]=analyzeTimeframe(candleSets[index]);
 });
 
 const q=quotes[market.symbol];
-const fresh=isQuoteFresh(q);
+const fresh=isQuoteFresh(q,market.symbol);
 const current=Number(q?.price||results["5M"].price||results["1H"].price);
 
 let aiResult;

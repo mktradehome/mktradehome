@@ -592,12 +592,12 @@ const fresh=isQuoteFresh(q,market.symbol);
 const current=Number(q?.price||results["5M"].price||results["1H"].price);
 
 let aiResult;
-const timeframeDirections=intervals.map(interval=>results[interval.toUpperCase()].signal);
-const localDirection=timeframeDirections.every(signal=>signal==="BUY")
-?"BUY"
-:timeframeDirections.every(signal=>signal==="SELL")
-?"SELL"
-:"WAIT";
+const higherTimeframes=[results["4H"].signal,results["1H"].signal];
+const lowerTimeframes=[results["15M"].signal,results["5M"].signal];
+const localDirection=["BUY","SELL"].includes(higherTimeframes[0]) &&
+higherTimeframes[0]===higherTimeframes[1] &&
+!lowerTimeframes.some(signal=>signal!=="WAIT"&&signal!==higherTimeframes[0])
+?higherTimeframes[0]:"WAIT";
 
 /* Save GPT API requests for genuinely aligned, fresh market setups only.
    The server still performs its own independent checks and second GPT review. */
@@ -614,10 +614,10 @@ verificationNote:"Second GPT review not run: fresh quote required."
 aiResult={
 signal:"WAIT",entry:null,stop_loss:null,take_profit_1:null,take_profit_2:null,
 confidence:0,
-explanation:"The four local timeframes are not fully aligned. Waiting for a clearer setup.",
-risk_note:"No GPT request sent. All four timeframes must first agree before the two-stage GPT review.",
+explanation:"The 4H and 1H trend must agree; 15M/5M may be neutral but must not clearly oppose.",
+risk_note:"No GPT request sent because the higher-timeframe trend is unclear or a lower timeframe clearly opposes it.",
 verificationStatus:"NOT_RUN",
-verificationNote:"Second GPT review not run: 4H, 1H, 15M and 5M are not aligned."
+verificationNote:"Second GPT review not run: higher-timeframe agreement or lower-timeframe conflict check failed."
 };
 }else{
 try{

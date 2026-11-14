@@ -1203,15 +1203,15 @@ showMessage("systemStatus","Refreshing market prices and analysis...");
 try{
 await fetchQuotes();
 
-/* Analyze the four markets concurrently. */
-const results=await Promise.all(
-marketList.map(async market=>{
+/* Analyse markets sequentially to avoid a burst of GPT requests. */
+const results=[];
+for(let i=0;i<marketList.length;i++){
+const market=marketList[i];
 try{
-return await analyzeMarket(market);
+results.push(await analyzeMarket(market));
 }catch(e){
 console.error("Analysis failed for "+market.symbol,e);
-
-return {
+results.push({
 symbol:market.symbol,
 overall:"WAIT",
 entry:null,
@@ -1226,10 +1226,10 @@ results:{
 "15M":{signal:"WAIT"},
 "5M":{signal:"WAIT"}
 }
-};
+});
 }
-})
-);
+if(i<marketList.length-1)await new Promise(resolve=>setTimeout(resolve,2000));
+}
 
 for(const result of results){
 analyses[result.symbol]=result;

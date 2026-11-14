@@ -184,6 +184,14 @@ label{display:block;font-size:13px;color:#c7d8ee;margin-top:10px}
 </div>
 </section>
 <section class="page" id="journeyPage">
+<div class="card" id="marketNewsCard">
+<div class="news-head"><h2>Market News Updates</h2><button type="button" id="refreshNewsBtn">Refresh News</button></div>
+<p>Recent headlines related to BTC/USD, EUR/USD, Gold and USD/JPY. News is for context only and does not create trading signals.</p>
+<div id="marketNewsStatus" class="status">Loading market news...</div>
+<div id="marketNewsList"></div>
+<p class="small">Headlines are collected from Google News feeds. Open an article to read the full report from its publisher.</p>
+</div>
+
 <div class="card">
 <h2>My Mktradehome Journey</h2>
 <p class="small">A personal record of the idea, the work, the lessons and the progress.</p>
@@ -202,13 +210,7 @@ label{display:block;font-size:13px;color:#c7d8ee;margin-top:10px}
 <p><strong>This journey is still being written.</strong> Every improvement, test and lesson becomes part of the story.</p>
 </div>
 
-<div class="card" id="marketNewsCard">
-<div class="news-head"><h2>Market News Updates</h2><button type="button" id="refreshNewsBtn">Refresh News</button></div>
-<p>Recent headlines related to BTC/USD, EUR/USD, Gold and USD/JPY. News is for context only and does not create trading signals.</p>
-<div id="marketNewsStatus" class="status">Loading market news...</div>
-<div id="marketNewsList"></div>
-<p class="small">Headlines are collected from Google News feeds. Open an article to read the full report from its publisher.</p>
-</div>
+
 </section>
 </div>
 </div>
@@ -589,7 +591,34 @@ const fresh=isQuoteFresh(q);
 const current=Number(q?.price||results["5M"].price||results["1H"].price);
 
 let aiResult;
+const timeframeDirections=intervals.map(interval=>results[interval.toUpperCase()].signal);
+const localDirection=timeframeDirections.every(signal=>signal==="BUY")
+?"BUY"
+:timeframeDirections.every(signal=>signal==="SELL")
+?"SELL"
+:"WAIT";
 
+/* Save GPT API requests for genuinely aligned, fresh market setups only.
+   The server still performs its own independent checks and second GPT review. */
+if(!fresh){
+aiResult={
+signal:"WAIT",entry:null,stop_loss:null,take_profit_1:null,take_profit_2:null,
+confidence:0,
+explanation:"Quote is stale, unavailable, or market is not confirmed open.",
+risk_note:"No GPT request sent because the live quote failed the freshness check.",
+verificationStatus:"NOT_RUN",
+verificationNote:"Second GPT review not run: fresh quote required."
+};
+}else if(localDirection==="WAIT"){
+aiResult={
+signal:"WAIT",entry:null,stop_loss:null,take_profit_1:null,take_profit_2:null,
+confidence:0,
+explanation:"The four local timeframes are not fully aligned. Waiting for a clearer setup.",
+risk_note:"No GPT request sent. All four timeframes must first agree before the two-stage GPT review.",
+verificationStatus:"NOT_RUN",
+verificationNote:"Second GPT review not run: 4H, 1H, 15M and 5M are not aligned."
+};
+}else{
 try{
 const {data,error}=await supabaseClient.functions.invoke(
 "gpt-market-analysis",
@@ -617,8 +646,11 @@ take_profit_1:null,
 take_profit_2:null,
 confidence:0,
 explanation:"GPT analysis is unavailable. No trade setup should be used until the AI check succeeds.",
-risk_note:"Refresh later. Do not use the previous local signal as a trade instruction."
+risk_note:"The GPT service may be rate-limited or temporarily unavailable. Do not use a local signal as a trade instruction.",
+verificationStatus:"NOT_RUN",
+verificationNote:"Second GPT review not run because the first GPT request failed."
 };
+}
 }
 
 const overall=fresh?aiResult.signal:"WAIT";

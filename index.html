@@ -699,7 +699,7 @@ const {data,error}=await supabaseClient
 .limit(20);
 if(error)throw error;
 for(const row of (data||[])){
-if(analyses[row.symbol])continue;
+if(analyses[row.symbol]&&["BUY","SELL"].includes(analyses[row.symbol].overall)&&analyses[row.symbol].gptVerified===true&&analyses[row.symbol].verificationStatus==="PASSED")continue;
 const created=Date.parse(row.created_at||"");
 const ageMs=Date.now()-created;
 if(!Number.isFinite(created)||ageMs<0||ageMs>30*60*1000)continue;

@@ -693,19 +693,21 @@ async function loadSavedVerifiedCandidates(){
 try{
 const {data,error}=await supabaseClient
 .from("trade_signals")
-.select("symbol,signal,entry_price,stop_loss,take_profit_1,take_profit_2,confidence,analysis,created_at")
+.select("id,symbol,signal,entry_price,stop_loss,take_profit_1,take_profit_2,confidence,analysis,created_at")
 .in("symbol",marketList.map(m=>m.symbol))
 .order("created_at",{ascending:false})
 .limit(20);
 if(error)throw error;
 for(const row of (data||[])){
-if(analyses[row.symbol]&&["BUY","SELL"].includes(analyses[row.symbol].overall)&&analyses[row.symbol].gptVerified===true&&analyses[row.symbol].verificationStatus==="PASSED")continue;
+if(analyses[row.symbol]&&["BUY","SELL"].includes(analyses[row.symbol].overall)&&((analyses[row.symbol].gptVerified===true&&analyses[row.symbol].verificationStatus==="PASSED")||(analyses[row.symbol].analysisMode==="MKTRADEHOME"&&analyses[row.symbol].fallbackVerified===true)))continue;
 const created=Date.parse(row.created_at||"");
 const ageMs=Date.now()-created;
 if(!Number.isFinite(created)||ageMs<0||ageMs>30*60*1000)continue;
 let saved={};
 try{saved=JSON.parse(row.analysis||"{}");}catch(e){continue;}
-if(saved.source!=="gpt-market-analysis"||saved.gptVerified!==true||saved.verificationStatus!=="PASSED")continue;
+const isGpt=saved.source==="gpt-market-analysis"&&saved.gptVerified===true&&saved.verificationStatus==="PASSED";
+const isFallback=saved.source==="mktradehome-independent-fallback"&&saved.analysisMode==="MKTRADEHOME"&&saved.fallbackVerified===true&&saved.gptVerified===false&&saved.verificationStatus==="NOT_GPT_VERIFIED"&&saved.checks?.higherTimeframesAgree===true&&saved.checks?.lowerTimeframesClear===true&&saved.checks?.quoteFresh===true;
+if(!isGpt&&!isFallback)continue;
 const entry=Number(row.entry_price),sl=Number(row.stop_loss),tp1=Number(row.take_profit_1),tp2=Number(row.take_profit_2);
 if(![entry,sl,tp1,tp2].every(Number.isFinite))continue;
 const q=quotes[row.symbol];
@@ -721,14 +723,17 @@ const results={
 "5M":timeframeResults["5M"]||{signal:"WAIT"}
 };
 analyses[row.symbol]={
+candidateId:row.id,
 symbol:row.symbol,overall:row.signal,entry,sl,tp1,tp2,
 quoteFresh:quoteFresh&&ageMs<=10*60*1000&&stillNearEntry,
-reason:"Restored from saved GPT-verified analysis. "+(saved.explanation||""),
-results,aiModel:"GPT-6",aiConfidence:Number(row.confidence)||0,
+reason:"Restored from saved "+(isFallback?"Mktradehome fallback":"GPT-verified")+" analysis. "+(saved.explanation||""),
+results,aiModel:isFallback?"Mktradehome Independent Engine":"GPT-6",aiConfidence:Number(row.confidence)||0,
 strength:saved.strength==="STRONG"?"STRONG":"STANDARD",
-gptVerified:true,verificationStatus:"PASSED",
-verificationNote:saved.verificationNote||"Independent GPT review passed.",
+gptVerified:isGpt,verificationStatus:isFallback?"NOT_GPT_VERIFIED":"PASSED",
+verificationNote:saved.verificationNote||(isFallback?"Independent technical checks passed; not GPT verified.":"Independent GPT review passed."),
 aiRiskNote:saved.risk_note||"Analysis is not a guarantee.",
+analysisMode:isFallback?"MKTRADEHOME":"GPT",
+fallbackVerified:isFallback,
 updatedAt:created
 };
 }
@@ -864,7 +869,8 @@ const reviews=getSignalReviews();
 
 const signals=marketList.map(m=>({market:m,a:analyses[m.symbol]}))
 .filter(x=>x.a&&["BUY","SELL"].includes(x.a.overall)&&
- x.a.gptVerified===true&&x.a.verificationStatus==="PASSED"&&
+ ((x.a.gptVerified===true&&x.a.verificationStatus==="PASSED")||
+ (x.a.analysisMode==="MKTRADEHOME"&&x.a.fallbackVerified===true&&Number.isSafeInteger(Number(x.a.candidateId))))&&
  Number.isFinite(x.a.entry)&&Number.isFinite(x.a.sl)&&Number.isFinite(x.a.tp1));
 
 if(!signals.length){
@@ -882,6 +888,7 @@ const statusText=status==="approved"
 
 return `<div class="approval-trade">
 <h3>${escapeHTML(market.name)} · ${a.strength==="STRONG"?"STRONG ":""}${a.overall}</h3>
+<div class="trade-status">${a.analysisMode==="MKTRADEHOME"?"MKTRADEHOME VERIFIED — NOT GPT VERIFIED":"GPT VERIFIED — INDEPENDENT REVIEW PASSED"}</div>
 <div class="trade-status">${getSignalQuality(a)}</div>
 <div class="trade-status">${statusText}</div>
 <div class="row"><span>Entry reference</span><strong>${formatPrice(a.entry)}</strong></div>
@@ -955,16 +962,13 @@ if(button)button.disabled=true;
 showMessage("approvalStatus","Sending approval securely to Supabase...");
 
 try{
+const fallbackMode=a.analysisMode==="MKTRADEHOME"&&a.fallbackVerified===true;
 const {data,error}=await supabaseClient.functions.invoke(
-isReal?"create-mt5-real-approval":"create-mt5-approval",
+fallbackMode?"create-mt5-fallback-approval":(isReal?"create-mt5-real-approval":"create-mt5-approval"),
 {
-body:{
-symbol:symbol,
-side:a.overall,
-entry:a.entry,
-stop_loss:a.sl,
-take_profit:a.tp1
-}
+body:fallbackMode
+?{candidate_id:a.candidateId,account:target}
+:{symbol:symbol,side:a.overall,entry:a.entry,stop_loss:a.sl,take_profit:a.tp1}
 }
 );
 

@@ -947,7 +947,7 @@ const approvalSummary =
 "Take Profit 1 (sent to MT5): "+formatPrice(a.tp1)+"\\n"+
 "Take Profit 2 (reference only): "+formatPrice(a.tp2)+"\\n"+
 "Lot size: 0.01\\n\\n"+
-"Only choose OK if you approve this exact setup.";
+(a.analysisMode==="MKTRADEHOME"?"IMPORTANT: This is Mktradehome-only analysis, NOT GPT verified.\\n\\n":"")+"Only choose OK if you approve this exact setup.";
 if(!window.confirm(approvalSummary)){
 showMessage("approvalStatus","Approval cancelled. No trade approval was sent.");
 return;

@@ -796,7 +796,8 @@ const riskReward=risk>0&&reward>=risk*2&&reward2>=risk*3;
 const verified=(a.gptVerified===true&&a.verificationStatus==="PASSED")||
 (a.analysisMode==="MKTRADEHOME"&&a.fallbackVerified===true);
 return a.quoteFresh&&higherAligned&&lowerClear&&riskReward&&verified
-?"GOOD SIGNAL":"SETUP NEEDS CONFIRMATION";
+?(a.analysisMode==="MKTRADEHOME"?"RULE CHECKS PASSED · NOT GPT VERIFIED":"GPT-VERIFIED SETUP")
+:"SETUP NEEDS CONFIRMATION";
 }
 
 function renderAnalysis(){
@@ -817,7 +818,7 @@ return `<div class="trade-item">
 <div class="signal ${cls}">${a.strength==="STRONG"?"STRONG ":""}${a.overall}</div>
 <div class="trade-status">${getSignalQuality(a)}</div>
 <div class="small">${escapeHTML(a.reason)}</div>
-<div class="small">AI engine: ${escapeHTML(a.aiModel||"GPT")} · Confidence: ${Number(a.aiConfidence)||0}/100</div>
+<div class="small">AI engine: ${escapeHTML(a.aiModel||"GPT")} · ${a.analysisMode==="MKTRADEHOME"?"Rule score (not win probability): ":"GPT confidence: "}${Number(a.aiConfidence)||0}/100</div>
 <div class="small">Second GPT review: ${escapeHTML(a.verificationStatus||"NOT_RUN")} · ${escapeHTML(a.verificationNote||"No verification details")}</div>
 <div class="small">${escapeHTML(a.aiRiskNote||"AI analysis is not a guarantee.")}</div>
 <div class="row"><span>Entry reference</span><strong>${formatPrice(a.entry)}</strong></div>

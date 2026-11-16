@@ -78,7 +78,7 @@ label{display:block;font-size:13px;color:#c7d8ee;margin-top:10px}
 </style>
 </head>
 <body>
-<div id="mkPinLock" class="hidden" role="dialog" aria-modal="true" aria-labelledby="mkPinTitle"><div id="mkPinCard"><h2 id="mkPinTitle">Mktradehome is locked</h2><p id="mkPinHint">Enter your 6-digit passcode to open your dashboard.</p><input id="mkPinInput" type="password" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="••••••" aria-label="Six digit passcode"><input id="mkPinConfirm" class="hidden" type="password" inputmode="numeric" maxlength="6" placeholder="Confirm PIN" aria-label="Confirm six digit passcode"><button id="mkPinSubmit" type="button">Unlock Dashboard</button><button id="mkPinSignOut" type="button" class="secondary">Sign Out</button><div id="mkPinMessage"></div></div></div>
+<div id="mkPinLock" class="hidden" role="dialog" aria-modal="true" aria-labelledby="mkPinTitle"><div id="mkPinCard"><h2 id="mkPinTitle">Mktradehome is locked</h2><p id="mkPinHint">Enter your 6-digit passcode to open your dashboard.</p><input id="mkPinInput" type="password" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="••••••" aria-label="Six digit passcode"><input id="mkPinConfirm" class="hidden" type="password" inputmode="numeric" maxlength="6" placeholder="Confirm PIN" aria-label="Confirm six digit passcode"><button id="mkPinSubmit" type="button">Unlock Dashboard</button><button id="mkPinSignOut" type="button" class="secondary">Sign Out &amp; Reset Passcode</button><div id="mkPinMessage"></div></div></div>
 <div class="container">
 
 <header>
@@ -1314,7 +1314,7 @@ $("telegramBtn").addEventListener("click",connectTelegram);
 $("accountSelector").addEventListener("change",()=>{updateAccountLabels();loadRiskSettings();refreshSelectedAccount();renderApprovalCentre();renderHistory();});
 $("lockBtn").addEventListener("click",lockDashboard);
 $("mkPinSubmit").addEventListener("click",submitDashboardPin);
-$("mkPinSignOut").addEventListener("click",async()=>{await supabaseClient.auth.signOut();location.reload();});
+$("mkPinSignOut").addEventListener("click",async()=>{localStorage.removeItem(PIN_HASH_KEY);localStorage.removeItem(PIN_SALT_KEY);await supabaseClient.auth.signOut();location.reload();});
 $("mkPinInput").addEventListener("keydown",e=>{if(e.key==="Enter")submitDashboardPin();});
 $("mkPinConfirm").addEventListener("keydown",e=>{if(e.key==="Enter")submitDashboardPin();});
 $("refreshBtn").addEventListener("click",refreshAll);

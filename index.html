@@ -413,16 +413,29 @@ lockDashboard();
 function selectedAccount(){return $("accountSelector")?.value==="real"?"real":"demo";}
 function updateAccountLabels(){const real=selectedAccount()==="real";$("accountMonitorTitle").textContent=real?"Exness Real Account Monitor":"Exness Demo Account Monitor";$("accountRefreshBtn").textContent=real?"Real Account Connection Pending":"Refresh Demo Account Data";$("accountModeNote").textContent=real?"Real account is selected in view-only mode. Connect and verify its separate MT5 account before live monitoring or approvals.":"Demo monitoring and approvals are available. Real mode remains view-only until verified.";}
 async function refreshSelectedAccount(){
-const btn=$("accountRefreshBtn");
-if(selectedAccount()==="real"){btn.disabled=true;$("accountData").classList.add("hidden");updateAccountLabels();showMessage("accountStatus","Real account is visible, but its account number, server and separate MT5 bridge have not yet been verified. Live monitoring and approvals remain locked.");btn.disabled=false;return;}
-const real=false,num=MT5_ACCOUNT,server=MT5_SERVER;btn.disabled=true;updateAccountLabels();showMessage("accountStatus","Retrieving Demo MT5 snapshot...");
-try{const {data:sd,error:se}=await supabaseClient.auth.getSession();if(se)throw se;const token=sd?.session?.access_token;if(!token)throw Error("Please sign in again.");
-const functionName="mt5-bridge?action=dashboard_snapshot";const {data,error}=await supabaseClient.functions.invoke(functionName,{method:"GET"});if(error){let message=error.message||"Account function request failed.";try{if(error.context&&typeof error.context.clone==="function"){const details=await error.context.clone().json();message=details?.message||details?.error||message;}}catch(_){}throw Error(message);}if(data?.success!==true)throw Error(data?.message||data?.error||"Account snapshot request failed.");
-const x=data.snapshot||data.account||data,got=String(x.account_number||num),gotServer=String(x.account_server||x.accountServer||data.account_server||"");if(got!==num||gotServer!==server)throw Error("Snapshot does not match selected account.");
-const vals=[Number(x.balance),Number(x.equity),Number(x.margin),Number(x.free_margin??x.freeMargin),Number(x.leverage),Number(x.open_positions??x.openPositions)];if(!vals.every(Number.isFinite))throw Error("Snapshot is missing required values.");
-["accountBalance","accountEquity","accountMargin","accountFreeMargin","accountLeverage","accountPositions"].forEach((id,i)=>$(id).textContent=i===4?"1:"+vals[i]:i===5?String(vals[i]):money(vals[i]));$("accountCurrency").textContent=x.currency||"--";$("accountServer").textContent=server;$("accountData").classList.remove("hidden");const t=x.captured_at||x.capturedAt;$("accountUpdated").textContent="Snapshot time: "+(t?new Date(t).toLocaleString():"Not supplied")+(data.age_seconds!==undefined?" · Age: "+data.age_seconds+" sec":"");showMessage("accountStatus",data.stale?"Snapshot is stale. Check MT5.":"Demo account snapshot received successfully from MT5.");
-}catch(e){console.error(e);$("accountData").classList.add("hidden");showMessage("accountStatus","Unable to retrieve Demo data: "+(e.message||"Unknown error"));}finally{btn.disabled=false;}}
-/* TELEGRAM */
+const btn=$("accountRefreshBtn"),real=selectedAccount()==="real";
+const num=MT5_ACCOUNT,server=real?"Exness-MT5Real30":MT5_SERVER;
+btn.disabled=true;updateAccountLabels();
+showMessage("accountStatus",real?"Retrieving the latest saved Real account snapshot...":"Retrieving Demo MT5 snapshot...");
+try{
+const {data:sd,error:se}=await supabaseClient.auth.getSession();if(se)throw se;
+const token=sd?.session?.access_token;if(!token)throw Error("Please sign in again.");
+const functionName="mt5-bridge?action=dashboard_snapshot"+(real?"&account=real":"");
+const {data,error}=await supabaseClient.functions.invoke(functionName,{method:"GET"});
+if(error){let message=error.message||"Account function request failed.";try{if(error.context&&typeof error.context.clone==="function"){const details=await error.context.clone().json();message=details?.message||details?.error||message;}}catch(_){}throw Error(message);}
+if(data?.success!==true)throw Error(data?.message||data?.error||"Account snapshot request failed.");
+const x=data.snapshot||data.account||data;
+const got=String(x.account_number||""),gotServer=String(x.account_server||x.accountServer||data.account_server||"");
+if(!got||gotServer!==server||(!real&&got!==num))throw Error("Snapshot does not match the selected account.");
+const vals=[Number(x.balance),Number(x.equity),Number(x.margin),Number(x.free_margin??x.freeMargin),Number(x.leverage),Number(x.open_positions??x.openPositions)];
+if(!vals.every(Number.isFinite))throw Error("Snapshot is missing required values.");
+["accountBalance","accountEquity","accountMargin","accountFreeMargin","accountLeverage","accountPositions"].forEach((id,i)=>$(id).textContent=i===4?"1:"+vals[i]:i===5?String(vals[i]):money(vals[i]));
+$("accountCurrency").textContent=x.currency||"--";$("accountServer").textContent=server;$("accountData").classList.remove("hidden");
+const t=x.captured_at||x.capturedAt;
+$("accountUpdated").textContent="Snapshot time: "+(t?new Date(t).toLocaleString():"Not supplied")+(data.age_seconds!==undefined?" · Age: "+data.age_seconds+" sec":"");
+showMessage("accountStatus",real?(data.stale?"Real account snapshot found, but it is stale. Open the Real MT5 terminal and reconnect its bridge. Live approvals remain locked.":"Real account snapshot received in read-only mode. Live approvals remain locked."):(data.stale?"Demo snapshot is stale. Check MT5.":"Demo account snapshot received successfully from MT5."));
+}catch(e){console.error(e);$("accountData").classList.add("hidden");showMessage("accountStatus","Unable to retrieve "+(real?"Real":"Demo")+" data: "+(e.message||"Unknown error"));}finally{btn.disabled=false;}
+}
 
 async function sendTelegramAlert(message){
 try{

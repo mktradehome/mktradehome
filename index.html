@@ -8,6 +8,7 @@
 <title>Mktradehome | Trading Assistant</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
+#mkPinLock{position:fixed;inset:0;z-index:100000;background:rgba(3,7,15,.98);display:flex;align-items:center;justify-content:center;padding:22px}#mkPinCard{width:min(390px,100%);background:#101b2b;border:1px solid #d4a72c;border-radius:18px;padding:24px;box-shadow:0 18px 60px #000b}#mkPinCard h2{color:#f5c542;margin-bottom:8px}#mkPinCard p{margin-bottom:12px}#mkPinInput,#mkPinConfirm{font-size:24px;letter-spacing:9px;text-align:center}#mkPinMessage{min-height:38px;margin-top:10px;color:#f5c542;font-size:13px}#lockBtn{width:auto;margin:0 8px 0 0;padding:10px 13px}
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:Arial,sans-serif;background-color:#05080f;background-image:linear-gradient(rgba(3,8,18,.32),rgba(3,8,18,.40)),url("https://images.unsplash.com/photo-1695453463057-aa5d48d9e3d4?auto=format&fit=crop&fm=jpg&ixlib=rb-4.1.0&q=85&w=2400");background-size:cover;background-position:center bottom;background-attachment:fixed;background-repeat:no-repeat;color:#f4f8ff;padding:16px}
 .container{max-width:900px;margin:auto}
@@ -77,6 +78,7 @@ label{display:block;font-size:13px;color:#c7d8ee;margin-top:10px}
 </style>
 </head>
 <body>
+<div id="mkPinLock" class="hidden" role="dialog" aria-modal="true" aria-labelledby="mkPinTitle"><div id="mkPinCard"><h2 id="mkPinTitle">Mktradehome is locked</h2><p id="mkPinHint">Enter your 6-digit passcode to open your dashboard.</p><input id="mkPinInput" type="password" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="••••••" aria-label="Six digit passcode"><input id="mkPinConfirm" class="hidden" type="password" inputmode="numeric" maxlength="6" placeholder="Confirm PIN" aria-label="Confirm six digit passcode"><button id="mkPinSubmit" type="button">Unlock Dashboard</button><button id="mkPinSignOut" type="button" class="secondary">Sign Out</button><div id="mkPinMessage"></div></div></div>
 <div class="container">
 
 <header>
@@ -84,7 +86,7 @@ label{display:block;font-size:13px;color:#c7d8ee;margin-top:10px}
 <h1>Mktradehome</h1>
 <p>Personal Trading Analysis Assistant</p>
 </div>
-<button id="logoutBtn" class="secondary hidden" style="width:auto">Sign Out</button>
+<div style="display:flex;gap:8px;align-items:center"><button id="lockBtn" class="secondary hidden" type="button">Lock</button><button id="logoutBtn" class="secondary hidden" style="width:auto">Sign Out</button></div>
 </header>
 
 <div id="loginPanel" class="card">
@@ -115,7 +117,7 @@ label{display:block;font-size:13px;color:#c7d8ee;margin-top:10px}
 <div id="telegramStatus" class="status">Telegram is not connected yet.</div>
 </div>
 
-<div class="card" id="accountSelectorCard"><h2>Trading Account</h2><p>Demo-only safety testing is active. Real-account access is disabled.</p><label for="accountSelector">Selected account</label><select id="accountSelector" disabled><option value="demo" selected>Exness Demo · Trial10</option></select><div class="small">Only the Demo account can be monitored or receive approvals while safety testing continues.</div></div>
+<div class="card" id="accountSelectorCard"><h2>Trading Account</h2><p>Choose the account view. Real mode is visible, but live account data and trade approvals remain locked until its MT5 connection is verified.</p><label for="accountSelector">Selected account</label><select id="accountSelector"><option value="demo" selected>Exness Demo · Trial10</option><option value="real">Exness Real · View mode (connection pending)</option></select><div class="small" id="accountModeNote">Demo monitoring and approvals are available. Real mode is display-only for now; no live orders can be approved or executed.</div></div>
 <div class="card" id="accountMonitor"><h2 id="accountMonitorTitle">Exness Demo Account Monitor</h2><p>Live account information received from the selected MT5 bridge.</p><button id="accountRefreshBtn" class="secondary">Refresh Demo Account Data</button><div id="accountStatus" class="status">Waiting for selected MT5 account data...</div><div id="accountData" class="hidden"><hr><div class="row"><span>Balance</span><strong id="accountBalance">--</strong></div><div class="row"><span>Equity</span><strong id="accountEquity">--</strong></div><div class="row"><span>Used margin</span><strong id="accountMargin">--</strong></div><div class="row"><span>Free margin</span><strong id="accountFreeMargin">--</strong></div><div class="row"><span>Currency</span><strong id="accountCurrency">--</strong></div><div class="row"><span>Leverage</span><strong id="accountLeverage">--</strong></div><div class="row"><span>Open position count</span><strong id="accountPositions">--</strong></div><div class="row"><span>Account server</span><strong id="accountServer">--</strong></div><div class="small" id="accountUpdated"></div></div><p class="small">Account details follow the selector. This snapshot gives account totals and an open-position count, not individual position details.</p></div>
 
 <div class="card">
@@ -407,10 +409,12 @@ newsRefreshTimer=setInterval(refreshMarketNews,600000);
 }
 
 /* UNIFIED DEMO / REAL MT5 ACCOUNT MONITOR */
-function selectedAccount(){return "demo";}
-function updateAccountLabels(){$("accountMonitorTitle").textContent="Exness Demo Account Monitor";$("accountRefreshBtn").textContent="Refresh Demo Account Data";}
+function selectedAccount(){return $("accountSelector")?.value==="real"?"real":"demo";}
+function updateAccountLabels(){const real=selectedAccount()==="real";$("accountMonitorTitle").textContent=real?"Exness Real Account Monitor":"Exness Demo Account Monitor";$("accountRefreshBtn").textContent=real?"Real Account Connection Pending":"Refresh Demo Account Data";$("accountModeNote").textContent=real?"Real account is selected in view-only mode. Connect and verify its separate MT5 account before live monitoring or approvals.":"Demo monitoring and approvals are available. Real mode remains view-only until verified.";}
 async function refreshSelectedAccount(){
-const btn=$("accountRefreshBtn"),real=false,num=MT5_ACCOUNT,server=MT5_SERVER;btn.disabled=true;updateAccountLabels();showMessage("accountStatus","Retrieving Demo MT5 snapshot...");
+const btn=$("accountRefreshBtn");
+if(selectedAccount()==="real"){btn.disabled=true;$("accountData").classList.add("hidden");updateAccountLabels();showMessage("accountStatus","Real account is visible, but its account number, server and separate MT5 bridge have not yet been verified. Live monitoring and approvals remain locked.");btn.disabled=false;return;}
+const real=false,num=MT5_ACCOUNT,server=MT5_SERVER;btn.disabled=true;updateAccountLabels();showMessage("accountStatus","Retrieving Demo MT5 snapshot...");
 try{const {data:sd,error:se}=await supabaseClient.auth.getSession();if(se)throw se;const token=sd?.session?.access_token;if(!token)throw Error("Please sign in again.");
 const functionName="mt5-bridge?action=dashboard_snapshot";const {data,error}=await supabaseClient.functions.invoke(functionName,{method:"GET"});if(error){let message=error.message||"Account function request failed.";try{if(error.context&&typeof error.context.clone==="function"){const details=await error.context.clone().json();message=details?.message||details?.error||message;}}catch(_){}throw Error(message);}if(data?.success!==true)throw Error(data?.message||data?.error||"Account snapshot request failed.");
 const x=data.snapshot||data.account||data,got=String(x.account_number||num),gotServer=String(x.account_server||x.accountServer||data.account_server||"");if(got!==num||gotServer!==server)throw Error("Snapshot does not match selected account.");
@@ -922,6 +926,7 @@ return;
 const currentKey=reviewKey(symbol,a);
 
 if(action==="approve"){
+if(selectedAccount()==="real"){showMessage("approvalStatus","Real-account approvals are still locked. The Real account is visible, but its separate MT5 connection and live-price safety checks must be verified first.");return;}
 const safety=getSafetyState();
 
 if(safety.locked){
@@ -1140,6 +1145,7 @@ return [];
 
 async function renderHistory(){
 const container=$("tradeHistory");
+if(selectedAccount()==="real"){container.innerHTML="<p>Real-account trade history will appear after its separate MT5 connection is verified.</p>";return;}
 container.innerHTML="<p>Loading closed Demo trades from MT5...</p>";
 
 try{
@@ -1305,6 +1311,11 @@ $("accountRefreshBtn").addEventListener("click",refreshSelectedAccount);
 
 $("telegramBtn").addEventListener("click",connectTelegram);
 $("accountSelector").addEventListener("change",()=>{updateAccountLabels();loadRiskSettings();refreshSelectedAccount();renderApprovalCentre();renderHistory();});
+$("lockBtn").addEventListener("click",lockDashboard);
+$("mkPinSubmit").addEventListener("click",submitDashboardPin);
+$("mkPinSignOut").addEventListener("click",async()=>{await supabaseClient.auth.signOut();location.reload();});
+$("mkPinInput").addEventListener("keydown",e=>{if(e.key==="Enter")submitDashboardPin();});
+$("mkPinConfirm").addEventListener("keydown",e=>{if(e.key==="Enter")submitDashboardPin();});
 $("refreshBtn").addEventListener("click",refreshAll);
 $("saveSafetyBtn").addEventListener("click",saveSafetySettings);
 $("resetRiskBtn").addEventListener("click",resetDailyRisk);
@@ -1338,6 +1349,17 @@ const button=event.target.closest("[data-action]");
 if(!button)return;
 handleSignalReview(button.dataset.action,button.dataset.symbol);
 });
+
+/* LOCAL DASHBOARD PASSCODE LOCK */
+const PIN_HASH_KEY="mktradehome_pin_hash_v1";
+const PIN_SALT_KEY="mktradehome_pin_salt_v1";
+let dashboardUnlocked=false;
+function bytesToHex(bytes){return Array.from(bytes).map(b=>b.toString(16).padStart(2,"0")).join("");}
+async function hashDashboardPin(pin,saltHex){const enc=new TextEncoder();const salt=new Uint8Array(saltHex.match(/.{2}/g).map(x=>parseInt(x,16)));const key=await crypto.subtle.importKey("raw",enc.encode(pin),"PBKDF2",false,["deriveBits"]);const bits=await crypto.subtle.deriveBits({name:"PBKDF2",salt,iterations:150000,hash:"SHA-256"},key,256);return bytesToHex(new Uint8Array(bits));}
+function showPinLock(setup=false){$("mkPinLock").classList.remove("hidden");$("mkPinTitle").textContent=setup?"Create your dashboard passcode":"Mktradehome is locked";$("mkPinHint").textContent=setup?"Create a 6-digit passcode. You will need it whenever the dashboard locks.":"Enter your 6-digit passcode to open your dashboard.";$("mkPinConfirm").classList.toggle("hidden",!setup);$("mkPinSubmit").textContent=setup?"Save Passcode":"Unlock Dashboard";$("mkPinInput").value="";$("mkPinConfirm").value="";showMessage("mkPinMessage","");setTimeout(()=>$("mkPinInput").focus(),100);}
+function lockDashboard(){if($("dashboard").classList.contains("hidden"))return;dashboardUnlocked=false;$("dashboard").classList.add("hidden");$("lockBtn").classList.add("hidden");showPinLock(!localStorage.getItem(PIN_HASH_KEY));}
+async function submitDashboardPin(){const pin=$("mkPinInput").value.trim();const setup=!localStorage.getItem(PIN_HASH_KEY);if(!/^\d{6}$/.test(pin)){showMessage("mkPinMessage","Passcode must be exactly 6 digits.");return;}try{if(setup){const confirmPin=$("mkPinConfirm").value.trim();if(pin!==confirmPin){showMessage("mkPinMessage","The two passcodes do not match.");return;}const salt=bytesToHex(crypto.getRandomValues(new Uint8Array(16)));const hash=await hashDashboardPin(pin,salt);localStorage.setItem(PIN_SALT_KEY,salt);localStorage.setItem(PIN_HASH_KEY,hash);}else{const salt=localStorage.getItem(PIN_SALT_KEY);const hash=await hashDashboardPin(pin,salt||"");if(hash!==localStorage.getItem(PIN_HASH_KEY)){showMessage("mkPinMessage","Incorrect passcode. Try again.");$("mkPinInput").value="";return;}}dashboardUnlocked=true;$("mkPinLock").classList.add("hidden");$("dashboard").classList.remove("hidden");$("lockBtn").classList.remove("hidden");}catch(e){console.error("Dashboard PIN error:",e);showMessage("mkPinMessage","Could not verify passcode on this browser.");}}
+document.addEventListener("visibilitychange",()=>{if(document.hidden&&dashboardUnlocked)lockDashboard();});
 
 /* AUTH SESSION */
 

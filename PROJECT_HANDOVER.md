@@ -1,6 +1,6 @@
 # Mktradehome — Project Handover & Continuity Record
 
-**Last updated:** 2026-11-14 (Ghana time; latest known development notes included through the end of this work session)  
+**Last updated:** 2026-11-17 (latest verified backend, dashboard, and safety status)  
 **Purpose:** This is the working source of truth for continuing Mktradehome when a ChatGPT conversation reaches its length limit. Update this file after every major code, database, deployment, or test change.
 
 > **Important:** This file records project knowledge, not passwords or secret values. Never put Supabase service-role keys, database passwords, Exness passwords, Telegram bot tokens, API secrets, or private access tokens in this file or in public GitHub files. Record only the *names* of required secrets and where they are configured.
@@ -314,7 +314,7 @@ The next developer/session must retrieve and record:
 
 When starting a new ChatGPT conversation, paste this file or provide its GitHub link and say:
 
-> Continue Mktradehome from this handover. First read the current GitHub and deployed versions before changing anything. Keep all working features. Give me one small step at a time. Our immediate priority is to verify the fallback approval v3 price-check fix and complete one safe Demo approval test. Do not enable Real execution or autonomous trading. Update this handover after meaningful progress.
+> Continue Mktradehome from this handover. The independent Mktradehome analysis engine is primary; GPT is optional and must never block market analysis. Preserve BTCUSD, EURUSD, XAUUSD, USDJPY and the 4H/1H/15M/5M workflow. Keep the Real account visible and its configuration intact, but keep Real approval/execution locked until Demo testing, the Real MT5 connection, and all safety checks are verified and the owner explicitly authorizes any change. Never place a trade without the owner's explicit approval. Verify current code and deployments before changing anything. Update this handover after meaningful progress.
 
 ---
 
@@ -323,3 +323,62 @@ When starting a new ChatGPT conversation, paste this file or provide its GitHub 
 | Date | Update |
 |---|---|
 | 2026-11-14 | Created initial continuity record from current repository inspection and available project history. Recorded dashboard features, hosting, intended approval workflow, safety constraints, prior monitor findings, and the latest reported fallback approval v3 change. Backend schema, secrets configuration, and EA implementation still require direct inspection. |
+
+
+## 16. 2026-11-17 — Owner commitments, independent engine, and verified status
+
+### Owner commitments to preserve (agreed 2026-11-16)
+
+These are the current operating decisions and take precedence over older notes where they conflict:
+
+- **Mktradehome's own independent analysis engine is the primary system.** GPT is optional second opinion only. GPT rate limits or outages must not stop the monitor from collecting prices, analysing markets, saving eligible independent candidates, or displaying honest WAIT decisions.
+- Preserve all four markets: BTCUSD, EURUSD, XAUUSD, USDJPY.
+- Keep the 4H and 1H higher-timeframe direction checks, with 15M and 5M confirmation. Use completed candles and fresh quotes; if the evidence is incomplete or conflicting, return WAIT.
+- Every candidate must carry a clear source/verification label. Independent rule checks are **not GPT verification**, and neither is a promise of profit or a measured win probability.
+- Save signal history and project changes. Do not discard the user's existing work or rewrite functioning features unnecessarily.
+- **Do not remove or hide the Real account.** Preserve the Real account selector, read-only visibility, and existing account configuration.
+- Testing remains Demo-first. Keep the separate Real approval/execution lock until the Real MT5 connection and all safeguards are verified, Demo testing is complete, and the owner explicitly authorizes any change.
+- No trade may be placed without the owner's explicit approval. Do not enable autonomous trading or weaken stale-price, quote-age, stop-loss, risk/reward, account, or execution checks.
+
+### Verified backend status on 2026-11-17
+
+- `market-monitor`: ACTIVE v49. Scheduled POST invocations returned HTTP 200 at five-minute intervals from 11:00 through 11:30 UTC in the inspected log window.
+- `gpt-market-analysis`: ACTIVE v9. The second-review maximum output was reduced to 120 tokens to reduce token pressure while retaining the independent second review. **v9 has not yet been exercised by a successful provider call.** The last observed GPT function invocation was 08:25:04 UTC on v8 and returned HTTP 429; the global cooldown row currently says next GPT attempt is not allowed before 13:06:02 UTC. Do not force a manual invocation or bypass the cooldown.
+- `create-mt5-fallback-approval`: ACTIVE v5. It is Demo-only and still requires an authenticated owner request. It now additionally requires an explicit lower-timeframe directional confirmation and at least 60 completed candles on all four timeframes. It rechecks the live quote, candidate age, price movement, direction, risk/reward, and duplicate active approvals. The function saves a manually approved queue item; it does not itself place an order.
+- `create-mt5-real-approval`: ACTIVE v3 and still returns 403 while Real approval is locked.
+- `mt5-bridge`: ACTIVE v30. `mt5-real-bridge`: ACTIVE v9. Real-account display remains read-only.
+- No database schema changes were made during this work.
+
+### Dashboard change and deployment evidence
+
+- Updated `index.html` in GitHub `main`; commit: `21873702d01c260387e0f4a064ee2a90753f7e23`.
+- GitHub Actions run `44075142469` completed successfully for that commit.
+- Dashboard now restores independent candidates only when the saved record shows higher-timeframe agreement, at least one lower timeframe confirming, no lower-timeframe conflict, sufficient candle history, fresh quote checks, and the expected risk/reward validation.
+- The Approval Centre now blocks approval if the signal-quality checks fail.
+- The label was corrected from the ambiguous “MKTRADEHOME VERIFIED — NOT GPT VERIFIED” to “INDEPENDENT RULE CHECKS PASSED — NOT GPT VERIFIED”.
+- The Real account lock remains in the dashboard.
+- **Cloudflare live-site content was not independently verified in this check.** A successful GitHub Actions run is not, by itself, proof that the Cloudflare Pages domain is serving the new content. Verify Cloudflare's deployment record or the live site separately.
+
+### Current analysis and MT5 test position
+
+- The monitor saved 124 independent fallback candidates in the last 24 hours, including 11 in the last hour, across all four markets. These are candidate records, not completed trades or evidence of a profitable strategy. No GPT-approved signal was confirmed in the inspected period.
+- The candidate engine is still an initial rule-based EMA/ATR implementation. It has not been independently backtested or proven to have a particular win rate. Keep labels honest and collect Demo outcomes before claiming performance.
+- Latest Demo account snapshot in `mt5_account_snapshots` was 2026-11-17 03:22:56 UTC. Later logs showed dashboard polling but no newer MT5 EA account-snapshot heartbeat. Treat the Demo terminal/EA connection as **not currently verified fresh** until a new snapshot arrives.
+- Latest Real account snapshot was 2026-11-14 00:20:40 UTC; Real view is therefore stale/read-only.
+- The most recent failed Demo queue item (02:20:32 UTC) reported that market price moved beyond the approved entry limit. Do not loosen this protection; require a fresh candidate and live price instead.
+- No new trade was placed by the changes recorded in this section.
+
+### Security-advisor notes (inspection only; no changes made)
+
+- Supabase Security Advisor reported RLS enabled with no policies on `market_monitor_control`, `market_signal_state`, `mt5_account_snapshots`, `mt5_close_queue`, and `mt5_trade_queue`. These tables are closed to ordinary Data API roles by default; the backend uses service-role access where required. Do not add public policies just to clear the informational warning.
+- Advisor also reported `pg_net` installed in `public` and leaked-password protection disabled. These were not changed because they are separate configuration decisions and need a careful review.
+- No secret values, passwords, API keys, or private tokens were added to this handover.
+
+### Next safe milestones
+
+1. Wait for the global GPT cooldown to expire naturally; assess v9 only if the scheduled monitor has a genuinely eligible setup. GPT remains optional.
+2. Confirm Cloudflare Pages has deployed commit `21873702d01c260387e0f4a064ee2a90753f7e23`; do not infer this solely from GitHub Actions.
+3. Restore a fresh Demo MT5 EA heartbeat, then test one new independent candidate through the owner's explicit Demo approval. Confirm queue acknowledgement and outcome before calling the end-to-end path proven.
+4. Collect Demo outcomes and backtest the independent strategy before making claims about signal accuracy or changing its thresholds.
+5. Keep Real account visible/read-only and Real approval/execution locked until all stated conditions are satisfied.
+

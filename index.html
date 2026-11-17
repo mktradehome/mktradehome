@@ -686,7 +686,7 @@ if(!Number.isFinite(created)||ageMs<0||ageMs>30*60*1000)continue;
 let saved={};
 try{saved=JSON.parse(row.analysis||"{}");}catch(e){continue;}
 const isGpt=saved.source==="gpt-market-analysis"&&saved.gptVerified===true&&saved.verificationStatus==="PASSED";
-const isFallback=saved.source==="mktradehome-independent-fallback"&&saved.analysisMode==="MKTRADEHOME"&&saved.fallbackVerified===true&&saved.gptVerified===false&&saved.verificationStatus==="NOT_GPT_VERIFIED"&&saved.checks?.higherTimeframesAgree===true&&saved.checks?.lowerTimeframesClear===true&&saved.checks?.quoteFresh===true;
+const isFallback=saved.source==="mktradehome-independent-fallback"&&saved.analysisMode==="MKTRADEHOME"&&saved.fallbackVerified===true&&saved.gptVerified===false&&saved.verificationStatus==="NOT_GPT_VERIFIED"&&saved.checks?.higherTimeframesAgree===true&&saved.checks?.lowerTimeframesClear===true&&saved.checks?.lowerConfirmsDirection===true&&saved.checks?.quoteFresh===true&&saved.checks?.enoughCandles===true&&saved.checks?.riskReward==="1:2 and 1:3"&&saved.timeframes?.["4H"]?.signal===row.signal&&saved.timeframes?.["1H"]?.signal===row.signal&&[saved.timeframes?.["15M"]?.signal,saved.timeframes?.["5M"]?.signal].includes(row.signal)&&[saved.timeframes?.["15M"]?.signal,saved.timeframes?.["5M"]?.signal].every(s=>s==="WAIT"||s===row.signal)&&["4H","1H","15M","5M"].every(k=>Number(saved.timeframes?.[k]?.bars)>=60);
 if(!isGpt&&!isFallback)continue;
 const entry=Number(row.entry_price),sl=Number(row.stop_loss),tp1=Number(row.take_profit_1),tp2=Number(row.take_profit_2);
 if(![entry,sl,tp1,tp2].every(Number.isFinite))continue;
@@ -751,13 +751,14 @@ const higher=["4H","1H"].map(k=>tf[k]?.signal);
 const lower=["15M","5M"].map(k=>tf[k]?.signal);
 const higherAligned=higher[0]===a.overall&&higher[1]===a.overall;
 const lowerClear=lower.every(s=>s==="WAIT"||s===a.overall);
+ const lowerConfirmed=lower.includes(a.overall);
 const risk=a.overall==="BUY"?Number(a.entry)-Number(a.sl):Number(a.sl)-Number(a.entry);
 const reward=a.overall==="BUY"?Number(a.tp1)-Number(a.entry):Number(a.entry)-Number(a.tp1);
 const reward2=a.overall==="BUY"?Number(a.tp2)-Number(a.entry):Number(a.entry)-Number(a.tp2);
 const riskReward=risk>0&&reward>=risk*2&&reward2>=risk*3;
 const verified=(a.gptVerified===true&&a.verificationStatus==="PASSED")||
 (a.analysisMode==="MKTRADEHOME"&&a.fallbackVerified===true);
-return a.quoteFresh&&higherAligned&&lowerClear&&riskReward&&verified
+return a.quoteFresh&&higherAligned&&lowerClear&&lowerConfirmed&&riskReward&&verified
 ?(a.analysisMode==="MKTRADEHOME"?"RULE CHECKS PASSED · NOT GPT VERIFIED":"GPT-VERIFIED SETUP")
 :"SETUP NEEDS CONFIRMATION";
 }
@@ -852,7 +853,7 @@ const signals=marketList.map(m=>({market:m,a:analyses[m.symbol]}))
 .filter(x=>x.a&&["BUY","SELL"].includes(x.a.overall)&&
  ((x.a.gptVerified===true&&x.a.verificationStatus==="PASSED")||
  (x.a.analysisMode==="MKTRADEHOME"&&x.a.fallbackVerified===true&&Number.isSafeInteger(Number(x.a.candidateId))))&&
- Number.isFinite(x.a.entry)&&Number.isFinite(x.a.sl)&&Number.isFinite(x.a.tp1));
+ Number.isFinite(x.a.entry)&&Number.isFinite(x.a.sl)&&Number.isFinite(x.a.tp1)&&getSignalQuality(x.a)!=="SETUP NEEDS CONFIRMATION");
 
 if(!signals.length){
 container.innerHTML="<p>No confirmed BUY or SELL setups right now. WAIT signals are not approval opportunities.</p>";
@@ -869,7 +870,7 @@ const statusText=status==="approved"
 
 return `<div class="approval-trade">
 <h3>${escapeHTML(market.name)} · ${a.strength==="STRONG"?"STRONG ":""}${a.overall}</h3>
-<div class="trade-status">${a.analysisMode==="MKTRADEHOME"?"MKTRADEHOME VERIFIED — NOT GPT VERIFIED":"GPT VERIFIED — INDEPENDENT REVIEW PASSED"}</div>
+<div class="trade-status">${a.analysisMode==="MKTRADEHOME"?"INDEPENDENT RULE CHECKS PASSED — NOT GPT VERIFIED":"GPT VERIFIED — INDEPENDENT REVIEW PASSED"}</div>
 <div class="trade-status">${getSignalQuality(a)}</div>
 <div class="trade-status">${statusText}</div>
 <div class="row"><span>Entry reference</span><strong>${formatPrice(a.entry)}</strong></div>
@@ -900,6 +901,10 @@ showMessage("approvalStatus","Quote is not fresh. Approval blocked.");
 return;
 }
 
+if(action==="approve"&&getSignalQuality(a)==="SETUP NEEDS CONFIRMATION"){
+ showMessage("approvalStatus","Independent confirmation or risk checks failed. Approval blocked.");
+ return;
+}
 const currentKey=reviewKey(symbol,a);
 
 if(action==="approve"){

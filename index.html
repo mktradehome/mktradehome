@@ -617,60 +617,21 @@ higherTimeframes[0]===higherTimeframes[1] &&
 !lowerTimeframes.some(signal=>signal!=="WAIT"&&signal!==higherTimeframes[0])
 ?higherTimeframes[0]:"WAIT";
 
-/* Save GPT API requests for genuinely aligned, fresh market setups only.
-   The server still performs its own independent checks and second GPT review. */
-if(!fresh){
+/* GPT requests are owned by the background market-monitor only.
+   The dashboard must never fan out duplicate provider requests per market.
+   It displays the latest eligible saved monitor candidate below instead. */
 aiResult={
 signal:"WAIT",entry:null,stop_loss:null,take_profit_1:null,take_profit_2:null,
 confidence:0,
-explanation:"Quote is stale, unavailable, or market is not confirmed open.",
-risk_note:"No GPT request sent because the live quote failed the freshness check.",
+explanation:!fresh
+?"Quote is stale, unavailable, or the market is not confirmed open."
+:localDirection==="WAIT"
+?"The independent timeframe checks are not aligned. Waiting for a clearer setup."
+:"Timeframes show a possible setup. The background monitor handles the single-slot GPT review; the dashboard will not send a duplicate request.",
+risk_note:"Only a recent saved candidate from the background monitor can become a BUY/SELL setup. Independent signals remain clearly labelled and are not GPT verified.",
 verificationStatus:"NOT_RUN",
-verificationNote:"Second GPT review not run: fresh quote required."
+verificationNote:"No GPT request was sent by the dashboard. Background monitor owns GPT analysis and second-pass review."
 };
-}else if(localDirection==="WAIT"){
-aiResult={
-signal:"WAIT",entry:null,stop_loss:null,take_profit_1:null,take_profit_2:null,
-confidence:0,
-explanation:"The 4H and 1H trend must agree; 15M/5M may be neutral but must not clearly oppose.",
-risk_note:"No GPT request sent because the higher-timeframe trend is unclear or a lower timeframe clearly opposes it.",
-verificationStatus:"NOT_RUN",
-verificationNote:"Second GPT review not run: higher-timeframe agreement or lower-timeframe conflict check failed."
-};
-}else{
-try{
-const {data,error}=await supabaseClient.functions.invoke(
-"gpt-market-analysis",
-{
-body:{
-symbol:market.symbol,
-quote:q,
-timeframes:results
-}
-}
-);
-
-if(error)throw error;
-if(!data||data.success!==true||!data.analysis) {
-throw new Error(data?.error||"GPT analysis returned no result.");
-}
-aiResult=data.analysis;
-}catch(error){
-console.error("GPT analysis failed for "+market.symbol,error);
-aiResult={
-signal:"WAIT",
-entry:null,
-stop_loss:null,
-take_profit_1:null,
-take_profit_2:null,
-confidence:0,
-explanation:"GPT analysis is unavailable. No trade setup should be used until the AI check succeeds.",
-risk_note:"The GPT service may be rate-limited or temporarily unavailable. Do not use a local signal as a trade instruction.",
-verificationStatus:"NOT_RUN",
-verificationNote:"Second GPT review not run because the first GPT request failed."
-};
-}
-}
 
 const overall=fresh?aiResult.signal:"WAIT";
 const entry=overall==="WAIT"?null:Number(aiResult.entry);
@@ -696,12 +657,13 @@ tp2:Number.isFinite(tp2)?tp2:null,
 quoteFresh:fresh,
 reason,
 results,
-aiModel:"GPT-6 Luna",
+aiModel:"Mktradehome background monitor",
 aiConfidence:Number(aiResult.confidence)||0,
  strength:aiResult.strength==="STRONG"?"STRONG":"STANDARD",
 gptVerified:aiResult.gptVerified===true,
 verificationStatus:aiResult.verificationStatus||"NOT_RUN",
-verificationNote:aiResult.verificationNote||"Second GPT review status unavailable",
+verificationNote:aiResult.verificationNote||"Background monitor review status unavailable",
+analysisMode:"MONITOR_ONLY",
 aiRiskNote:aiResult.risk_note||"AI analysis is not a guarantee.",
 updatedAt:Date.now()
 };
@@ -1283,7 +1245,7 @@ renderMarkets();
 renderAnalysis();
 renderApprovalCentre();
 
-showMessage("systemStatus","Market analysis updated. Signals are for manual review.");
+showMessage("systemStatus","Market data refreshed. Background monitor manages AI review; eligible saved setups are shown for manual review.");
 showMessage("lastUpdate",new Date().toLocaleString());
 
 for(const m of marketList){

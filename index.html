@@ -437,9 +437,9 @@ showMessage("accountStatus",real?(data.stale?"Real account snapshot found, but i
 }catch(e){console.error(e);$("accountData").classList.add("hidden");showMessage("accountStatus","Unable to retrieve "+(real?"Real":"Demo")+" data: "+(e.message||"Unknown error"));}finally{btn.disabled=false;}
 }
 
-async function sendTelegramAlert(message){
+async function sendTelegramAlert(message, proof={}){
 try{
-const {data,error}=await supabaseClient.functions.invoke("telegram-alerts",{body:{message}});
+const {data,error}=await supabaseClient.functions.invoke("telegram-alerts",{body:{message,...proof}});
 if(error)throw error;
 if(!data?.success)throw new Error(data?.error||"Telegram alert failed.");
 return true;
@@ -995,6 +995,7 @@ await sendTelegramAlert(
 "\nTP1: "+formatPrice(a.tp1)+
 "\nTP2: "+formatPrice(a.tp2)+
 "\nSaved to the secure queue. EA execution remains controlled by its safety switches."
+,{candidate_id:a.candidateId,queue_id:data.trade.id}
 );
 
 renderApprovalCentre();

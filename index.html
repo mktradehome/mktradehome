@@ -400,7 +400,7 @@ if(marketRefreshTimer)clearInterval(marketRefreshTimer);
 if(accountRefreshTimer)clearInterval(accountRefreshTimer);
 if(newsRefreshTimer)clearInterval(newsRefreshTimer);
 
-/* Market candles include a 5-minute timeframe, so avoid a full GPT run every minute. */
+/* The monitor checks markets every five minutes; the dashboard never calls a model API. */
 marketRefreshTimer=setInterval(refreshAll,300000);
 
 /* Account snapshots remain on a separate one-minute refresh. */
@@ -617,9 +617,8 @@ higherTimeframes[0]===higherTimeframes[1] &&
 !lowerTimeframes.some(signal=>signal!=="WAIT"&&signal!==higherTimeframes[0])
 ?higherTimeframes[0]:"WAIT";
 
-/* GPT requests are owned by the background market-monitor only.
-   The dashboard must never fan out duplicate provider requests per market.
-   It displays the latest eligible saved monitor candidate below instead. */
+/* Signal generation is owned by the independent background technical engine.
+   The dashboard displays saved, validated candidates and never creates duplicate analysis requests. */
 aiResult={
 signal:"WAIT",entry:null,stop_loss:null,take_profit_1:null,take_profit_2:null,
 confidence:0,
@@ -627,10 +626,10 @@ explanation:!fresh
 ?"Quote is stale, unavailable, or the market is not confirmed open."
 :localDirection==="WAIT"
 ?"The independent timeframe checks are not aligned. Waiting for a clearer setup."
-:"Timeframes show a possible setup. The background monitor handles the single-slot GPT review; the dashboard will not send a duplicate request.",
-risk_note:"Only a recent saved candidate from the background monitor can become a BUY/SELL setup. Independent signals remain clearly labelled and are not GPT verified.",
+:"Timeframes show a possible setup. The independent technical engine runs in the background monitor; the dashboard will not send duplicate analysis requests.",
+risk_note:"Only a recent candidate that passes the independent technical rules can become a BUY/SELL setup.",
 verificationStatus:"NOT_RUN",
-verificationNote:"No GPT request was sent by the dashboard. Background monitor owns GPT analysis and second-pass review."
+verificationNote:"Background monitor owns independent technical analysis."
 };
 
 const overall=fresh?aiResult.signal:"WAIT";
@@ -639,12 +638,12 @@ const sl=overall==="WAIT"?null:Number(aiResult.stop_loss);
 const tp1=overall==="WAIT"?null:Number(aiResult.take_profit_1);
 const tp2=overall==="WAIT"?null:Number(aiResult.take_profit_2);
 
-let reason=aiResult.explanation||"GPT analysis completed.";
+let reason=aiResult.explanation||"Independent technical analysis is waiting for confirmation.";
 
 if(!fresh){
-reason="Quote is stale, unavailable, or market is not confirmed open. GPT signal blocked.";
+reason="Quote is stale, unavailable, or market is not confirmed open. Signal blocked.";
 }else if(overall==="WAIT"&&!aiResult.explanation){
-reason="GPT recommends waiting for confirmation.";
+reason="Technical rules recommend waiting for confirmation.";
 }
 
 return {
@@ -660,15 +659,15 @@ results,
 aiModel:"Dashboard timeframe check",
 aiConfidence:Number(aiResult.confidence)||0,
  strength:aiResult.strength==="STRONG"?"STRONG":"STANDARD",
-gptVerified:aiResult.gptVerified===true,
+engineVerified:false,
 verificationStatus:aiResult.verificationStatus||"NOT_RUN",
-verificationNote:aiResult.verificationNote||"Background monitor review status unavailable",
+verificationNote:aiResult.verificationNote||"Background technical-engine result is not yet available.",
 analysisMode:"MONITOR_ONLY",
 aiRiskNote:aiResult.risk_note||"AI analysis is not a guarantee.",
 updatedAt:Date.now()
 };
 }
-/* RESTORE RECENT GPT-VERIFIED CANDIDATES AFTER REFRESH */
+/* RESTORE RECENT INDEPENDENT TECHNICAL-ENGINE CANDIDATES AFTER REFRESH */
 async function loadSavedVerifiedCandidates(){
 try{
 const {data,error}=await supabaseClient
@@ -678,16 +677,16 @@ const {data,error}=await supabaseClient
 .order("created_at",{ascending:false})
 .limit(20);
 if(error)throw error;
+const restoredSymbols=new Set();
 for(const row of (data||[])){
-if(analyses[row.symbol]&&["BUY","SELL"].includes(analyses[row.symbol].overall)&&((analyses[row.symbol].gptVerified===true&&analyses[row.symbol].verificationStatus==="PASSED")||(analyses[row.symbol].analysisMode==="MKTRADEHOME"&&analyses[row.symbol].fallbackVerified===true)))continue;
+if(analyses[row.symbol]&&["BUY","SELL"].includes(analyses[row.symbol].overall)&&(analyses[row.symbol].engineVerified===true&&analyses[row.symbol].verificationStatus==="PASSED"))continue;
 const created=Date.parse(row.created_at||"");
 const ageMs=Date.now()-created;
 if(!Number.isFinite(created)||ageMs<0||ageMs>30*60*1000)continue;
 let saved={};
 try{saved=JSON.parse(row.analysis||"{}");}catch(e){continue;}
-const isGpt=saved.source==="gpt-market-analysis"&&saved.gptVerified===true&&saved.verificationStatus==="PASSED";
-const isFallback=false;
-if(!isGpt)continue;
+const isEngine=saved.source==="mktradehome-technical-engine"&&saved.engineVersion==="1.0.0"&&saved.engineVerified===true&&saved.verificationStatus==="PASSED"&&saved.qualityScoreIsWinProbability===false&&!!saved.expiresAt&&Date.parse(saved.expiresAt)>Date.now();
+if(!isEngine||!["BUY","SELL"].includes(row.signal)||restoredSymbols.has(row.symbol))continue;
 const entry=Number(row.entry_price),sl=Number(row.stop_loss),tp1=Number(row.take_profit_1),tp2=Number(row.take_profit_2);
 if(![entry,sl,tp1,tp2].every(Number.isFinite))continue;
 const q=quotes[row.symbol];
@@ -706,19 +705,20 @@ analyses[row.symbol]={
 candidateId:row.id,
 symbol:row.symbol,overall:row.signal,entry,sl,tp1,tp2,
 quoteFresh:quoteFresh&&ageMs<=10*60*1000&&stillNearEntry,
-reason:"Restored from saved "+(isFallback?"Mktradehome fallback":"GPT-verified")+" analysis. "+(saved.explanation||""),
-results,aiModel:isFallback?"Mktradehome Independent Engine":"GPT-6",aiConfidence:Number(row.confidence)||0,
+reason:"Restored from saved Mktradehome technical-engine analysis. "+(saved.explanation||""),
+results,aiModel:"Mktradehome Technical Engine",aiConfidence:Number(row.confidence)||0,
 strength:saved.strength==="STRONG"?"STRONG":"STANDARD",
-gptVerified:isGpt,verificationStatus:isFallback?"NOT_GPT_VERIFIED":"PASSED",
-verificationNote:saved.verificationNote||(isFallback?"Independent technical checks passed; not GPT verified.":"Independent GPT review passed."),
+engineVerified:isEngine,verificationStatus:"PASSED",
+verificationNote:"Independent technical-engine checks passed.",
 aiRiskNote:saved.risk_note||"Analysis is not a guarantee.",
-analysisMode:isFallback?"MKTRADEHOME":"GPT",
-fallbackVerified:isFallback,
+analysisMode:"MKTRADEHOME",
+
 updatedAt:created
 };
+restoredSymbols.add(row.symbol);
 }
 }catch(error){
-console.error("Could not restore saved GPT candidates:",error);
+console.error("Could not restore saved technical-engine candidates:",error);
 }
 }
 
@@ -756,10 +756,9 @@ const risk=a.overall==="BUY"?Number(a.entry)-Number(a.sl):Number(a.sl)-Number(a.
 const reward=a.overall==="BUY"?Number(a.tp1)-Number(a.entry):Number(a.entry)-Number(a.tp1);
 const reward2=a.overall==="BUY"?Number(a.tp2)-Number(a.entry):Number(a.entry)-Number(a.tp2);
 const riskReward=risk>0&&reward>=risk*2&&reward2>=risk*3;
-const verified=(a.gptVerified===true&&a.verificationStatus==="PASSED")||
-(a.analysisMode==="MKTRADEHOME"&&a.fallbackVerified===true);
+const verified=a.engineVerified===true&&a.verificationStatus==="PASSED";
 return a.quoteFresh&&higherAligned&&lowerClear&&lowerConfirmed&&riskReward&&verified
-?(a.analysisMode==="MKTRADEHOME"?"RULE CHECKS PASSED · NOT GPT VERIFIED":"GPT-VERIFIED SETUP")
+?"TECHNICAL RULES PASSED · NOT A WIN PROBABILITY"
 :"SETUP NEEDS CONFIRMATION";
 }
 
@@ -781,8 +780,8 @@ return `<div class="trade-item">
 <div class="signal ${cls}">${a.strength==="STRONG"?"STRONG ":""}${a.overall}</div>
 <div class="trade-status">${getSignalQuality(a)}</div>
 <div class="small">${escapeHTML(a.reason)}</div>
-<div class="small">AI engine: ${escapeHTML(a.aiModel||"GPT")} · ${a.analysisMode==="MONITOR_ONLY"?"Dashboard timeframe check (not GPT)":a.analysisMode==="MKTRADEHOME"?"Independent rule score (not win probability): "+(Number(a.aiConfidence)||0)+"/100":"GPT confidence: "+(Number(a.aiConfidence)||0)+"/100"}</div>
-<div class="small">Second GPT review: ${escapeHTML(a.verificationStatus||"NOT_RUN")} · ${escapeHTML(a.verificationNote||"No verification details")}</div>
+<div class="small">Analysis engine: ${escapeHTML(a.aiModel||"Mktradehome Technical Engine")} · ${a.analysisMode==="MONITOR_ONLY"?"Background technical-engine check": "Rule quality score (not win probability): "+(Number(a.aiConfidence)||0)+"/100"}</div>
+<div class="small">Technical-engine checks: ${escapeHTML(a.verificationStatus||"NOT_RUN")} · ${escapeHTML(a.verificationNote||"No verification details")}</div>
 <div class="small">${escapeHTML(a.aiRiskNote||"AI analysis is not a guarantee.")}</div>
 <div class="row"><span>Entry reference</span><strong>${formatPrice(a.entry)}</strong></div>
 <div class="row"><span>Stop Loss</span><strong>${formatPrice(a.sl)}</strong></div>
@@ -851,7 +850,7 @@ const reviews=getSignalReviews();
 
 const signals=marketList.map(m=>({market:m,a:analyses[m.symbol]}))
 .filter(x=>x.a&&["BUY","SELL"].includes(x.a.overall)&&
- (x.a.gptVerified===true&&x.a.verificationStatus==="PASSED"&&Number.isSafeInteger(Number(x.a.candidateId)))&&
+ (x.a.engineVerified===true&&x.a.verificationStatus==="PASSED"&&Number.isSafeInteger(Number(x.a.candidateId)))&&
  Number.isFinite(x.a.entry)&&Number.isFinite(x.a.sl)&&Number.isFinite(x.a.tp1)&&getSignalQuality(x.a)!=="SETUP NEEDS CONFIRMATION");
 
 if(!signals.length){
@@ -869,7 +868,7 @@ const statusText=status==="approved"
 
 return `<div class="approval-trade">
 <h3>${escapeHTML(market.name)} · ${a.strength==="STRONG"?"STRONG ":""}${a.overall}</h3>
-<div class="trade-status">GPT VERIFIED — INDEPENDENT REVIEW PASSED</div>
+<div class="trade-status">INDEPENDENT TECHNICAL RULES PASSED</div>
 <div class="trade-status">${getSignalQuality(a)}</div>
 <div class="trade-status">${statusText}</div>
 <div class="row"><span>Entry reference</span><strong>${formatPrice(a.entry)}</strong></div>
@@ -933,7 +932,7 @@ const approvalSummary =
 "Take Profit 1 (sent to MT5): "+formatPrice(a.tp1)+"\\n"+
 "Take Profit 2 (reference only): "+formatPrice(a.tp2)+"\\n"+
 "Lot size: 0.01\\n\\n"+
-(a.analysisMode==="MKTRADEHOME"?"IMPORTANT: This is Mktradehome-only analysis, NOT GPT verified.\\n\\n":"")+"Only choose OK if you approve this exact setup.";
+(a.analysisMode==="MKTRADEHOME"?"IMPORTANT: This uses independent technical rules and is not a guarantee.\\n\\n":"")+"Only choose OK if you approve this exact setup.";
 if(!window.confirm(approvalSummary)){
 showMessage("approvalStatus","Approval cancelled. No trade approval was sent.");
 return;
@@ -1207,7 +1206,7 @@ showMessage("systemStatus","Refreshing market prices and analysis...");
 try{
 await fetchQuotes();
 
-/* Analyse markets sequentially to avoid a burst of GPT requests. */
+/* Read local timeframe context sequentially; signal generation stays in the background technical engine. */
 const results=[];
 for(let i=0;i<marketList.length;i++){
 const market=marketList[i];
@@ -1244,27 +1243,12 @@ renderMarkets();
 renderAnalysis();
 renderApprovalCentre();
 
-showMessage("systemStatus","Market data refreshed. Background monitor manages AI review; eligible saved setups are shown for manual review.");
+showMessage("systemStatus","Market data refreshed. Independent technical engine is active; eligible saved setups are shown for manual review.");
 showMessage("lastUpdate",new Date().toLocaleString());
 
 for(const m of marketList){
 const a=analyses[m.symbol];
-const old=previousSignals[m.symbol];
- const currentSignalKey=(a?.overall||"WAIT")+":"+(a?.strength||"STANDARD");
-
-if(a?.overall&&a.overall!=="WAIT"&&a.gptVerified===true&&a.verificationStatus==="PASSED"&&currentSignalKey!==old){
-sendTelegramAlert(
-"Mktradehome GPT-VERIFIED "+(a.strength==="STRONG"?"STRONG ":"")+a.overall+" signal: "+m.name+
-"\nSecond GPT review: PASSED"+
-"\nEntry: "+formatPrice(a.entry)+
-"\nStop Loss: "+formatPrice(a.sl)+
-"\nTP1: "+formatPrice(a.tp1)+
-"\nTP2: "+formatPrice(a.tp2)+
-"\nOpen Mktradehome to review and approve this exact setup. This alert does not place a trade."
-);
-}
-
-previousSignals[m.symbol]=currentSignalKey;
+previousSignals[m.symbol]=(a?.overall||"WAIT")+":"+(a?.strength||"STANDARD");
 }
 
 }catch(e){

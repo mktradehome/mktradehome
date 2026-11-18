@@ -5,6 +5,7 @@ const headers={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":
 const symbols=["BTCUSD","EURUSD","XAUUSD","USDJPY"];
 const DEMO_ACCOUNT="486163696";
 const DEMO_SERVER="Exness-MT5Trial10";
+const DASHBOARD_USER_ID="eb254614-cc9d-4846-adb6-fd45e5594a96";
 const frames:{key:Timeframe;interval:string}[]=[
  {key:"5M",interval:"5m"},{key:"15M",interval:"15m"},{key:"1H",interval:"1h"},{key:"4H",interval:"4h"}
 ];
@@ -18,13 +19,6 @@ async function getFrame(symbol:string,frame:{key:Timeframe;interval:string}){
  const p=await getJson(`https://biquote.io/api/${encodeURIComponent(symbol)}/ohlc?interval=${frame.interval}&limit=240`);
  return normalizeCandles(Array.isArray(p)?p:(p.bars||p.data||p.candles||[]),frame.key);
 }
-async function sendTelegram(token:string,chatId:string,message:string){
- const r=await fetch(`https://api.telegram.org/bot${token}/sendMessage`,{
-  method:"POST",headers:{"Content-Type":"application/json"},
-  body:JSON.stringify({chat_id:chatId,text:message}),signal:AbortSignal.timeout(10000)
- });
- const p=await r.json();if(!r.ok||!p.ok)throw new Error(p.description||"Telegram delivery failed");
-}
 Deno.serve(async(req)=>{
  if(req.method==="OPTIONS")return new Response("ok",{headers});
  if(req.method!=="POST")return reply({error:"POST required"},405);
@@ -32,12 +26,8 @@ Deno.serve(async(req)=>{
   const secret=Deno.env.get("MARKET_MONITOR_SECRET");
   if(!secret||req.headers.get("x-monitor-secret")!==secret)return reply({error:"Unauthorized"},401);
   const url=Deno.env.get("SUPABASE_URL"),key=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  const bot=Deno.env.get("TELEGRAM_BOT_TOKEN")||"";
   if(!url||!key)return reply({error:"Missing Supabase configuration"},500);
   const db=createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false}});
-  const {data:users,error:userError}=await db.from("telegram_users").select("user_id,chat_id");
-  if(userError)throw userError;
-  if(!users?.length)return reply({success:true,gptUsed:false,results:[],note:"No connected user destinations."});
   const qdata=await getJson("https://biquote.io/api/latest?symbols=BTCUSD&symbols=EURUSD&symbols=XAUUSD&symbols=USDJPY");
   const quotes=qdata.data||qdata.quotes||qdata,results:any[]=[];
   for(const symbol of symbols){
@@ -83,22 +73,20 @@ Deno.serve(async(req)=>{
      "Expires in 10 minutes. Review the live chart before deciding.",
      "Alert only — no trade has been placed."
     ].join("\n");
-    let saved=0,alerts=0,delivered=0;const errors:string[]=[];
-    for(const u of users){
-     if(!u.user_id)continue;
-     const {data:row,error:e}=await db.from("trade_signals").insert({
-      user_id:u.user_id,symbol,signal:candidate.signal,entry_price:candidate.entry,
-      stop_loss:candidate.stopLoss,take_profit_1:candidate.takeProfit1,take_profit_2:candidate.takeProfit2,
-      confidence:candidate.qualityScore,analysis:JSON.stringify(proof)
-     }).select("id").single();
-     if(e||!row){errors.push("Signal save: "+(e?.message||"no row"));continue;}
-     saved++;
-     const {error:ae}=await db.from("trade_alerts").insert({user_id:u.user_id,trade_id:row.id,symbol,alert_type:candidate.signal,message});
-     if(ae)errors.push("In-app alert: "+ae.message);else alerts++;
-     if(bot&&u.chat_id){try{await sendTelegram(bot,u.chat_id,message);delivered++;}catch(x){errors.push("Telegram: "+(x instanceof Error?x.message:"failed"));}}
-    }
-    if(saved) {const {error:e}=await db.from("market_signal_state").upsert({symbol,last_signal:candidate.signal,updated_at:created});if(e)errors.push("State: "+e.message);}
-    results.push({symbol,signal:candidate.signal,status:"Independent candidate saved; manual Demo review required.",saved,alerts,telegramDelivered:delivered,expiresInMinutes:10,qualityScore:candidate.qualityScore,errors});
+    const errors:string[]=[];
+    const {data:row,error:saveError}=await db.from("trade_signals").insert({
+     user_id:DASHBOARD_USER_ID,symbol,signal:candidate.signal,entry_price:candidate.entry,
+     stop_loss:candidate.stopLoss,take_profit_1:candidate.takeProfit1,take_profit_2:candidate.takeProfit2,
+     confidence:candidate.qualityScore,analysis:JSON.stringify(proof)
+    }).select("id").single();
+    if(saveError||!row)throw new Error("Signal save failed: "+(saveError?.message||"no row returned"));
+    const {error:alertError}=await db.from("trade_alerts").insert({
+     user_id:DASHBOARD_USER_ID,trade_id:row.id,symbol,alert_type:candidate.signal,message
+    });
+    if(alertError)errors.push("In-app alert: "+alertError.message);
+    const {error:stateError}=await db.from("market_signal_state").upsert({symbol,last_signal:candidate.signal,updated_at:created});
+    if(stateError)errors.push("State: "+stateError.message);
+    results.push({symbol,signal:candidate.signal,status:"Independent candidate saved; open dashboard for manual Demo review. Telegram is sent only after approval.",candidateId:row.id,inAppAlert:!alertError,telegramDelivered:false,expiresInMinutes:10,qualityScore:candidate.qualityScore,errors});
    }catch(e){results.push({symbol,signal:"WAIT",reason:e instanceof Error?e.message:"Analysis failed safely."});}
   }
   return reply({success:true,engine:"mktradehome-technical-engine",gptUsed:false,results});

@@ -1,6 +1,9 @@
-import { assert, assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import { analyseTimeframe, buildCandidate, normalizeCandles, validateCandidate, type Candle, type Indicators } from "./technical-engine.ts";
 
+function assert(value: unknown, message = "Assertion failed") { if (!value) throw new Error(message); }
+function assertEquals(actual: unknown, expected: unknown) {
+  if (actual !== expected) throw new Error("Expected " + String(expected) + ", got " + String(actual));
+}
 function trendCandles(direction: 1|-1, timeframeMs: number, now: number): Candle[] {
   const out:Candle[]=[]; let p=direction===1?100:200;
   for(let i=0;i<240;i++){

@@ -224,7 +224,7 @@ Deno.serve(async (req) => {
     // 4. Reject stale quotes and closed markets.
     if (
       quote.stale !== false ||
-      quote.marketState !== "open" ||
+      (symbol !== "BTCUSD" && String(quote.marketState).toLowerCase() !== "open") ||
       !Number.isFinite(livePrice) ||
       livePrice <= 0 ||
       !Number.isFinite(quoteAge) ||

@@ -103,7 +103,8 @@ Deno.serve(async (req) => {
       try { proof = JSON.parse(candidate?.analysis || "{}"); } catch { proof = null; }
       const candidateCreatedAt = Date.parse(candidate?.created_at || "");
       const candidateAge = Date.now() - candidateCreatedAt;
-      if (candidateError || !candidate || !Number.isFinite(candidateCreatedAt) || candidateAge < 0 || candidateAge > 10 * 60 * 1000 || proof?.source !== "mktradehome-technical-engine" || proof?.engineVersion !== "1.0.0" || proof?.engineVerified !== true || proof?.verificationStatus !== "PASSED" || !proof?.expiresAt || Date.parse(proof.expiresAt) <= Date.now()) return respond({ error: "Trading alert blocked: independent technical-engine proof is missing or expired." }, 403);
+      const proofExpiry = Date.parse(proof?.expiresAt || "");
+      if (candidateError || !candidate || !Number.isFinite(candidateCreatedAt) || candidateAge < 0 || candidateAge > 10 * 60 * 1000 || proof?.source !== "mktradehome-technical-engine" || proof?.engineVersion !== "1.0.0" || proof?.engineVerified !== true || proof?.verificationStatus !== "PASSED" || !Number.isFinite(proofExpiry) || proofExpiry <= Date.now()) return respond({ error: "Trading alert blocked: independent technical-engine proof is missing or expired." }, 403);
       const { data: queued, error: queueError } = await admin.from("mt5_trade_queue").select("id,account_number,account_server,symbol,side,status,expires_at").eq("id", queueId).maybeSingle();
       if (queueError || !queued || queued.account_number !== "486163696" || queued.account_server !== "Exness-MT5Trial10" || queued.symbol !== candidate.symbol || queued.side !== candidate.signal || queued.status !== "approved" || !queued.expires_at || Date.parse(queued.expires_at) <= Date.now()) return respond({ error: "Trading alert blocked: matching active Demo approval was not found." }, 403);
     }

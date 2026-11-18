@@ -131,6 +131,17 @@ label{display:block;font-size:13px;color:#c7d8ee;margin-top:10px}
 <div id="analysis">Waiting for market data...</div>
 </div>
 
+<div class="card" id="historicalBacktestCard">
+<h2>Historical Strategy Backtest</h2>
+<p>Replay past market candles using Mktradehome's technical rules. This is a historical test only; it cannot place trades or create approvals.</p>
+<label for="backtestDays">Historical period</label>
+<select id="backtestDays"><option value="7">Last 7 days</option><option value="14" selected>Last 14 days</option><option value="30">Last 30 days</option></select>
+<button id="runBacktestBtn" type="button">Run Historical Backtest</button>
+<div id="backtestStatus" class="status">Ready. Run the test when you are ready.</div>
+<div id="backtestResults"></div>
+<p class="small">Results are in R-multiples, not Ghana cedis. Historical results do not guarantee future performance. Spread, fees, slippage and broker execution are excluded.</p>
+</div>
+
 <div class="card" id="approvalCentre">
 <h2>Trade Approval Centre</h2>
 <p>Choose which MT5 account should receive the exact setup. Every approval is tied to that account and still requires the separate server and MT5 safety switches.</p>
@@ -1281,6 +1292,29 @@ $("saveSafetyBtn").addEventListener("click",saveSafetySettings);
 $("resetRiskBtn").addEventListener("click",resetDailyRisk);
 $("recordTradeBtn").addEventListener("click",recordTrade);
 $("refreshNewsBtn").addEventListener("click",refreshMarketNews);
+
+async function runHistoricalBacktest(){
+const btn=$("runBacktestBtn"),days=Number($("backtestDays").value||14);
+btn.disabled=true;$("backtestResults").innerHTML="";
+showMessage("backtestStatus","Downloading historical candles and replaying the strategy. Please keep this page open; it may take a little while.");
+try{
+const {data,error}=await supabaseClient.functions.invoke("mktradehome-backtest",{body:{days}});
+if(error){let message=error.message||"Backtest request failed.";try{if(error.context&&typeof error.context.clone==="function"){const d=await error.context.clone().json();message=d?.error||d?.message||message;}}catch(_){}throw Error(message);}
+if(!data?.success)throw Error(data?.error||"No backtest results were returned.");
+const rows=Array.isArray(data.results)?data.results:[];
+const cell=v=>escapeHTML(v===undefined||v===null?"—":v);
+$("backtestResults").innerHTML=rows.map(r=>{
+if(r.error)return '<div class="status">'+cell(r.symbol)+': '+cell(r.error)+'</div>';
+return '<div class="trade-item"><strong>'+cell(r.symbol)+'</strong><div class="row"><span>Completed trades</span><strong>'+cell(r.trades)+'</strong></div><div class="row"><span>Win rate</span><strong>'+cell(r.winRatePct)+'%</strong></div><div class="row"><span>Net result</span><strong>'+cell(r.netR)+'R</strong></div><div class="row"><span>Average per trade</span><strong>'+cell(r.averageR)+'R</strong></div><div class="row"><span>Profit factor</span><strong>'+cell(r.profitFactor)+'</strong></div><div class="row"><span>Maximum drawdown</span><strong>'+cell(r.maxDrawdownR)+'R</strong></div><div class="row"><span>TP1 / TP2 hit rate</span><strong>'+cell(r.tp1HitPct)+'% / '+cell(r.tp2HitPct)+'%</strong></div><div class="row"><span>Bars tested (5M / 15M / 1H / 4H)</span><strong>'+cell(r.bars?.["5M"])+' / '+cell(r.bars?.["15M"])+' / '+cell(r.bars?.["1H"])+' / '+cell(r.bars?.["4H"])+'</strong></div><div class="small">Coverage: '+cell(r.actualCoverageStart)+' to '+cell(r.actualCoverageEnd)+'</div></div>';
+}).join("")||"No market results returned.";
+const completed=rows.filter(r=>!r.error).length;
+showMessage("backtestStatus","Finished · "+completed+" of "+rows.length+" markets processed · "+new Date(data.generatedAt).toLocaleString()+". This is historical simulation, not a live signal.");
+}catch(e){
+console.error("Historical backtest:",e);
+showMessage("backtestStatus","Backtest could not finish: "+(e.message||"Unknown error")+". No trades or approvals were created.");
+}finally{btn.disabled=false;}
+}
+$("runBacktestBtn").addEventListener("click",runHistoricalBacktest);
 
 document.querySelectorAll("[data-page]").forEach(button=>{
 button.addEventListener("click",()=>{

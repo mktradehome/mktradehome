@@ -43,7 +43,7 @@ Deno.serve(async(req)=>{
   for(const symbol of symbols){
    try{
     const q=quotes[symbol],bid=Number(q?.bid),ask=Number(q?.ask),age=Number(q?.quoteAgeSeconds);
-    const quote={bid,ask,stale:q?.stale,marketState:String(q?.marketState||"").toLowerCase(),quoteAgeSeconds:age};
+    const quote={bid,ask,stale:q?.stale,marketState:symbol==="BTCUSD"?"open":String(q?.marketState||"").toLowerCase(),quoteAgeSeconds:age};
     if(!q||quote.stale!==false||quote.marketState!=="open"||!Number.isFinite(age)||age<0||age>30||!Number.isFinite(bid)||!Number.isFinite(ask)||bid<=0||ask<bid){
      results.push({symbol,signal:"WAIT",reason:"Quote is stale, invalid or market is not confirmed open."});continue;
     }

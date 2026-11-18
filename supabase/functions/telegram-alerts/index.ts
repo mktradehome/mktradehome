@@ -101,7 +101,7 @@ Deno.serve(async (req) => {
       const { data: candidate, error: candidateError } = await admin.from("trade_signals").select("id,user_id,symbol,signal,analysis").eq("id", candidateId).eq("user_id", userData.user.id).maybeSingle();
       let proof: any = null;
       try { proof = JSON.parse(candidate?.analysis || "{}"); } catch { proof = null; }
-      if (candidateError || !candidate || proof?.source !== "mktradehome-technical-engine" || proof?.engineVerified !== true || proof?.verificationStatus !== "PASSED" || !proof?.expiresAt || Date.parse(proof.expiresAt) <= Date.now()) return respond({ error: "Trading alert blocked: independent technical-engine proof is missing or expired." }, 403);
+      if (candidateError || !candidate || proof?.source !== "mktradehome-technical-engine" || proof?.engineVersion !== "1.0.0" || proof?.engineVerified !== true || proof?.verificationStatus !== "PASSED" || !proof?.expiresAt || Date.parse(proof.expiresAt) <= Date.now()) return respond({ error: "Trading alert blocked: independent technical-engine proof is missing or expired." }, 403);
       const { data: queued, error: queueError } = await admin.from("mt5_trade_queue").select("id,account_number,account_server,symbol,side,status,expires_at").eq("id", queueId).maybeSingle();
       if (queueError || !queued || queued.account_number !== "486163696" || queued.account_server !== "Exness-MT5Trial10" || queued.symbol !== candidate.symbol || queued.side !== candidate.signal || queued.status !== "approved" || !queued.expires_at || Date.parse(queued.expires_at) <= Date.now()) return respond({ error: "Trading alert blocked: matching active Demo approval was not found." }, 403);
     }

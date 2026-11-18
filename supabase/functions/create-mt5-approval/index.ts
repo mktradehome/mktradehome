@@ -96,12 +96,13 @@ Deno.serve(async (req) => {
 
     let proof: any;
     try { proof = JSON.parse(candidate.analysis || "{}"); } catch { proof = null; }
+    const proofExpiry = Date.parse(proof?.expiresAt || "");
     if (
       proof?.source !== "mktradehome-technical-engine" ||
       proof?.engineVersion !== "1.0.0" ||
       proof?.engineVerified !== true ||
       proof?.verificationStatus !== "PASSED" ||
-      !proof?.expiresAt || Date.parse(proof.expiresAt) <= Date.now()
+      !Number.isFinite(proofExpiry) || proofExpiry <= Date.now()
     ) {
       return response({ error: "BLOCKED: independent technical-engine proof is missing, unsupported or expired." }, 403);
     }
@@ -218,7 +219,10 @@ Deno.serve(async (req) => {
       }, 503);
     }
 
-    const livePrice = Number(quote.mid);
+    const quoteBid = Number(quote.bid);
+    const quoteAsk = Number(quote.ask);
+    const midValue = Number(quote.mid);
+    const livePrice = Number.isFinite(midValue) ? midValue : (quoteBid + quoteAsk) / 2;
     const quoteAge = Number(quote.quoteAgeSeconds);
 
     // 4. Reject stale quotes and closed markets.
@@ -227,6 +231,7 @@ Deno.serve(async (req) => {
       (symbol !== "BTCUSD" && String(quote.marketState).toLowerCase() !== "open") ||
       !Number.isFinite(livePrice) ||
       livePrice <= 0 ||
+      !Number.isFinite(quoteBid) || !Number.isFinite(quoteAsk) || quoteBid <= 0 || quoteAsk < quoteBid ||
       !Number.isFinite(quoteAge) ||
       quoteAge < 0 ||
       quoteAge > MAX_QUOTE_AGE_SECONDS

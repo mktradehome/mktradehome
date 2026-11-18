@@ -107,6 +107,7 @@ Deno.serve(async (req) => {
     }
 
     // Recheck saved indicator evidence server-side; do not trust a dashboard label.
+    const proofSide = String(candidate.signal || "").toUpperCase();
     const frames = proof?.timeframes || {};
     const requiredFrames = ["4H", "1H", "15M", "5M"];
     const frameEvidenceValid = requiredFrames.every((key) => {
@@ -118,7 +119,7 @@ Deno.serve(async (req) => {
           !Number.isFinite(Number(f.bars)) || Number(f.bars) < 60 ||
           !Number.isFinite(Number(f.candleAgeSeconds)) || Number(f.candleAgeSeconds) < 0) return false;
       if (key === "5M" && f.signal === "WAIT") return true;
-      if (side === "BUY") return f.signal === "BUY" && Number(f.close) > Number(f.ema20) &&
+      if (proofSide === "BUY") return f.signal === "BUY" && Number(f.close) > Number(f.ema20) &&
         Number(f.ema20) > Number(f.ema50) && Number(f.ema20) > Number(f.ema20Previous) &&
         Number(f.rsi14) >= 52 && Number(f.rsi14) <= 68 && Number(f.macdHistogram) > 0;
       return f.signal === "SELL" && Number(f.close) < Number(f.ema20) &&

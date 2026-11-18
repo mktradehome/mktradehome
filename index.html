@@ -400,7 +400,7 @@ if(marketRefreshTimer)clearInterval(marketRefreshTimer);
 if(accountRefreshTimer)clearInterval(accountRefreshTimer);
 if(newsRefreshTimer)clearInterval(newsRefreshTimer);
 
-/* Market candles include a 5-minute timeframe, so avoid a full GPT run every minute. */
+/* The monitor checks markets every five minutes; the dashboard never calls a model API. */
 marketRefreshTimer=setInterval(refreshAll,300000);
 
 /* Account snapshots remain on a separate one-minute refresh. */
@@ -659,7 +659,7 @@ results,
 aiModel:"Dashboard timeframe check",
 aiConfidence:Number(aiResult.confidence)||0,
  strength:aiResult.strength==="STRONG"?"STRONG":"STANDARD",
-gptVerified:false,engineVerified:false,
+engineVerified:false,
 verificationStatus:aiResult.verificationStatus||"NOT_RUN",
 verificationNote:aiResult.verificationNote||"Background technical-engine result is not yet available.",
 analysisMode:"MONITOR_ONLY",
@@ -707,11 +707,11 @@ quoteFresh:quoteFresh&&ageMs<=10*60*1000&&stillNearEntry,
 reason:"Restored from saved Mktradehome technical-engine analysis. "+(saved.explanation||""),
 results,aiModel:"Mktradehome Technical Engine",aiConfidence:Number(row.confidence)||0,
 strength:saved.strength==="STRONG"?"STRONG":"STANDARD",
-gptVerified:false,engineVerified:isEngine,verificationStatus:"PASSED",
+engineVerified:isEngine,verificationStatus:"PASSED",
 verificationNote:"Independent technical-engine checks passed.",
 aiRiskNote:saved.risk_note||"Analysis is not a guarantee.",
 analysisMode:"MKTRADEHOME",
-fallbackVerified:false,
+
 updatedAt:created
 };
 }
@@ -866,7 +866,7 @@ const statusText=status==="approved"
 
 return `<div class="approval-trade">
 <h3>${escapeHTML(market.name)} · ${a.strength==="STRONG"?"STRONG ":""}${a.overall}</h3>
-<div class="trade-status">GPT VERIFIED — INDEPENDENT REVIEW PASSED</div>
+<div class="trade-status">INDEPENDENT TECHNICAL RULES PASSED</div>
 <div class="trade-status">${getSignalQuality(a)}</div>
 <div class="trade-status">${statusText}</div>
 <div class="row"><span>Entry reference</span><strong>${formatPrice(a.entry)}</strong></div>
@@ -1204,7 +1204,7 @@ showMessage("systemStatus","Refreshing market prices and analysis...");
 try{
 await fetchQuotes();
 
-/* Analyse markets sequentially to avoid a burst of GPT requests. */
+/* Read local timeframe context sequentially; signal generation stays in the background technical engine. */
 const results=[];
 for(let i=0;i<marketList.length;i++){
 const market=marketList[i];

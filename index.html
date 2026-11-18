@@ -677,6 +677,7 @@ const {data,error}=await supabaseClient
 .order("created_at",{ascending:false})
 .limit(20);
 if(error)throw error;
+const restoredSymbols=new Set();
 for(const row of (data||[])){
 if(analyses[row.symbol]&&["BUY","SELL"].includes(analyses[row.symbol].overall)&&(analyses[row.symbol].engineVerified===true&&analyses[row.symbol].verificationStatus==="PASSED"))continue;
 const created=Date.parse(row.created_at||"");
@@ -684,8 +685,8 @@ const ageMs=Date.now()-created;
 if(!Number.isFinite(created)||ageMs<0||ageMs>30*60*1000)continue;
 let saved={};
 try{saved=JSON.parse(row.analysis||"{}");}catch(e){continue;}
-const isEngine=saved.source==="mktradehome-technical-engine"&&saved.engineVerified===true&&saved.verificationStatus==="PASSED"&&!!saved.expiresAt&&Date.parse(saved.expiresAt)>Date.now();
-if(!isEngine)continue;
+const isEngine=saved.source==="mktradehome-technical-engine"&&saved.engineVersion==="1.0.0"&&saved.engineVerified===true&&saved.verificationStatus==="PASSED"&&saved.qualityScoreIsWinProbability===false&&!!saved.expiresAt&&Date.parse(saved.expiresAt)>Date.now();
+if(!isEngine||!["BUY","SELL"].includes(row.signal)||restoredSymbols.has(row.symbol))continue;
 const entry=Number(row.entry_price),sl=Number(row.stop_loss),tp1=Number(row.take_profit_1),tp2=Number(row.take_profit_2);
 if(![entry,sl,tp1,tp2].every(Number.isFinite))continue;
 const q=quotes[row.symbol];
@@ -714,6 +715,7 @@ analysisMode:"MKTRADEHOME",
 
 updatedAt:created
 };
+restoredSymbols.add(row.symbol);
 }
 }catch(error){
 console.error("Could not restore saved technical-engine candidates:",error);

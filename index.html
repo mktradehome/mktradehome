@@ -668,7 +668,7 @@ aiRiskNote:aiResult.risk_note||"AI analysis is not a guarantee.",
 updatedAt:Date.now()
 };
 }
-/* RESTORE RECENT GPT-VERIFIED CANDIDATES AFTER REFRESH */
+/* RESTORE RECENT INDEPENDENT TECHNICAL-ENGINE CANDIDATES AFTER REFRESH */
 async function loadSavedVerifiedCandidates(){
 try{
 const {data,error}=await supabaseClient
@@ -685,9 +685,8 @@ const ageMs=Date.now()-created;
 if(!Number.isFinite(created)||ageMs<0||ageMs>30*60*1000)continue;
 let saved={};
 try{saved=JSON.parse(row.analysis||"{}");}catch(e){continue;}
-const isGpt=saved.source==="gpt-market-analysis"&&saved.gptVerified===true&&saved.verificationStatus==="PASSED";
-const isFallback=false;
-if(!isGpt)continue;
+const isEngine=saved.source==="mktradehome-technical-engine"&&saved.engineVerified===true&&saved.verificationStatus==="PASSED"&&!!saved.expiresAt&&Date.parse(saved.expiresAt)>Date.now();
+if(!isEngine)continue;
 const entry=Number(row.entry_price),sl=Number(row.stop_loss),tp1=Number(row.take_profit_1),tp2=Number(row.take_profit_2);
 if(![entry,sl,tp1,tp2].every(Number.isFinite))continue;
 const q=quotes[row.symbol];
@@ -706,11 +705,11 @@ analyses[row.symbol]={
 candidateId:row.id,
 symbol:row.symbol,overall:row.signal,entry,sl,tp1,tp2,
 quoteFresh:quoteFresh&&ageMs<=10*60*1000&&stillNearEntry,
-reason:"Restored from saved "+(isFallback?"Mktradehome fallback":"GPT-verified")+" analysis. "+(saved.explanation||""),
-results,aiModel:isFallback?"Mktradehome Independent Engine":"GPT-6",aiConfidence:Number(row.confidence)||0,
+reason:"Restored from saved Mktradehome technical-engine analysis. "+(saved.explanation||""),
+results,aiModel:"Mktradehome Technical Engine",aiConfidence:Number(row.confidence)||0,
 strength:saved.strength==="STRONG"?"STRONG":"STANDARD",
-gptVerified:isGpt,verificationStatus:isFallback?"NOT_GPT_VERIFIED":"PASSED",
-verificationNote:saved.verificationNote||(isFallback?"Independent technical checks passed; not GPT verified.":"Independent GPT review passed."),
+gptVerified:false,engineVerified:isEngine,verificationStatus:"PASSED",
+verificationNote:"Independent technical-engine checks passed.",
 aiRiskNote:saved.risk_note||"Analysis is not a guarantee.",
 analysisMode:isFallback?"MKTRADEHOME":"GPT",
 fallbackVerified:isFallback,
@@ -718,7 +717,7 @@ updatedAt:created
 };
 }
 }catch(error){
-console.error("Could not restore saved GPT candidates:",error);
+console.error("Could not restore saved technical-engine candidates:",error);
 }
 }
 
@@ -756,10 +755,9 @@ const risk=a.overall==="BUY"?Number(a.entry)-Number(a.sl):Number(a.sl)-Number(a.
 const reward=a.overall==="BUY"?Number(a.tp1)-Number(a.entry):Number(a.entry)-Number(a.tp1);
 const reward2=a.overall==="BUY"?Number(a.tp2)-Number(a.entry):Number(a.entry)-Number(a.tp2);
 const riskReward=risk>0&&reward>=risk*2&&reward2>=risk*3;
-const verified=(a.gptVerified===true&&a.verificationStatus==="PASSED")||
-(a.analysisMode==="MKTRADEHOME"&&a.fallbackVerified===true);
+const verified=a.engineVerified===true&&a.verificationStatus==="PASSED";
 return a.quoteFresh&&higherAligned&&lowerClear&&lowerConfirmed&&riskReward&&verified
-?(a.analysisMode==="MKTRADEHOME"?"RULE CHECKS PASSED · NOT GPT VERIFIED":"GPT-VERIFIED SETUP")
+?"TECHNICAL RULES PASSED · NOT A WIN PROBABILITY"
 :"SETUP NEEDS CONFIRMATION";
 }
 
@@ -1244,7 +1242,7 @@ renderMarkets();
 renderAnalysis();
 renderApprovalCentre();
 
-showMessage("systemStatus","Market data refreshed. Background monitor manages AI review; eligible saved setups are shown for manual review.");
+showMessage("systemStatus","Market data refreshed. Independent technical engine is active; eligible saved setups are shown for manual review.");
 showMessage("lastUpdate",new Date().toLocaleString());
 
 for(const m of marketList){

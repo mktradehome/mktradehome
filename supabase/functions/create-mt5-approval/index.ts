@@ -98,11 +98,37 @@ Deno.serve(async (req) => {
     try { proof = JSON.parse(candidate.analysis || "{}"); } catch { proof = null; }
     if (
       proof?.source !== "mktradehome-technical-engine" ||
+      proof?.engineVersion !== "1.0.0" ||
       proof?.engineVerified !== true ||
       proof?.verificationStatus !== "PASSED" ||
       !proof?.expiresAt || Date.parse(proof.expiresAt) <= Date.now()
     ) {
-      return response({ error: "BLOCKED: this candidate has no valid independent technical-engine proof or has expired." }, 403);
+      return response({ error: "BLOCKED: independent technical-engine proof is missing, unsupported or expired." }, 403);
+    }
+
+    // Recheck saved indicator evidence server-side; do not trust a dashboard label.
+    const frames = proof?.timeframes || {};
+    const requiredFrames = ["4H", "1H", "15M", "5M"];
+    const frameEvidenceValid = requiredFrames.every((key) => {
+      const f = frames[key];
+      if (!f || !Number.isFinite(Number(f.close)) || !Number.isFinite(Number(f.ema20)) ||
+          !Number.isFinite(Number(f.ema20Previous)) || !Number.isFinite(Number(f.ema50)) ||
+          !Number.isFinite(Number(f.rsi14)) || !Number.isFinite(Number(f.macdHistogram)) ||
+          !Number.isFinite(Number(f.atr14)) || Number(f.atr14) <= 0 ||
+          !Number.isFinite(Number(f.bars)) || Number(f.bars) < 60 ||
+          !Number.isFinite(Number(f.candleAgeSeconds)) || Number(f.candleAgeSeconds) < 0) return false;
+      if (key === "5M" && f.signal === "WAIT") return true;
+      if (side === "BUY") return f.signal === "BUY" && Number(f.close) > Number(f.ema20) &&
+        Number(f.ema20) > Number(f.ema50) && Number(f.ema20) > Number(f.ema20Previous) &&
+        Number(f.rsi14) >= 52 && Number(f.rsi14) <= 68 && Number(f.macdHistogram) > 0;
+      return f.signal === "SELL" && Number(f.close) < Number(f.ema20) &&
+        Number(f.ema20) < Number(f.ema50) && Number(f.ema20) < Number(f.ema20Previous) &&
+        Number(f.rsi14) >= 32 && Number(f.rsi14) <= 48 && Number(f.macdHistogram) < 0;
+    });
+    if (!frameEvidenceValid || !Number.isFinite(Number(proof?.qualityScore)) ||
+        Number(proof.qualityScore) < 70 || Number(proof.qualityScore) > 90 ||
+        proof?.qualityScoreIsWinProbability !== false) {
+      return response({ error: "BLOCKED: saved technical indicators failed server-side validation." }, 403);
     }
 
     const createdAt = Date.parse(candidate.created_at || "");

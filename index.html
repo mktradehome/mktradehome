@@ -627,10 +627,10 @@ explanation:!fresh
 ?"Quote is stale, unavailable, or the market is not confirmed open."
 :localDirection==="WAIT"
 ?"The independent timeframe checks are not aligned. Waiting for a clearer setup."
-:"Timeframes show a possible setup. The background monitor handles the single-slot GPT review; the dashboard will not send a duplicate request.",
-risk_note:"Only a recent saved candidate from the background monitor can become a BUY/SELL setup. Independent signals remain clearly labelled and are not GPT verified.",
+:"Timeframes show a possible setup. The independent technical engine runs in the background monitor; the dashboard will not send duplicate analysis requests.",
+risk_note:"Only a recent candidate that passes the independent technical rules can become a BUY/SELL setup.",
 verificationStatus:"NOT_RUN",
-verificationNote:"No GPT request was sent by the dashboard. Background monitor owns GPT analysis and second-pass review."
+verificationNote:"No GPT request was sent by the dashboard. Background monitor owns independent technical analysis."
 };
 
 const overall=fresh?aiResult.signal:"WAIT";
@@ -679,7 +679,7 @@ const {data,error}=await supabaseClient
 .limit(20);
 if(error)throw error;
 for(const row of (data||[])){
-if(analyses[row.symbol]&&["BUY","SELL"].includes(analyses[row.symbol].overall)&&((analyses[row.symbol].gptVerified===true&&analyses[row.symbol].verificationStatus==="PASSED")||(analyses[row.symbol].analysisMode==="MKTRADEHOME"&&analyses[row.symbol].fallbackVerified===true)))continue;
+if(analyses[row.symbol]&&["BUY","SELL"].includes(analyses[row.symbol].overall)&&(analyses[row.symbol].engineVerified===true&&analyses[row.symbol].verificationStatus==="PASSED"))continue;
 const created=Date.parse(row.created_at||"");
 const ageMs=Date.now()-created;
 if(!Number.isFinite(created)||ageMs<0||ageMs>30*60*1000)continue;
@@ -779,8 +779,8 @@ return `<div class="trade-item">
 <div class="signal ${cls}">${a.strength==="STRONG"?"STRONG ":""}${a.overall}</div>
 <div class="trade-status">${getSignalQuality(a)}</div>
 <div class="small">${escapeHTML(a.reason)}</div>
-<div class="small">AI engine: ${escapeHTML(a.aiModel||"GPT")} · ${a.analysisMode==="MONITOR_ONLY"?"Dashboard timeframe check (not GPT)":a.analysisMode==="MKTRADEHOME"?"Independent rule score (not win probability): "+(Number(a.aiConfidence)||0)+"/100":"GPT confidence: "+(Number(a.aiConfidence)||0)+"/100"}</div>
-<div class="small">Second GPT review: ${escapeHTML(a.verificationStatus||"NOT_RUN")} · ${escapeHTML(a.verificationNote||"No verification details")}</div>
+<div class="small">Analysis engine: ${escapeHTML(a.aiModel||"Mktradehome Technical Engine")} · ${a.analysisMode==="MONITOR_ONLY"?"Background technical-engine check": "Rule quality score (not win probability): "+(Number(a.aiConfidence)||0)+"/100"}</div>
+<div class="small">Technical-engine checks: ${escapeHTML(a.verificationStatus||"NOT_RUN")} · ${escapeHTML(a.verificationNote||"No verification details")}</div>
 <div class="small">${escapeHTML(a.aiRiskNote||"AI analysis is not a guarantee.")}</div>
 <div class="row"><span>Entry reference</span><strong>${formatPrice(a.entry)}</strong></div>
 <div class="row"><span>Stop Loss</span><strong>${formatPrice(a.sl)}</strong></div>
@@ -1247,22 +1247,7 @@ showMessage("lastUpdate",new Date().toLocaleString());
 
 for(const m of marketList){
 const a=analyses[m.symbol];
-const old=previousSignals[m.symbol];
- const currentSignalKey=(a?.overall||"WAIT")+":"+(a?.strength||"STANDARD");
-
-if(a?.overall&&a.overall!=="WAIT"&&a.gptVerified===true&&a.verificationStatus==="PASSED"&&currentSignalKey!==old){
-sendTelegramAlert(
-"Mktradehome GPT-VERIFIED "+(a.strength==="STRONG"?"STRONG ":"")+a.overall+" signal: "+m.name+
-"\nSecond GPT review: PASSED"+
-"\nEntry: "+formatPrice(a.entry)+
-"\nStop Loss: "+formatPrice(a.sl)+
-"\nTP1: "+formatPrice(a.tp1)+
-"\nTP2: "+formatPrice(a.tp2)+
-"\nOpen Mktradehome to review and approve this exact setup. This alert does not place a trade."
-);
-}
-
-previousSignals[m.symbol]=currentSignalKey;
+previousSignals[m.symbol]=(a?.overall||"WAIT")+":"+(a?.strength||"STANDARD");
 }
 
 }catch(e){

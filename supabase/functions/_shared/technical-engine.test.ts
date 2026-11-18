@@ -4,7 +4,7 @@ import { analyseTimeframe, buildCandidate, normalizeCandles, validateCandidate, 
 function trendCandles(direction: 1|-1, timeframeMs: number, now: number): Candle[] {
   const out:Candle[]=[]; let p=direction===1?100:200;
   for(let i=0;i<240;i++){
-    const move=direction*(0.08+(i%7)*0.003);
+    const move=direction*(0.04 + (i%2===0 ? 0.12 : -0.12));
     const open=p, close=p+move;
     out.push({open,close,high:Math.max(open,close)+0.04,low:Math.min(open,close)-0.04,time:now-(240-i)*timeframeMs});
     p=close;

@@ -6,7 +6,7 @@ export interface Candle {
   time: number; isOpen?: boolean;
 }
 export interface Indicators {
-  signal: Side; close: number; ema20: number; ema50: number;
+  signal: Side; close: number; ema20: number; ema20Previous: number; ema50: number;
   rsi14: number; macd: number; macdSignal: number; macdHistogram: number;
   atr14: number; bars: number; candleAgeSeconds: number;
   reason: string;
@@ -111,7 +111,7 @@ export function analyseTimeframe(candles: Candle[], timeframe: Timeframe, now = 
     rsi14 >= 32 && rsi14 <= 48 && m.histogram < 0;
   const signal: Side = bullish ? "BUY" : bearish ? "SELL" : "WAIT";
   const age = Math.max(0, now - (candles[candles.length-1].time + PERIOD_MS[timeframe])) / 1000;
-  return { signal, close, ema20, ema50, rsi14, macd:m.line, macdSignal:m.signal,
+  return { signal, close, ema20, ema20Previous:priorEma20, ema50, rsi14, macd:m.line, macdSignal:m.signal,
     macdHistogram:m.histogram, atr14, bars:candles.length, candleAgeSeconds:age,
     reason: signal === "BUY" ? "EMA trend, RSI and MACD agree bullishly" :
       signal === "SELL" ? "EMA trend, RSI and MACD agree bearishly" : "Indicators are mixed or momentum is not confirmed" };

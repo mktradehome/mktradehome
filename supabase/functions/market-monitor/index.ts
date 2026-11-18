@@ -3,6 +3,8 @@ import { analyseTimeframe, buildCandidate, normalizeCandles, validateCandidate, 
 
 const headers={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"content-type,x-monitor-secret","Access-Control-Allow-Methods":"POST,OPTIONS"};
 const symbols=["BTCUSD","EURUSD","XAUUSD","USDJPY"];
+const DEMO_ACCOUNT="486163696";
+const DEMO_SERVER="Exness-MT5Trial10";
 const frames:{key:Timeframe;interval:string}[]=[
  {key:"5M",interval:"5m"},{key:"15M",interval:"15m"},{key:"1H",interval:"1h"},{key:"4H",interval:"4h"}
 ];
@@ -59,7 +61,7 @@ Deno.serve(async(req)=>{
     if(prev?.last_signal===candidate.signal&&ageMs>=0&&ageMs<600000){
      results.push({symbol,signal:candidate.signal,duplicateSuppressed:true});continue;
     }
-    const {data:active,error:activeError}=await db.from("mt5_trade_queue").select("id").eq("symbol",symbol).in("status",["approved","executing"]).limit(1).maybeSingle();
+    const {data:active,error:activeError}=await db.from("mt5_trade_queue").select("id").eq("account_number",DEMO_ACCOUNT).eq("account_server",DEMO_SERVER).eq("symbol",symbol).in("status",["approved","executing"]).limit(1).maybeSingle();
     if(activeError)throw activeError;
     if(active){results.push({symbol,signal:candidate.signal,duplicateSuppressed:true,reason:"An approval or execution is already active."});continue;}
     const created=new Date().toISOString();

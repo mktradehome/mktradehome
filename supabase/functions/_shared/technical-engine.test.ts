@@ -28,7 +28,7 @@ Deno.test("trend indicator produces a directional result on a persistent trend",
 });
 Deno.test("candidate must pass multi-timeframe alignment and price/risk checks",()=>{
   const mk=(signal:"BUY"|"SELL"|"WAIT"):Indicators=>({
-    signal,close:100,ema20:101,ema50:99,rsi14:58,macd:1,macdSignal:0.5,macdHistogram:0.5,atr14:1,bars:200,candleAgeSeconds:5,reason:"fixture"
+    signal,close:100,ema20:101,ema20Previous:100.9,ema50:99,rsi14:58,macd:1,macdSignal:0.5,macdHistogram:0.5,atr14:1,bars:200,candleAgeSeconds:5,reason:"fixture"
   });
   const frames={ "4H":mk("BUY"),"1H":mk("BUY"),"15M":mk("BUY"),"5M":mk("WAIT") };
   const c=buildCandidate(frames,{bid:99.99,ask:100.01,stale:false,marketState:"open",quoteAgeSeconds:2});

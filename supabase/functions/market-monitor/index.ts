@@ -1,4 +1,4 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2";
 import { analyseTimeframe, buildCandidate, normalizeCandles, validateCandidate, type Timeframe } from "../_shared/technical-engine.ts";
 
 const headers={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"content-type,x-monitor-secret","Access-Control-Allow-Methods":"POST,OPTIONS"};

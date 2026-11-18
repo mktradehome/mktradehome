@@ -110,6 +110,7 @@ Deno.serve(async (req) => {
     const proofSide = String(candidate.signal || "").toUpperCase();
     const frames = proof?.timeframes || {};
     const requiredFrames = ["4H", "1H", "15M", "5M"];
+    const maxCandleAgeSeconds: Record<string, number> = { "4H": 21600, "1H": 5400, "15M": 1350, "5M": 450 };
     const frameEvidenceValid = requiredFrames.every((key) => {
       const f = frames[key];
       if (!f || !Number.isFinite(Number(f.close)) || !Number.isFinite(Number(f.ema20)) ||
@@ -117,7 +118,7 @@ Deno.serve(async (req) => {
           !Number.isFinite(Number(f.rsi14)) || !Number.isFinite(Number(f.macdHistogram)) ||
           !Number.isFinite(Number(f.atr14)) || Number(f.atr14) <= 0 ||
           !Number.isFinite(Number(f.bars)) || Number(f.bars) < 60 ||
-          !Number.isFinite(Number(f.candleAgeSeconds)) || Number(f.candleAgeSeconds) < 0) return false;
+          !Number.isFinite(Number(f.candleAgeSeconds)) || Number(f.candleAgeSeconds) < 0 || Number(f.candleAgeSeconds) > maxCandleAgeSeconds[key]) return false;
       if (key === "5M" && f.signal === "WAIT") return true;
       if (proofSide === "BUY") return f.signal === "BUY" && Number(f.close) > Number(f.ema20) &&
         Number(f.ema20) > Number(f.ema50) && Number(f.ema20) > Number(f.ema20Previous) &&
@@ -126,9 +127,13 @@ Deno.serve(async (req) => {
         Number(f.ema20) < Number(f.ema50) && Number(f.ema20) < Number(f.ema20Previous) &&
         Number(f.rsi14) >= 32 && Number(f.rsi14) <= 48 && Number(f.macdHistogram) < 0;
     });
+    const proofQuote = proof?.quote || {};
     if (!frameEvidenceValid || !Number.isFinite(Number(proof?.qualityScore)) ||
         Number(proof.qualityScore) < 70 || Number(proof.qualityScore) > 90 ||
-        proof?.qualityScoreIsWinProbability !== false) {
+        proof?.qualityScoreIsWinProbability !== false ||
+        proofQuote.marketState !== "open" || !Number.isFinite(Number(proofQuote.quoteAgeSeconds)) ||
+        Number(proofQuote.quoteAgeSeconds) < 0 || Number(proofQuote.quoteAgeSeconds) > MAX_QUOTE_AGE_SECONDS ||
+        !Number.isFinite(Number(proofQuote.price)) || Number(proofQuote.price) <= 0) {
       return response({ error: "BLOCKED: saved technical indicators failed server-side validation." }, 403);
     }
 

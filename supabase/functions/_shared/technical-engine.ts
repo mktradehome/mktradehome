@@ -70,7 +70,9 @@ export function normalizeCandles(input: any[], timeframe: Timeframe, now = Date.
   if (!Array.isArray(input)) throw new Error("Candle response is not an array.");
   const rows = input.filter((c) => c && c.isOpen !== true).map((c) => {
     let raw = c.time ?? c.openTime ?? c.timestamp ?? c.open_time;
-    let time = typeof raw === "string" ? Date.parse(raw) : Number(raw);
+    let time = typeof raw === "string"
+      ? (/^\\d+(\\.\\d+)?$/.test(raw) ? Number(raw) : Date.parse(raw))
+      : Number(raw);
     if (Number.isFinite(time) && time > 0 && time < 1e12) time *= 1000;
     return { open: Number(c.open), high: Number(c.high), low: Number(c.low), close: Number(c.close), time };
   }).filter((c) => [c.open,c.high,c.low,c.close,c.time].every(Number.isFinite))

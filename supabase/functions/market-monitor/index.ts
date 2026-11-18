@@ -61,8 +61,9 @@ Deno.serve(async(req)=>{
     if(prev?.last_signal===candidate.signal&&ageMs>=0&&ageMs<600000){
      results.push({symbol,signal:candidate.signal,duplicateSuppressed:true});continue;
     }
-    const {data:active,error:activeError}=await db.from("mt5_trade_queue").select("id").eq("account_number",DEMO_ACCOUNT).eq("account_server",DEMO_SERVER).eq("symbol",symbol).in("status",["approved","executing"]).limit(1).maybeSingle();
+    const {data:queueRows,error:activeError}=await db.from("mt5_trade_queue").select("id,status,expires_at").eq("account_number",DEMO_ACCOUNT).eq("account_server",DEMO_SERVER).eq("symbol",symbol).in("status",["approved","executing"]);
     if(activeError)throw activeError;
+    const active=(queueRows||[]).some((row:any)=>row.status==="executing"||(row.status==="approved"&&row.expires_at&&Date.parse(row.expires_at)>Date.now()));
     if(active){results.push({symbol,signal:candidate.signal,duplicateSuppressed:true,reason:"An approval or execution is already active."});continue;}
     const created=new Date().toISOString();
     const proof={
@@ -70,7 +71,7 @@ Deno.serve(async(req)=>{
      verificationStatus:"PASSED",gptVerified:false,fallbackVerified:false,
      checkedAt:created,expiresAt:new Date(Date.now()+600000).toISOString(),
      qualityScore:candidate.qualityScore,qualityScoreIsWinProbability:false,
-     explanation:candidate.explanation,riskNote:"Rule-based analysis is not a guarantee. Check the live chart before manual Demo approval.",
+     explanation:candidate.explanation,risk_note:"Rule-based analysis is not a guarantee. Check the live chart before manual Demo approval.",
      timeframes:tf,quote:{bid,ask,price:candidate.entry,quoteAgeSeconds:age,marketState:quote.marketState}
     };
     const message=[

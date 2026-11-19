@@ -176,8 +176,8 @@ label{display:block;font-size:13px;color:#c7d8ee;margin-top:10px}
 </div>
 
 <div class="card" id="historicalBacktestCard">
-<h2>Historical Strategy Backtest</h2>
-<p>Replay past market candles using Mktradehome's technical rules. This is a historical test only; it cannot place trades or create approvals.</p>
+<h2>Legacy Historical Backtest · Older Rules</h2>
+<p>Older, stricter simulation retained for reference. Its rules differ from V100, so do not compare its results directly with the V100 Shadow Parity Backtest below.</p>
 <label for="backtestDays">Historical period</label>
 <select id="backtestDays"><option value="7">Last 7 days</option><option value="14" selected>Last 14 days</option><option value="30">Last 30 days</option></select>
 <button id="runBacktestBtn" type="button">Run Historical Backtest</button>
@@ -1523,7 +1523,7 @@ const rows=Array.isArray(data.results)?data.results:[];
 const cell=v=>escapeHTML(v===undefined||v===null?"—":v);
 $("backtestResults").innerHTML=rows.map(r=>{
 if(r.error)return '<div class="status">'+cell(r.symbol)+': '+cell(r.error)+'</div>';
-return '<div class="trade-item"><strong>'+cell(r.symbol)+'</strong><div class="row"><span>Completed trades</span><strong>'+cell(r.trades)+'</strong></div><div class="row"><span>Win rate</span><strong>'+cell(r.winRatePct)+'%</strong></div><div class="row"><span>Net result</span><strong>'+cell(r.netR)+'R</strong></div><div class="row"><span>Average per trade</span><strong>'+cell(r.averageR)+'R</strong></div><div class="row"><span>Profit factor</span><strong>'+cell(r.profitFactor)+'</strong></div><div class="row"><span>Maximum drawdown</span><strong>'+cell(r.maxDrawdownR)+'R</strong></div><div class="row"><span>TP1 / TP2 hit rate</span><strong>'+cell(r.tp1HitPct)+'% / '+cell(r.tp2HitPct)+'%</strong></div><div class="row"><span>Bars tested (5M / 15M / 1H / 4H)</span><strong>'+cell(r.bars?.["5M"])+' / '+cell(r.bars?.["15M"])+' / '+cell(r.bars?.["1H"])+' / '+cell(r.bars?.["4H"])+'</strong></div><div class="small">Coverage: '+cell(r.actualCoverageStart)+' to '+cell(r.actualCoverageEnd)+'</div></div>';
+return '<div class="trade-item"><strong>'+cell(r.symbol)+'</strong><div class="row"><span>Completed trades</span><strong>'+cell(r.trades)+'</strong></div><div class="row"><span>Win rate</span><strong>'+cell(r.winRatePct)+'%</strong></div><div class="row"><span>Net result</span><strong>'+cell(r.netR)+'R</strong></div><div class="row"><span>Average per trade</span><strong>'+cell(r.averageR)+'R</strong></div><div class="row"><span>Profit factor</span><strong>'+cell(r.profitFactor)+'</strong></div><div class="row"><span>Maximum drawdown</span><strong>'+cell(r.maxDrawdownR)+'R</strong></div><div class="row"><span>TP1 hit rate</span><strong>'+cell(r.tp1HitPct)+'%</strong></div><div class="small">TP2 is a reference level only, not an executed MT5 target.</div><div class="row"><span>Bars tested (5M / 15M / 1H / 4H)</span><strong>'+cell(r.bars?.["5M"])+' / '+cell(r.bars?.["15M"])+' / '+cell(r.bars?.["1H"])+' / '+cell(r.bars?.["4H"])+'</strong></div><div class="small">Coverage: '+cell(r.actualCoverageStart)+' to '+cell(r.actualCoverageEnd)+'</div></div>';
 }).join("")||"No market results returned.";
 const completed=rows.filter(r=>!r.error).length;
 showMessage("backtestStatus","Finished · "+completed+" of "+rows.length+" markets processed · "+new Date(data.generatedAt).toLocaleString()+". This is historical simulation, not a live signal.");

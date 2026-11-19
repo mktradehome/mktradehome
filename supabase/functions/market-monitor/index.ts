@@ -128,7 +128,7 @@ export function buildCandidate(
 
   // Balanced multi-timeframe rules: 1H sets direction; 4H confirms or may be neutral;
   // 15M must show compatible structure; 5M is an entry-timing veto only when strongly opposed.
-  const side: "BUY" | "SELL" = frames["1H"].ema20 > frames["1H"].ema50 ? "BUY" :
+  const side: "BUY" | "SELL" | "WAIT" = frames["1H"].ema20 > frames["1H"].ema50 ? "BUY" :
     frames["1H"].ema20 < frames["1H"].ema50 ? "SELL" : "WAIT";
   if (side === "WAIT" || Math.abs(scoreTimeframe(frames["1H"])) < 12 ||
       (side === "BUY" && scoreTimeframe(frames["1H"]) < 12) ||

@@ -1,6 +1,6 @@
 # Mktradehome — Current Project Status
 
-Last verified: 2026-11-19 03:50 UTC
+Last verified: 2026-11-19 03:51 UTC
 
 ## Project and safety
 - Private personal Exness trading assistant; dashboard: https://mktradehome.pages.dev/
@@ -91,8 +91,8 @@ Last verified: 2026-11-19 03:50 UTC
 - Saved specification commit: `2f4041d8cbdace5dcfcf8859179e170e5c8c6ba4`.
 
 
-## Market Foresight implementation (2026-11-19 03:49 UTC)
-- Deployed Supabase Edge Function `market-foresight` v3 ACTIVE. It authenticates the signed-in dashboard user through Supabase Auth (or accepts the existing monitor secret server-to-server); the service credential stays server-side.
+## Market Foresight implementation (2026-11-19 03:51 UTC)
+- Deployed Supabase Edge Function `market-foresight` v5 ACTIVE. It authenticates the signed-in dashboard user through Supabase Auth (or accepts the existing monitor secret server-to-server); the service credential stays server-side.
 - Created four RLS-protected tables: `market_candle_archive`, `market_quote_archive`, `market_foresight_forecasts` and `market_foresight_outcomes`. Direct `anon` and `authenticated` table privileges are revoked; the Edge Function's service role is the only intended writer/reader.
 - The function retrieves completed BiQuote OHLC for BTCUSD, EURUSD, XAUUSD and USDJPY on 5M/15M/1H/4H, validates timestamp freshness, OHLC geometry and cadence, then deduplicates archive rows by symbol/timeframe/candle timestamp. It also archives provider bid/ask, spread, quote age, market state and timestamp provenance for cost-aware research.
 - Baseline v0.1 produces explicit 15M/1H/4H expected-price scenarios and approximately 90% normal-assumption price intervals using recent 5M log-return drift and volatility. Directional bias is qualitative. Numeric UP/DOWN/SIDEWAYS probabilities are null and marked NOT CALIBRATED; this is not an ML model or proven predictive edge.
@@ -101,6 +101,6 @@ Last verified: 2026-11-19 03:50 UTC
 - The feature is shadow-only. It does not modify V63 signal logic, approval rules, MT5 queue, risk controls or execution. No automatic orders were enabled.
 - Security advisor reports the new RLS-protected tables have no user policies; this is intentional because direct user access is revoked and only server-side service access is intended. Other pre-existing project advisories remain.
 - Live runtime invocation has not yet been confirmed from this tool session; the first dashboard scan is the next end-to-end acceptance check. Do not call the archive populated or forecasts live until the function has successfully run and database rows are verified.
-- Supabase deployed function v3; GitHub source synced. Frontend commit: `2bca68c457ddacc765d816d1c8bac15545722e17`; function source commit: `cbb60c6d8230be912ed3ae6ca4f6f5bb7ba6fc8b`; CI workflow commit: `a6b9b87399a05f7690f813a50fbd04e21b6ec0e5`.
+- Supabase deployed function v5; GitHub source synced. Latest function source commit: `2fbb4a129630c78ac685e1fe9abe6b62a527834e`; applied quote archive schema documented in `docs/sql/market_foresight_foundation.sql`. Frontend commit: `2bca68c457ddacc765d816d1c8bac15545722e17`; function source commit: `cbb60c6d8230be912ed3ae6ca4f6f5bb7ba6fc8b`; CI workflow commit: `a6b9b87399a05f7690f813a50fbd04e21b6ec0e5`.
 
 - Added `market_quote_archive` as a separate migration and deployed function v5; the quote archive is designed to preserve bid/ask and spread evidence rather than assuming zero spread in future evaluation.

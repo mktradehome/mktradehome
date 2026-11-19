@@ -113,3 +113,12 @@ Last verified: 2026-11-19 04:02 UTC
 - Added the full Supabase client header allowlist: authorization, x-client-info, apikey, content-type, x-monitor-secret and x-supabase-api-version.
 - Deployed `market-foresight` v6 ACTIVE and synced source to GitHub. Commit: `cd5aef32417338996c84ea8af0c344be41ab567e`.
 - This repairs the identified preflight blocker. A subsequent authenticated POST and first successful data archive still need to be confirmed from runtime logs and database row counts.
+
+
+## Market Foresight first successful live scan (2026-11-19 03:57 UTC)
+- The user confirmed the dashboard now reports LIVE with 12 forecasts saved and 3,120 candle observations archived. This confirms the browser CORS repair allowed the authenticated scan to complete.
+- Independently queried Supabase: `market_candle_archive` contains 3,120 rows (latest capture 03:55:56 UTC); `market_quote_archive` contains 8 rows (latest observation 03:57:34 UTC); `market_foresight_forecasts` contains 24 rows (latest generated 03:57:35 UTC); `market_foresight_outcomes` contains 0 rows.
+- All 24 forecast rows are PENDING: 8 each for 15M, 1H and 4H, generated across two scans between 03:55:54 and 03:57:34 UTC. Therefore zero matured outcomes is expected at this early stage; the first 15M forecasts need at least 15 minutes and later scans before evaluation can occur. 1H and 4H require their full horizons.
+- Dashboard's “12 forecasts saved” represents the latest scan's 4 markets × 3 horizons; the database's 24 rows include both successful scans. No discrepancy in the pipeline.
+- Current forecast directions and ranges are uncalibrated statistical scenarios only. Do not treat them as win probabilities, trade instructions or evidence of predictive edge. Keep the foresight engine isolated from approvals, queue and execution.
+- The CORS blocker is resolved and the first live archive/forecast write is verified. Next acceptance test: allow forecasts to mature, run another scan, and verify outcome rows are written only where completed 5M candle evidence exists. Latest observed database totals are a point-in-time snapshot, not a permanent count.

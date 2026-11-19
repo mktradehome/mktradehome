@@ -130,6 +130,11 @@ label{display:block;font-size:13px;color:#c7d8ee;margin-top:10px}
 <p>5M entry timing · 15M confirmation · 1H and 4H trend direction.</p>
 <div id="analysis">Waiting for market data...</div>
 </div>
+<div class="card">
+<h2>Market Intelligence</h2>
+<p>Independent multi-timeframe market bias and regime context. This is not a BUY/SELL entry signal.</p>
+<div id="marketIntelligence">Waiting for the background market monitor...</div>
+</div>
 
 <div class="card" id="historicalBacktestCard">
 <h2>Historical Strategy Backtest</h2>
@@ -805,6 +810,38 @@ return `<div class="trade-item">
 }).join("");
 }
 
+async function loadMarketIntelligence(){
+ const container=$("marketIntelligence");
+ if(!container)return;
+ try{
+  const {data,error}=await supabaseClient.from("market_analysis_snapshots")
+   .select("symbol,bias,regime,score,summary,timeframes,updated_at").order("symbol");
+  if(error)throw error;
+  if(!data||!data.length){
+   container.innerHTML='<p class="small">No saved intelligence yet. The background monitor will populate this after its next successful scan.</p>';
+   return;
+  }
+  container.innerHTML=data.map(row=>{
+   const tf=row.timeframes||{};
+   const score=Number(row.score)||0;
+   const cls=row.bias==="BULLISH"?"buy":row.bias==="BEARISH"?"sell":"wait";
+   const frameLine=["4H","1H","15M","5M"].map(k=>{
+    const item=tf[k]||{};
+    return k+": "+(item.signal||"WAIT")+" ("+(Number(item.score)||0)+")";
+   }).join(" · ");
+   return '<div class="trade-item"><strong>'+escapeHTML(row.symbol)+'</strong>'+
+    '<div class="signal '+cls+'">'+escapeHTML(row.bias)+' · '+score+'/100</div>'+
+    '<div class="small">Market regime: '+escapeHTML(String(row.regime||"TRANSITION").replace("_"," "))+'</div>'+
+    '<div class="small">'+escapeHTML(row.summary||"")+'</div>'+
+    '<div class="small">'+escapeHTML(frameLine)+'</div>'+
+    '<div class="small">Updated: '+escapeHTML(row.updated_at?new Date(row.updated_at).toLocaleString():"unknown")+'</div></div>';
+  }).join("");
+ }catch(error){
+  console.error("Market intelligence load failed:",error);
+  container.innerHTML='<p class="small">Market intelligence is temporarily unavailable. Signal approvals are unaffected.</p>';
+ }
+}
+
 /* TRADE APPROVALS */
 
 /*
@@ -1249,6 +1286,7 @@ for(const result of results){
 analyses[result.symbol]=result;
 }
 await loadSavedVerifiedCandidates();
+await loadMarketIntelligence();
 
 renderMarkets();
 renderAnalysis();

@@ -62,3 +62,23 @@ alter table public.market_foresight_forecasts enable row level security;
 alter table public.market_foresight_outcomes enable row level security;
 revoke all on public.market_candle_archive, public.market_foresight_forecasts, public.market_foresight_outcomes from anon, authenticated;
 grant all on public.market_candle_archive, public.market_foresight_forecasts, public.market_foresight_outcomes to service_role;
+
+-- Applied separately as migration market_quote_archive.
+create table if not exists public.market_quote_archive (
+ symbol text not null check (symbol in ('BTCUSD','EURUSD','XAUUSD','USDJPY')),
+ observed_at timestamptz not null,
+ bid numeric not null check (bid > 0),
+ ask numeric not null check (ask >= bid),
+ spread numeric not null check (spread >= 0),
+ quote_age_seconds numeric,
+ market_state text,
+ stale boolean not null,
+ timestamp_source text not null,
+ source text not null,
+ captured_at timestamptz not null default now(),
+ primary key (symbol,observed_at)
+);
+create index if not exists market_quote_archive_time_idx on public.market_quote_archive (observed_at desc);
+alter table public.market_quote_archive enable row level security;
+revoke all on public.market_quote_archive from anon, authenticated;
+grant all on public.market_quote_archive to service_role;

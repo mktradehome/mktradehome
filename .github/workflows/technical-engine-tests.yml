@@ -14,6 +14,8 @@ jobs:
           deno-version: v2.x
       - name: Type-check production and shadow Edge Functions
         run: deno check supabase/functions/market-monitor/index.ts supabase/functions/create-mt5-approval/index.ts supabase/functions/market-monitor-v100-shadow/index.ts supabase/functions/market-monitor-v100-backtest-shadow/index.ts supabase/functions/telegram-alerts/index.ts
+      - name: Check dashboard inline JavaScript syntax
+        run: node scripts/check-inline-js.mjs
       - name: Test independent approval proof against live strategy rules
         run: deno test --allow-read supabase/functions/_shared/approval-proof.test.ts
       - name: Test legacy shared-engine fixtures

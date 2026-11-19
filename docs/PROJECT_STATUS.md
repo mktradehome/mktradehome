@@ -1,6 +1,6 @@
 # Mktradehome — Current Project Status
 
-Last verified: 2026-11-19 03:15 UTC
+Last verified: 2026-11-19 03:20 UTC
 
 ## Project and safety
 - Private personal Exness trading assistant; dashboard: https://mktradehome.pages.dev/
@@ -11,9 +11,9 @@ Last verified: 2026-11-19 03:15 UTC
 - Preserve 0.01-lot starting size, live-price checks, required SL/TP, duplicate prevention and expiry. Never weaken safeguards just to increase signal count.
 
 ## Verified deployed services
-- `market-monitor` v62 — ACTIVE production signal engine. Scheduled requests in recent logs returned HTTP 200; recent executions were approximately 2.4–3.3 seconds.
-- `market-monitor-v100-shadow` v4 — ACTIVE, isolated read-only strategy shadow. No production writes, alerts, approvals, queue items or trade execution.
-- `market-monitor-v100-backtest-shadow` v5 — ACTIVE, authenticated historical replay; isolated from production trading state.
+- `market-monitor` v63 — ACTIVE production signal engine. Scheduled requests in recent logs returned HTTP 200; recent executions were approximately 2.4–3.3 seconds.
+- `market-monitor-v100-shadow` v5 — ACTIVE, isolated read-only strategy shadow. No production writes, alerts, approvals, queue items or trade execution.
+- `market-monitor-v100-backtest-shadow` v8 — ACTIVE, authenticated historical replay; isolated from production trading state.
 - `create-mt5-approval` v21 — ACTIVE. Server-side validation now uses the exact independent engine scoring and multi-timeframe rules, including valid 15M pullback reversals and 5M veto logic.
 - `mt5-bridge` v30 — ACTIVE. Dashboard queue and account-snapshot reads return HTTP 200 in recent logs.
 
@@ -29,9 +29,9 @@ Last verified: 2026-11-19 03:15 UTC
 
 ## V100 validation
 - V100 is currently a shadow copy/baseline of the V62 strategy, not yet a proven improved strategy.
-- The separate shadow backtest uses completed candles, waits until the 15M signal candle closes, and enters at the next 15M candle open to reduce look-ahead bias.
+- The separate shadow backtest uses completed candles, waits until the 15M signal candle closes, and enters at the next 15M candle open to reduce look-ahead bias. It warms up all four timeframes before scoring and reports the actual common coverage, not just the requested date range.
 - It uses the same V100 candidate builder and validation helpers. The single full-position exit is TP1 at 2R, matching the current MT5 queue's single take-profit field; TP2 is reference-only.
-- Backtest results are gross simulations. Historical spread, commission, swap, slippage, market closures and broker fills are not fully modelled. Do not treat gross results as expected live performance.
+- Backtest results are gross simulations. BiQuote documents OHLC as rolling windows (up to 288 M5, 192 M15, 168 H1 and 180 H4 bars), not an unlimited archive. The common test window is therefore far shorter than 14 days; the dashboard now reports actual overlapping coverage and warns when it is short. Historical spread, commission, swap, slippage, market closures and broker fills are not fully modelled. Do not treat gross results as expected live performance.
 - Do not promote V100 to production until code tests, runtime tests, fair out-of-sample backtests and explicit approval are complete.
 
 ## Approval verification repair

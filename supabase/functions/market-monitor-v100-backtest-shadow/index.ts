@@ -306,8 +306,7 @@ function metrics(trades:any[]){
  return {trades:trades.length,wins:wins.length,losses:losses.length,winRatePct:trades.length?+(wins.length/trades.length*100).toFixed(1):0,
  netR:+trades.reduce((s,t)=>s+t.r,0).toFixed(2),averageR:trades.length?+(trades.reduce((s,t)=>s+t.r,0)/trades.length).toFixed(3):0,
  profitFactor:grossLoss?+(grossWin/grossLoss).toFixed(2):(grossWin?"No losses yet":0),maxDrawdownR:+dd.toFixed(2),
- tp1HitPct:trades.length?+(trades.filter(t=>t.tp1).length/trades.length*100).toFixed(1):0,
- tp2HitPct:trades.length?+(trades.filter(t=>t.tp2).length/trades.length*100).toFixed(1):0};
+ tp1HitPct:trades.length?+(trades.filter(t=>t.tp1).length/trades.length*100).toFixed(1):0};
 }
 function replay(symbol:string,data:Record<Timeframe,Candle[]>,testStart:number){
  const m15=data["15M"],all:any[]=[];let lo=0,hi=m15.length;while(lo<hi){const mid=(lo+hi)>>1;if(m15[mid].time<testStart)lo=mid+1;else hi=mid;}let i=Math.max(119,lo),signals=0,blocked=0;
@@ -332,15 +331,14 @@ function replay(symbol:string,data:Record<Timeframe,Candle[]>,testStart:number){
   const tp1=side==="BUY"?entry+2*risk:entry-2*risk,tp2=side==="BUY"?entry+3*risk:entry-3*risk;
   const filledCandidate:Candidate={signal:side,entry,stopLoss:sl,takeProfit1:tp1,takeProfit2:tp2,riskDistance:risk,qualityScore:candidate.qualityScore,explanation:candidate.explanation};
   if(!validateCandidate(filledCandidate)){blocked++;i++;continue;}
-  let first=false,second=false,exitR=0,exit="TIME",exitIndex=Math.min(i+1+96,m15.length-1);
+  let first=false,exitR=0,exit="TIME",exitIndex=Math.min(i+1+96,m15.length-1);
   for(let j=i+2;j<=exitIndex;j++){
-   const b=m15[j],stop=side==="BUY"?b.low<=sl:b.high>=sl,t1=side==="BUY"?b.high>=tp1:b.low<=tp1,t2=side==="BUY"?b.high>=tp2:b.low<=tp2;
-   if(stop){exitR=first?0:-1;exit="SL";exitIndex=j;break;}
-   if(!first&&t1){first=true;exit="TP1";}
-   else if(first&&t2){second=true;exitR=2.5;exit="TP2";exitIndex=j;break;}
-   if(j===exitIndex){const signed=side==="BUY"?(b.close-entry)/risk:(entry-b.close)/risk;exitR=first?1+0.5*signed:signed;}
+   const b=m15[j],stop=side==="BUY"?b.low<=sl:b.high>=sl,t1=side==="BUY"?b.high>=tp1:b.low<=tp1;
+   if(stop){exitR=-1;exit="SL";exitIndex=j;break;}
+   if(t1){first=true;exitR=2;exit="TP1";exitIndex=j;break;}
+   if(j===exitIndex){const signed=side==="BUY"?(b.close-entry)/risk:(entry-b.close)/risk;exitR=signed;}
   }
-  all.push({side,entryTime:new Date(fillBar.time).toISOString(),entry:+entry.toPrecision(10),r:+exitR.toFixed(3),tp1:first,tp2:second,exit,holdingBars:exitIndex-(i+1)});
+  all.push({side,entryTime:new Date(fillBar.time).toISOString(),entry:+entry.toPrecision(10),r:+exitR.toFixed(3),tp1:first,exit,holdingBars:exitIndex-(i+1)});
   i=Math.max(i+1,exitIndex);
  }
  return {symbol,bars:Object.fromEntries(Object.entries(data).map(([k,v])=>[k,v.length])),signalsConsidered:signals,validationBlocks:blocked,...metrics(all),recentTrades:all.slice(-10)};
@@ -364,12 +362,12 @@ Deno.serve(async(req:Request)=>{
    }catch(e){return {symbol,error:e instanceof Error?e.message:"Historical replay failed safely."};}
   }));
   return reply({success:true,engine:"Mktradehome V100 SHADOW BACKTEST",baseline:"Exact V100 shadow buildCandidate/scoreTimeframe/validateCandidate helpers",testMode:"Historical OHLC replay only; isolated shadow; no orders, approvals, alerts, queue items, or database writes.",
-   requestedDays:days,generatedAt:new Date().toISOString(),assumptions:[
+   requestedDays:days,tp2Mode:"REFERENCE_ONLY_NOT_EXECUTED",generatedAt:new Date().toISOString(),assumptions:[
     "Only completed candles are used for every timeframe.",
     "Signal is evaluated after a completed 15M candle; entry is the next 15M candle OPEN to avoid same-candle look-ahead.",
     "Entry, stop and targets are recalculated around the next-candle fill using the exact V100 ATR risk distance.",
-    "50% is credited at TP1 (2R) and 50% at TP2 (3R); if SL and target touch in the same candle, SL is assumed first.",
-    "If TP1 and TP2 touch in the same candle, only TP1 is credited; max holding is 24 hours.",
+    "The full position exits at TP1 (2R), matching the current MT5 queue which sends one take-profit price; TP2 is reference-only and is not counted as an executed exit.",
+    "If SL and TP1 touch in the same candle, SL is assumed first; maximum holding is 24 hours.",
     "Historical quote spread, commission, swap, slippage and broker execution are unavailable and excluded; results are gross, not net-realistic.",
     "The market-open condition is assumed for replay windows; weekends/market closures are not independently modelled.",
     "Quality score is not a win probability."

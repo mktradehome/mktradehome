@@ -17,6 +17,9 @@ Deno.test("summarizes directional accuracy, return error and interval coverage b
  assertAlmostEquals(result.overall.intervalCoveragePct??NaN,66.6666666667,1e-8);
  assertEquals(result.byHorizon[0].evaluated,2);
  assertEquals(result.byHorizon[1].evaluated,1);
+ assertEquals(result.byMarketHorizon.length,3);
+ assertEquals(result.byMarketHorizon.find(x=>x.symbol==="EURUSD"&&x.horizon==="15M")?.evaluated,1);
+ assertEquals(result.byMarketHorizon.find(x=>x.symbol==="BTCUSD"&&x.horizon==="15M")?.directionalAccuracyPct,0);
 });
 Deno.test("returns null metrics rather than inventing a score when no outcomes exist",()=>{
  const result=summarizeForecastPerformance([],[]);

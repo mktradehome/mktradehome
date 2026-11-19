@@ -1,6 +1,5 @@
 import { resolveForecastOutcome } from "../_shared/foresight-outcome.ts";
 import { summarizeForecastPerformance } from "../_shared/foresight-performance.ts";
-import { resolveForecastOutcome } from "../_shared/foresight-outcome.ts";
 const headers={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type, x-monitor-secret, x-supabase-api-version","Access-Control-Allow-Methods":"POST,OPTIONS"};
 const symbols=["BTCUSD","EURUSD","XAUUSD","USDJPY"];
 const frames=[{key:"5M",interval:"5m",ms:300000},{key:"15M",interval:"15m",ms:900000},{key:"1H",interval:"1h",ms:3600000},{key:"4H",interval:"4h",ms:14400000}];

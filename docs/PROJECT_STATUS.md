@@ -157,3 +157,12 @@ Last verified: 2026-11-19 04:02 UTC
 - GitHub source commits: resolver `1bd2336e155d3978693f419b2f3251842cb4cb94`, outcome schema mapping `aeb6d292f208853a9f4a9ba23eaa8d35b363c99c`, performance summary `e94bf835db83637f03607e1b8e7e3b2728dcdb51`, dashboard scorecard `490c42bf8593174a69757b6b8c1a6964f2638d04`, final duplicate-import correction `d220545664d093dee22fe609666f8eb345c33966`.
 - Latest GitHub Pages deployment for the dashboard scorecard (run `44456923712`) was still building when this status note was written. Cloudflare Pages at `mktradehome.pages.dev` has not been independently verified.
 - Next validation: run the deployed foresight scan and confirm it writes outcomes only when horizon-close candles exist; then verify the scorecard reads the persisted outcomes. Do not claim forecast accuracy or a profitable trading edge until a meaningful sample has accumulated and been independently reviewed.
+
+
+### Final validation and deployment update
+- Added bounded batching for historical forecast-to-outcome joins (250 forecast IDs per PostgREST request) so the scorecard does not build an oversized URL as its sample grows.
+- Clarified in the dashboard that repeated rolling forecasts overlap and are correlated; their outcomes are not independent samples.
+- Deployed `market-foresight` **version 8 ACTIVE** with the batching improvement. Deployment hash: `40e779027cee89c607dabf3e95c52edb6e8c690e8ec135607ef1d687a0f2093c`.
+- Latest engine/approval CI run `44457074308` passed all checks, including the two new foresight test suites, approval proof tests and existing fixtures.
+- Latest GitHub Pages build/deployment run `44457074075` was still building when this update was written. The site at Cloudflare Pages `mktradehome.pages.dev` remains unverified from this environment.
+- Runtime validation is still pending: no post-deployment `market-foresight` invocation appeared in the checked Edge Function log window. The first dashboard scan after opening the updated dashboard should exercise version 8 and populate the scorecard when completed horizon-close candles are available.

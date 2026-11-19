@@ -278,7 +278,7 @@ function parseHistory(raw:any[],period:number):Candle[]{
  return out.filter((c,i)=>i===0||c.time-out[i-1].time>=period*.8);
 }
 async function loadHistory(symbol:string,frame:{key:Timeframe;interval:string;ms:number},days:number):Promise<Candle[]>{
- const start=Date.now()-days*86400000;let end=Date.now()+60000,all:Candle[]=[];
+ const start=Date.now()-(days+12)*86400000;let end=Date.now()+60000,all:Candle[]=[];
  for(let page=0;page<16&&end>start;page++){
   const url=`https://biquote.io/api/${encodeURIComponent(symbol)}/ohlc?interval=${frame.interval}&limit=1000&from=${encodeURIComponent(new Date(start).toISOString())}&to=${encodeURIComponent(new Date(end).toISOString())}`;
   const r=await fetch(url,{headers:{Accept:"application/json"},signal:AbortSignal.timeout(18000)});
@@ -309,8 +309,8 @@ function metrics(trades:any[]){
  tp1HitPct:trades.length?+(trades.filter(t=>t.tp1).length/trades.length*100).toFixed(1):0,
  tp2HitPct:trades.length?+(trades.filter(t=>t.tp2).length/trades.length*100).toFixed(1):0};
 }
-function replay(symbol:string,data:Record<Timeframe,Candle[]>){
- const m15=data["15M"],all:any[]=[];let i=119,signals=0,blocked=0;
+function replay(symbol:string,data:Record<Timeframe,Candle[]>,testStart:number){
+ const m15=data["15M"],all:any[]=[];let lo=0,hi=m15.length;while(lo<hi){const mid=(lo+hi)>>1;if(m15[mid].time<testStart)lo=mid+1;else hi=mid;}let i=Math.max(119,lo),signals=0,blocked=0;
  while(i<m15.length-2){
   const signalAt=m15[i].time+PERIOD_MS["15M"];
   const f={} as Record<Timeframe,Indicators>;let enough=true;
@@ -356,10 +356,11 @@ Deno.serve(async(req:Request)=>{
    try{
     const loaded=await Promise.all(frames.map(async frame=>[frame.key,await loadHistory(symbol,frame,days)] as const));
     const data=Object.fromEntries(loaded) as Record<Timeframe,Candle[]>;
-    const r=replay(symbol,data);
-    const starts=Object.values(data).map(v=>v[0].time+PERIOD_MS["4H"]);
-    const ends=Object.values(data).map(v=>v[v.length-1].time);
-    return {...r,actualCoverageStart:new Date(Math.max(...starts)).toISOString(),actualCoverageEnd:new Date(Math.min(...ends)).toISOString()};
+    const testStart=Date.now()-days*86400000;
+    const r=replay(symbol,data,testStart);
+    const effectiveStart=Math.max(testStart,data["15M"][0].time+PERIOD_MS["15M"]);
+    const effectiveEnd=Math.min(...Object.entries(data).map(([tf,bars])=>bars[bars.length-1].time+PERIOD_MS[tf as Timeframe]));
+    return {...r,actualCoverageStart:new Date(effectiveStart).toISOString(),actualCoverageEnd:new Date(effectiveEnd).toISOString()};
    }catch(e){return {symbol,error:e instanceof Error?e.message:"Historical replay failed safely."};}
   }));
   return reply({success:true,engine:"Mktradehome V100 SHADOW BACKTEST",baseline:"Exact V100 shadow buildCandidate/scoreTimeframe/validateCandidate helpers",testMode:"Historical OHLC replay only; isolated shadow; no orders, approvals, alerts, queue items, or database writes.",

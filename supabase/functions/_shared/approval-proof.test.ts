@@ -6,7 +6,7 @@ function frame(v:Partial<any>={}){
 function fixture(pullback=false):{candidate:SavedCandidate;proof:IndependentProof}{
  const h4=frame({close:100.2,ema20:100.1,ema20Previous:100.05,ema50:100,rsi14:51,macdHistogram:0.01});
  const h1=frame();
- const m15=pullback?frame({close:100.2,ema20:100.2,ema20Previous:100.4,ema50:100.3,rsi14:45,macdHistogram:-0.1}):frame({close:100.2});
+ const m15=pullback?frame({close:100.2,ema20:100,ema20Previous:100.2,ema50:100.1,rsi14:45,macdHistogram:-0.1}):frame({close:100.2});
  const m5=frame({close:100.3,ema20:100.1,ema20Previous:100.05,ema50:99.9,rsi14:55,macdHistogram:0.1,atr14:0.5});
  const bid=100.19,ask=100.21,price=(bid+ask)/2,risk=Math.max(m15.atr14*1.5,m5.atr14*2,(ask-bid)*2.5);
  const aligned=[h4,h1,m15].filter(f=>f.ema20>=f.ema50).length;

@@ -122,3 +122,14 @@ Last verified: 2026-11-19 04:02 UTC
 - Dashboard's “12 forecasts saved” represents the latest scan's 4 markets × 3 horizons; the database's 24 rows include both successful scans. No discrepancy in the pipeline.
 - Current forecast directions and ranges are uncalibrated statistical scenarios only. Do not treat them as win probabilities, trade instructions or evidence of predictive edge. Keep the foresight engine isolated from approvals, queue and execution.
 - The CORS blocker is resolved and the first live archive/forecast write is verified. Next acceptance test: allow forecasts to mature, run another scan, and verify outcome rows are written only where completed 5M candle evidence exists. Latest observed database totals are a point-in-time snapshot, not a permanent count.
+
+
+## Read-only cross-engine integration (2026-11-19 04:08 UTC)
+- Added a Unified Market Context panel to the dashboard. It combines the latest successful Market Foresight scan response with the existing saved `market_analysis_snapshots` produced by the V63 technical intelligence pipeline.
+- For BTCUSD, EURUSD, XAUUSD and USDJPY, the panel displays technical intelligence bias/regime and 4H/1H/15M/5M context beside the 15M/1H/4H foresight directions. It labels horizon relationships as aligned, diverging, mixed or without clear agreement.
+- This is deliberately a display-only comparison. It does not calculate a new BUY/SELL signal, alter V63 scoring, modify signal proofs, change approval eligibility, update risk limits, write to trade tables, or interact with the MT5 queue.
+- Foresight remains an uncalibrated recent-drift/volatility baseline. Alignment is not a probability, confirmation of predictive edge, or trade instruction. Missing or abstained engine data is shown as unavailable rather than inferred.
+- The panel retains the latest successful foresight response in dashboard memory and refreshes its comparison when either engine refreshes. No new database tables, policies, secrets or Edge Function deployments were required.
+- Frontend commit: `6c7d74665e1b554f46fc4a9da91832b57d6e053a`.
+- GitHub Actions run `44456169281` (engine/approval tests) and Pages deployment run `44456168803` were triggered by this commit; both were queued/in progress at the time of this status update. Do not call the change deployed or tests passed until both runs complete successfully.
+- Next safe step: verify CI and Pages deployment, then visually inspect the Unified Market Context panel on the live dashboard. Keep production engine V63 unchanged while collecting forecast outcomes.

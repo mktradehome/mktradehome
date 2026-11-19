@@ -332,17 +332,20 @@ function replay(symbol:string,data:Record<Timeframe,Candle[]>,testStart:number){
   const tp1=side==="BUY"?entry+2*risk:entry-2*risk,tp2=side==="BUY"?entry+3*risk:entry-3*risk;
   const filledCandidate:Candidate={signal:side,entry,stopLoss:sl,takeProfit1:tp1,takeProfit2:tp2,riskDistance:risk,qualityScore:candidate.qualityScore,explanation:candidate.explanation};
   if(!validateCandidate(filledCandidate)){blocked++;i++;continue;}
-  let first=false,exitR=0,exit="TIME",exitIndex=Math.min(i+1+96,m15.length-1);
+  let first=false,exitR=0,exit="TIME",closed=false;
+  const plannedExitIndex=i+1+96,exitIndex=Math.min(plannedExitIndex,m15.length-1);
   for(let j=i+2;j<=exitIndex;j++){
    const b=m15[j],stop=side==="BUY"?b.low<=sl:b.high>=sl,t1=side==="BUY"?b.high>=tp1:b.low<=tp1;
-   if(stop){exitR=-1;exit="SL";exitIndex=j;break;}
-   if(t1){first=true;exitR=2;exit="TP1";exitIndex=j;break;}
-   if(j===exitIndex){const signed=side==="BUY"?(b.close-entry)/risk:(entry-b.close)/risk;exitR=signed;}
+   if(stop){exitR=-1;exit="SL";closed=true;break;}
+   if(t1){first=true;exitR=2;exit="TP1";closed=true;break;}
+   if(j===plannedExitIndex){const signed=side==="BUY"?(b.close-entry)/risk:(entry-b.close)/risk;exitR=signed;exit="TIME";closed=true;}
   }
-  all.push({side,entryTime:new Date(fillBar.time).toISOString(),entry:+entry.toPrecision(10),r:+exitR.toFixed(3),tp1:first,exit,holdingBars:exitIndex-(i+1)});
+  const record={side,entryTime:new Date(fillBar.time).toISOString(),entry:+entry.toPrecision(10),exit,holdingBars:exitIndex-(i+1)};
+  if(closed)all.push({...record,r:+exitR.toFixed(3),tp1:first});
+  else {const last=m15[exitIndex],floatingR=side==="BUY"?(last.close-entry)/risk:(entry-last.close)/risk;openAtEnd.push({...record,floatingR:+floatingR.toFixed(3)});}
   i=Math.max(i+1,exitIndex);
  }
- return {symbol,bars:Object.fromEntries(Object.entries(data).map(([k,v])=>[k,v.length])),signalsConsidered:signals,validationBlocks:blocked,...metrics(all),recentTrades:all.slice(-10)};
+ return {symbol,bars:Object.fromEntries(Object.entries(data).map(([k,v])=>[k,v.length])),signalsConsidered:signals,validationBlocks:blocked,openAtEndCount:openAtEnd.length,openMarkToMarketR:+openAtEnd.reduce((sum,t)=>sum+t.floatingR,0).toFixed(2),...metrics(all),recentTrades:all.slice(-10),recentOpenSetups:openAtEnd.slice(-10)};
 }
 Deno.serve(async(req:Request)=>{
  if(req.method==="OPTIONS")return new Response("ok",{headers:cors});
@@ -371,7 +374,7 @@ Deno.serve(async(req:Request)=>{
     "Signal is evaluated after a completed 15M candle; entry is the next 15M candle OPEN to avoid same-candle look-ahead.",
     "Entry, stop and targets are recalculated around the next-candle fill using the exact V100 ATR risk distance.",
     "The full position exits at TP1 (2R), matching the current MT5 queue which sends one take-profit price; TP2 is reference-only and is not counted as an executed exit.",
-    "If SL and TP1 touch in the same candle, SL is assumed first; maximum holding is 24 hours.",
+    "If SL and TP1 touch in the same candle, SL is assumed first; maximum holding is 24 hours. Setups without enough future candles at the end of the history window are shown separately as unclosed and excluded from win-rate and profit-factor metrics.",
     "Historical quote spread, commission, swap, slippage and broker execution are unavailable and excluded; results are gross, not net-realistic.",
     "The market-open condition is assumed for replay windows; weekends/market closures are not independently modelled.",
     "Quality score is not a win probability."

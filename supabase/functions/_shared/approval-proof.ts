@@ -41,7 +41,8 @@ export function validateIndependentCandidateProof(candidate:SavedCandidate,proof
   }
   const q=proof.quote||{},bid=Number(q.bid),ask=Number(q.ask),price=Number(q.price),quoteAge=Number(q.quoteAgeSeconds);
   if(q.marketState!=="open"||!finite(bid)||!finite(ask)||!finite(price)||!finite(quoteAge)||
-    bid<=0||ask<bid||price<=0||quoteAge<0||quoteAge>maxQuoteAgeSeconds){
+    bid<=0||ask<bid||price<=0||Math.abs(price-(bid+ask)/2)>Math.max(1,Math.abs(price))*1e-9||
+    quoteAge<0||quoteAge>maxQuoteAgeSeconds){
     return {valid:false,reason:"Saved quote evidence is stale or invalid."};
   }
   const h4=frames["4H"],h1=frames["1H"],m15=frames["15M"],m5=frames["5M"];

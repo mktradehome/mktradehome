@@ -1654,7 +1654,7 @@ function renderForesightPerformance(){
   ' · Up to '+escapeHTML(p.sampleLimit||2000)+' most recent outcomes.</p>'+
   row({...p.overall,horizon:"ALL HORIZONS"})+
   (Array.isArray(p.byHorizon)?p.byHorizon.map(row).join(""):"")+
-  '<p class="small">Directional accuracy compares forecast-return direction with the realized horizon-close return. Mean absolute return error is in percentage points. Interval coverage is the share of realized horizon closes inside the forecast range. These are historical measurements, not future win probabilities or trading guarantees.</p>';
+  '<p class="small">Directional accuracy compares forecast-return direction with the realized horizon-close return. Mean absolute return error is in percentage points. Interval coverage is the share of realized horizon closes inside the forecast range. These are historical measurements, not future win probabilities or trading guarantees. Forecasts are generated on overlapping rolling windows, so observations are correlated and must not be treated as independent samples.</p>';
 }
 
 async function runMarketForesight(){

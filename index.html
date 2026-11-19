@@ -183,6 +183,12 @@ label{display:block;font-size:13px;color:#c7d8ee;margin-top:10px}
 <button id="runBacktestBtn" type="button">Run Historical Backtest</button>
 <div id="backtestStatus" class="status">Ready. Run the test when you are ready.</div>
 <div id="backtestResults"></div>
+<hr><h3>V100 Shadow Parity Backtest</h3>
+<p class="small">Separate read-only replay using the exact V100 signal rules. It cannot create approvals, queue items, alerts or trades.</p>
+<button id="runV100BacktestBtn" type="button">Run V100 Shadow Backtest</button>
+<div id="v100BacktestStatus" class="status">Ready. This test does not change the live signal engine.</div>
+<div id="v100BacktestResults"></div>
+<p class="small">V100 results are gross historical simulation only. Spread, commission, swap, slippage and broker execution are not included.</p>
 <p class="small">Results are in R-multiples, not Ghana cedis. Historical results do not guarantee future performance. Spread, fees, slippage and broker execution are excluded.</p>
 </div>
 
@@ -939,14 +945,18 @@ return `<div class="marketbox">
 
 function getSignalQuality(a){
 if(!a||!["BUY","SELL"].includes(a.overall))return "NOT RATED";
-const risk=a.overall==="BUY"?Number(a.entry)-Number(a.sl):Number(a.sl)-Number(a.entry);
-const reward=a.overall==="BUY"?Number(a.tp1)-Number(a.entry):Number(a.entry)-Number(a.tp1);
-const reward2=a.overall==="BUY"?Number(a.tp2)-Number(a.entry):Number(a.entry)-Number(a.tp2);
-const riskReward=risk>0&&reward>=risk*2&&reward2>=risk*3;
-const verified=a.engineVerified===true&&a.verificationStatus==="PASSED";
-return a.quoteFresh&&riskReward&&verified
-?"INDEPENDENT ENGINE VERIFIED · NOT A WIN PROBABILITY"
-:"SETUP EXPIRED OR PRICE/RISK CHECK FAILED";
+const entry=Number(a.entry),sl=Number(a.sl),tp1=Number(a.tp1),tp2=Number(a.tp2);
+if(![entry,sl,tp1,tp2].every(Number.isFinite))return "INVALID PRICE DATA";
+const buy=a.overall==="BUY",risk=buy?entry-sl:sl-entry;
+const reward1=buy?tp1-entry:entry-tp1,reward2=buy?tp2-entry:entry-tp2;
+const geometry=risk>0&&reward1>=2*risk&&reward2>=3*risk&&
+ (buy?sl<entry&&tp1>entry&&tp2>entry:sl>entry&&tp1<entry&&tp2<entry);
+const verified=a.engineVerified===true&&a.verificationStatus==="PASSED"&&
+ a.candidateId!==undefined&&a.candidateId!==null&&String(a.candidateId).trim().length>0;
+if(!verified)return "ENGINE VERIFICATION MISSING";
+if(!geometry)return "RISK / TARGET GEOMETRY FAILED";
+if(!a.quoteFresh)return "QUOTE STALE OR ENTRY MOVED";
+return "INDEPENDENT ENGINE VERIFIED · NOT A WIN PROBABILITY";
 }
 
 function renderAnalysis(){
@@ -1050,7 +1060,7 @@ const reviews=getSignalReviews();
 const signals=marketList.map(m=>({market:m,a:analyses[m.symbol]}))
 .filter(x=>x.a&&["BUY","SELL"].includes(x.a.overall)&&
  (x.a.engineVerified===true&&x.a.verificationStatus==="PASSED"&&x.a.candidateId!==undefined&&x.a.candidateId!==null&&String(x.a.candidateId).trim().length>0)&&
- Number.isFinite(x.a.entry)&&Number.isFinite(x.a.sl)&&Number.isFinite(x.a.tp1)&&getSignalQuality(x.a)!=="SETUP NEEDS CONFIRMATION");
+ Number.isFinite(x.a.entry)&&Number.isFinite(x.a.sl)&&Number.isFinite(x.a.tp1)&&getSignalQuality(x.a)==="INDEPENDENT ENGINE VERIFIED · NOT A WIN PROBABILITY");
 
 if(!signals.length){
 container.innerHTML="<p>No confirmed BUY or SELL setups right now. WAIT signals are not approval opportunities.</p>";
@@ -1098,7 +1108,7 @@ showMessage("approvalStatus","Quote is not fresh. Approval blocked.");
 return;
 }
 
-if(action==="approve"&&getSignalQuality(a)==="SETUP NEEDS CONFIRMATION"){
+if(action==="approve"&&getSignalQuality(a)!=="INDEPENDENT ENGINE VERIFIED · NOT A WIN PROBABILITY"){
  showMessage("approvalStatus","Independent confirmation or risk checks failed. Approval blocked.");
  return;
 }
@@ -1522,7 +1532,26 @@ console.error("Historical backtest:",e);
 showMessage("backtestStatus","Backtest could not finish: "+(e.message||"Unknown error")+". No trades or approvals were created.");
 }finally{btn.disabled=false;}
 }
+
 $("runBacktestBtn").addEventListener("click",runHistoricalBacktest);
+async function runV100ShadowBacktest(){
+ const btn=$("runV100BacktestBtn"),days=Number($("backtestDays").value||14);
+ btn.disabled=true;$("v100BacktestResults").innerHTML="";
+ showMessage("v100BacktestStatus","Running isolated V100 historical replay. No live settings or trades will be changed.");
+ try{
+  const {data,error}=await supabaseClient.functions.invoke("market-monitor-v100-backtest-shadow",{body:{days}});
+  if(error){let message=error.message||"V100 shadow backtest request failed.";try{if(error.context&&typeof error.context.clone==="function"){const d=await error.context.clone().json();message=d?.error||d?.message||message;}}catch(_){}throw Error(message);}
+  if(!data?.success)throw Error(data?.error||"No V100 results returned.");
+  const cell=v=>escapeHTML(v===undefined||v===null?"—":v),rows=Array.isArray(data.results)?data.results:[];
+  $("v100BacktestResults").innerHTML=rows.map(r=>{
+   if(r.error)return '<div class="trade-item"><strong>'+cell(r.symbol)+'</strong><p>'+cell(r.error)+'</p></div>';
+   return '<div class="trade-item"><strong>'+cell(r.symbol)+'</strong><div class="row"><span>Completed trades</span><strong>'+cell(r.trades)+'</strong></div><div class="row"><span>Signals accepted</span><strong>'+cell(r.signalsConsidered)+'</strong></div><div class="row"><span>Win rate</span><strong>'+cell(r.winRatePct)+'%</strong></div><div class="row"><span>Net gross result</span><strong>'+cell(r.netR)+'R</strong></div><div class="row"><span>Profit factor</span><strong>'+cell(r.profitFactor)+'</strong></div><div class="row"><span>Max drawdown</span><strong>'+cell(r.maxDrawdownR)+'R</strong></div><div class="row"><span>TP1 / TP2 hit rate</span><strong>'+cell(r.tp1HitPct)+'% / '+cell(r.tp2HitPct)+'%</strong></div><div class="small">Coverage: '+cell(r.actualCoverageStart)+' to '+cell(r.actualCoverageEnd)+'</div></div>';
+  }).join("")||"No market results returned.";
+  showMessage("v100BacktestStatus","Finished · "+rows.filter(r=>!r.error).length+" of "+rows.length+" markets processed · "+new Date(data.generatedAt).toLocaleString()+". Isolated V100 replay only.");
+ }catch(e){console.error("V100 shadow backtest:",e);showMessage("v100BacktestStatus","V100 backtest could not finish: "+(e.message||"Unknown error")+". No live trades or approvals were created.");}
+ finally{btn.disabled=false;}
+}
+$("runV100BacktestBtn").addEventListener("click",runV100ShadowBacktest);
 
 document.querySelectorAll("[data-page]").forEach(button=>{
 button.addEventListener("click",()=>{

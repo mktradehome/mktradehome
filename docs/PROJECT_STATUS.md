@@ -1,69 +1,59 @@
-# Mktradehome — Project Status and Next Build Plan
+# Mktradehome — Current Project Status
 
-Last updated: 2026-11-16 (updated after independent engine deployment)
+Last verified: 2026-11-19 03:15 UTC
 
-## Project
-- Private personal trading assistant for use with Exness.
-- Dashboard: https://mktradehome.pages.dev/
-- Supabase project: Mktradehome (`pjwqyveitncygamaaybi`).
-- Supported markets: BTCUSD, EURUSD, XAUUSD, USDJPY.
-- User works from iPhone and prefers short, simple, one-step-at-a-time instructions.
-- Normal trade size target: 0.01 lot.
-- No VPS; avoid paid upgrades and do not assume extra API budget.
+## Project and safety
+- Private personal Exness trading assistant; dashboard: https://mktradehome.pages.dev/
+- Markets: BTCUSD, EURUSD, XAUUSD, USDJPY.
+- Demo-first. User manually approves trades; approval does not itself place an order.
+- Automatic trade execution is not enabled by this project work.
+- Real account remains read-only and locked from approvals.
+- Preserve 0.01-lot starting size, live-price checks, required SL/TP, duplicate prevention and expiry. Never weaken safeguards just to increase signal count.
 
-## Current deployed services (verified 2026-11-16)
-- `market-monitor` v48 — ACTIVE; cron scans every 5 minutes. It fetches quotes/candles, applies technical prefilters, and now generates independent fallback candidates when GPT is rate-limited, unavailable, invalid, or does not verify a candidate.
-- `gpt-market-analysis` v8 — ACTIVE; OpenAI API has recently returned HTTP 429 rate-limit errors. This blocks GPT-verified signals, not market scanning itself.
-- `mt5-bridge` v30 — ACTIVE; dashboard snapshots support Demo and Real as read-only views.
-- `create-mt5-fallback-approval` v4 — ACTIVE; validates an independently generated Mktradehome fallback candidate and permits Demo approval only.
-- `create-mt5-real-approval` v3 — ACTIVE; returns HTTP 403 and blocks Real approvals.
-- `create-mt5-approval` v17 — ACTIVE.
-- `create-mt5-fallback-approval` checks that a candidate was created with source `mktradehome-independent-fallback`, timeframe confirmation, fresh quote, and 1:2 / 1:3 risk-reward. `market-monitor` v48 now calls the independent generator during GPT cooldown/failure paths and saves explicitly labelled `NOT_GPT_VERIFIED` candidates, alerts, and Telegram notifications when all checks pass. The first post-deployment scheduled run must still be verified in live logs and database rows.
-- `market_monitor_control.global_gpt_cooldown` limits GPT calls to protect the available API allowance and respects Retry-After responses.
+## Verified deployed services
+- `market-monitor` v62 — ACTIVE production signal engine. Scheduled requests in recent logs returned HTTP 200; recent executions were approximately 2.4–3.3 seconds.
+- `market-monitor-v100-shadow` v4 — ACTIVE, isolated read-only strategy shadow. No production writes, alerts, approvals, queue items or trade execution.
+- `market-monitor-v100-backtest-shadow` v5 — ACTIVE, authenticated historical replay; isolated from production trading state.
+- `create-mt5-approval` v21 — ACTIVE. Server-side validation now uses the exact independent engine scoring and multi-timeframe rules, including valid 15M pullback reversals and 5M veto logic.
+- `mt5-bridge` v30 — ACTIVE. Dashboard queue and account-snapshot reads return HTTP 200 in recent logs.
 
-## Agreed independent signal engine
-Build a rule-based Mktradehome engine so the app continues scanning and can create clearly labelled Mktradehome-only signals when GPT is rate-limited or unavailable.
+## Signal rules
+- 1H sets direction and must score at least +12 for BUY or -12 for SELL.
+- 4H must not strongly oppose the 1H direction (opposition score no worse than -30).
+- 15M structure must align, or a qualifying pullback reversal must reclaim the trend-side EMA50 with 5M momentum back in the 1H direction.
+- 5M is an entry veto only when strongly opposed (opposition score below -40).
+- Entry must remain within 0.75 of 15M ATR from the reference close.
+- Risk distance is max(1.5 × 15M ATR, 2 × 5M ATR, 2.5 × spread); TP1 = 2R and TP2 = 3R.
+- Quotes must be fresh (30 seconds or less) and the market must be open.
+- Quality score is a rule-quality heuristic, not win probability.
 
-Markets:
-- BTCUSD
-- EURUSD
-- XAUUSD
-- USDJPY
+## V100 validation
+- V100 is currently a shadow copy/baseline of the V62 strategy, not yet a proven improved strategy.
+- The separate shadow backtest uses completed candles, waits until the 15M signal candle closes, and enters at the next 15M candle open to reduce look-ahead bias.
+- It uses the same V100 candidate builder and validation helpers. The single full-position exit is TP1 at 2R, matching the current MT5 queue's single take-profit field; TP2 is reference-only.
+- Backtest results are gross simulations. Historical spread, commission, swap, slippage, market closures and broker fills are not fully modelled. Do not treat gross results as expected live performance.
+- Do not promote V100 to production until code tests, runtime tests, fair out-of-sample backtests and explicit approval are complete.
 
-Analysis:
-- Use completed candles only.
-- 4H and 1H determine directional bias.
-- 15M and 5M confirm entry direction; reject clear lower-timeframe conflict.
-- Require fresh live quote and sufficient candle history.
-- Produce BUY, SELL, or WAIT.
-- For BUY/SELL, calculate entry, Stop Loss, TP1 (minimum 1:2 reward/risk), TP2 (minimum 1:3 reward/risk).
-- Store timeframe readings, quote freshness, rule checks, and source metadata for audit.
-- Label signals clearly as “MKTRADEHOME VERIFIED — NOT GPT VERIFIED”; never represent them as GPT-approved.
-- Keep GPT as an optional second opinion; GPT unavailability must not suppress a valid independent candidate.
-- Avoid duplicate alerts and expire stale candidates.
-- Test and paper-trade on Demo before relying on performance.
+## Approval verification repair
+- The earlier server validator incorrectly required all timeframe categorical labels to agree. That contradicted the live engine, which uses score-based rules and allows a defined 15M pullback reversal and 5M WAIT.
+- v21 now recomputes the exact score from saved indicator evidence and validates 1H direction, 4H conflict limit, 15M structure/pullback, 5M veto, entry extension, ATR/spread risk geometry and heuristic quality score.
+- Pure validation logic is isolated in `supabase/functions/_shared/approval-proof.ts` with deterministic tests in `approval-proof.test.ts`.
+- Approval still rechecks a fresh independent live quote and entry deviation server-side. No automatic order execution was added.
 
-## Trade approval and account safeguards
-- Demo: allow the user to review and approve eligible, fresh, independently generated candidates through the existing fallback approval route. Approval is not the same as order execution.
-- Real account: preserve the Real account selector, dashboard visibility, and read-only snapshot monitoring. Do not remove or hide the Real account.
-- Real trade execution/approval is currently locked by `create-mt5-real-approval` v3. Do not silently change this lock. Before enabling real approvals, verify the separate Real MT5 bridge, account identity, live quote freshness, order sizing, SL/TP enforcement, duplicate protection, and emergency stop. The user wants Real trading retained, not removed; explain clearly that the current lock remains until those checks pass.
-- Never place a live-money trade without explicit user approval.
-- Maintain required Stop Loss and Take Profit and the 0.01-lot starting limit unless the user explicitly changes it after review.
+## MT5 connection status
+- The latest Demo account snapshot is `2026-11-18 01:06:45 UTC`; it is stale and must not be treated as a live account heartbeat.
+- The dashboard's authenticated queue/snapshot polling works (HTTP 200), but polling the dashboard is not evidence that the MT5 EA is connected.
+- The EA source is not present in this GitHub repository. True live individual-position tracking still requires the MT5 EA to report open positions to the authenticated bridge. Do not fake live prices or position status.
+- Latest known queue counts: 10 executed, 7 expired, 12 failed; 10 closed trade journal records. These are historical records, not current open positions.
 
-## Immediate implementation checklist
-1. Verify the first `market-monitor` v48 cron run: live quote/candle checks, fallback candidate inserts, alert delivery, and absence of runtime errors.
-2. Confirm the dashboard restores new fallback candidates and the Demo approval route accepts only fresh, validated candidates.
-3. Test expiry, duplicate suppression, and alert delivery end-to-end on Demo.
-4. Run additional Demo-only paper tests and review signal quality before relying on results.
-5. Keep the Real account visible and its existing separate safety gate intact until independently verified.
+## Repository and CI
+- `supabase/functions/market-monitor/index.ts` is synchronized with the deployed V62 production source; do not accidentally deploy the older pre-V62 helper implementation.
+- GitHub Actions now runs type-checks for production and shadow Edge Functions plus deterministic approval-proof tests on pushes and pull requests to main.
+- Legacy shared-engine tests are retained and explicitly labelled legacy; they are not proof of production V62 parity.
 
-## Recent changes already completed
-- Added dashboard passcode screen using PBKDF2/SHA-256 and browser-local salt/hash.
-- Restored Real account selector and read-only snapshot display.
-- Added/maintained Demo-only fallback approval route.
-- Added GPT cooldown control and deployed `market-monitor` v46 to reduce rate-limit waste.
-- Kept real-money approvals locked pending separate Real connection and safety verification.
-
-## Important limitation
-This document records the verified project state and agreed next implementation. It does not claim that the independent signal engine is already connected or that Real trade execution is enabled.
-\n\n## Independent engine implementation (2026-11-16)\n- Deployed `market-monitor` v48 with a server-side rule-based fallback path. It runs when GPT is in cooldown, returns an error/invalid response, or does not pass verification. GPT rate-limit cooldown is preserved.\n- Uses completed candles only as returned by the existing candle fetcher; requires at least 60 bars per timeframe. 4H and 1H must agree; 15M/5M must not oppose, and at least one lower timeframe must confirm.\n- Requires quote `stale === false`, quote age <=30 seconds, and open market except BTCUSD.\n- Entry is the live bid/ask midpoint. Stop distance is volatility-based: max(1.5 x 15M ATR, 2 x 5M ATR). TP1 = 2R; TP2 = 3R. Candidate confidence field is a fixed heuristic display score, not a probability.\n- Persists `source=mktradehome-independent-fallback`, `analysisMode=MKTRADEHOME`, `fallbackVerified=true`, `gptVerified=false`, `verificationStatus=NOT_GPT_VERIFIED`, timeframe data, quote freshness, and risk checks. Sends a clearly labelled alert and Telegram notification.\n- Duplicate candidates are suppressed for the 10-minute candidate window and when an active Demo approval/execution exists. The existing fallback approval route remains Demo-only and unchanged; it rechecks candidate age, fresh live price, timeframe agreement and 1:2/1:3 risk-reward.\n- Dashboard already restores recent fallback candidates from `trade_signals`; it only presents an actionable setup while the saved candidate and current quote remain fresh.\n- `create-mt5-real-approval` v3 was not changed. Real account visibility and read-only monitoring remain; Real approval stays locked.\n- Source backup: `supabase/functions/market-monitor/index.ts`. Deployment is live, but the first successful scheduled run and end-to-end Demo approval still require verification.\n
+## Remaining work
+1. Confirm CI passes for the synced production and approval sources.
+2. Run the authenticated V100 shadow backtest from the dashboard and inspect all four markets.
+3. Obtain a fresh Demo MT5 EA heartbeat; then test one manual Demo approval and the complete execution/reporting cycle.
+4. Locate or add the MT5 EA's individual open-position reporting path before claiming MT5-like live trade overlays are fully live.
+5. Compare V62 and V100 on identical completed-candle data and out-of-sample periods before any production promotion.

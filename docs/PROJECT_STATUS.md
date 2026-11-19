@@ -133,3 +133,13 @@ Last verified: 2026-11-19 04:02 UTC
 - Frontend commit: `6c7d74665e1b554f46fc4a9da91832b57d6e053a`.
 - GitHub Actions run `44456169281` (engine/approval tests) and Pages deployment run `44456168803` were triggered by this commit; both were queued/in progress at the time of this status update. Do not call the change deployed or tests passed until both runs complete successfully.
 - Next safe step: verify CI and Pages deployment, then visually inspect the Unified Market Context panel on the live dashboard. Keep production engine V63 unchanged while collecting forecast outcomes.
+
+
+## Opportunity Intelligence implementation (2026-11-19)
+- Added a read-only Opportunity Intelligence dashboard panel. It lists a market as a current opportunity only when the existing V63 analysis already contains a BUY/SELL candidate with engine verification PASSED, a candidate ID, fresh quote flag, valid entry/SL/TP values and passing 2R/3R geometry.
+- The panel never generates a signal, changes V63 rules, upgrades a WAIT, changes approval eligibility, or writes to approvals, queue or trade tables. Manual approval remains separate.
+- Market Foresight is used only as supporting context. The panel compares fresh 15M and 1H directional scenarios with the already-verified V63 direction and labels alignment, divergence, mixed/sideways, or unavailable/stale context. Forecasts remain uncalibrated and cannot create or invalidate a technical candidate.
+- If no current candidate passes the existing checks, the panel explicitly displays WAIT rather than manufacturing an opportunity.
+- Frontend commit: `34896e93267d966197cd51c1fea3f1890deb4318`.
+- Previous GitHub Pages deployment run `44456204007` completed successfully, including Jekyll build, artifact upload and deploy. This confirms the preceding Unified Market Context commit was deployed through GitHub Pages; it does not independently verify Cloudflare Pages at `mktradehome.pages.dev`.
+- The Opportunity Intelligence commit has just been saved. Its engine/approval CI and Pages deployment runs must be checked before calling this new panel tested or live.

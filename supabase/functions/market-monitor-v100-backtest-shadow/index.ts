@@ -372,10 +372,10 @@ Deno.serve(async(req:Request)=>{
    requestedDays:days,tp2Mode:"REFERENCE_ONLY_NOT_EXECUTED",generatedAt:new Date().toISOString(),assumptions:[
     "Only completed candles are used for every timeframe. BiQuote OHLC is a rolling window, not an unlimited archive; the result reports the true common overlap after indicator warm-up.",
     "Signal is evaluated after a completed 15M candle; entry is the next 15M candle OPEN to avoid same-candle look-ahead.",
-    "Entry, stop and targets are recalculated around the next-candle fill using the exact V100 ATR risk distance.",
+    "Entry, stop and targets are recalculated around the next-candle fill using the V100 ATR risk formula. Historical bid/ask is unavailable, so spread is zero in replay and the live spread-based stop-distance component is omitted; live and historical stop distances may differ.",
     "The full position exits at TP1 (2R), matching the current MT5 queue which sends one take-profit price; TP2 is reference-only and is not counted as an executed exit.",
     "If SL and TP1 touch in the same candle, SL is assumed first; maximum holding is 24 hours. Setups without enough future candles at the end of the history window are shown separately as unclosed and excluded from win-rate and profit-factor metrics.",
-    "Historical quote spread, commission, swap, slippage and broker execution are unavailable and excluded; results are gross, not net-realistic.",
+    "Historical commission, swap, slippage and broker execution are unavailable and excluded; results are gross, not net-realistic.",
     "The market-open condition is assumed for replay windows; weekends/market closures are not independently modelled.",
     "Quality score is not a win probability."
    ],productionWrites:false,createsApprovals:false,createsQueueItems:false,telegramAlerts:false,executesTrades:false,results});

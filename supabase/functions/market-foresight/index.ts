@@ -1,7 +1,7 @@
 const headers={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"content-type,x-monitor-secret,authorization,apikey","Access-Control-Allow-Methods":"POST,OPTIONS"};
 const symbols=["BTCUSD","EURUSD","XAUUSD","USDJPY"];
 const frames=[{key:"5M",interval:"5m",ms:300000},{key:"15M",interval:"15m",ms:900000},{key:"1H",interval:"1h",ms:3600000},{key:"4H",interval:"4h",ms:14400000}];
-const json=(body,status=200)=>new Response(JSON.stringify(body),{status,headers:{...headers,"Content-Type":"application/json"}});
+const json=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status,headers:{...headers,"Content-Type":"application/json"}});
 const finite=(n:number)=>Number.isFinite(n)&&n>0;
 function getServiceKey(){
  const legacy=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -121,7 +121,7 @@ Deno.serve(async(req:Request)=>{
     const quote=quotes[symbol],bid=Number(quote?.bid),ask=Number(quote?.ask),age=Number(quote?.quoteAgeSeconds);
     const quoteFresh=quote&&quote.stale===false&&Number.isFinite(age)&&age>=0&&age<=30&&finite(bid)&&finite(ask)&&ask>=bid;
     const price=quoteFresh?(bid+ask)/2:byFrame["5M"][byFrame["5M"].length-1].close;
-    const forecasts=[
+    const forecasts:any[]=[
      forecast(symbol,price,byFrame["5M"],"15M",3,generatedAt),
      forecast(symbol,price,byFrame["5M"],"1H",12,generatedAt),
      forecast(symbol,price,byFrame["5M"],"4H",48,generatedAt)

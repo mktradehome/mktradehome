@@ -170,6 +170,8 @@ label{display:block;font-size:13px;color:#c7d8ee;margin-top:10px}
 <button type="button" id="runForesightBtn">Run Foresight Scan</button>
 <div id="foresightStatus" class="status">Waiting for first live foresight scan…</div>
 <div id="foresightResults"></div>
+<h3>Forecast Scorecard · Measured Outcomes</h3>
+<div id="foresightPerformance"><p class="small">Waiting for completed forecast outcomes...</p></div>
 <p class="small">Forecasts are uncalibrated statistical scenarios, not probabilities or trade instructions. No approvals, queues or orders are created. WAIT remains the correct decision when evidence is weak.</p>
 </div>
 
@@ -323,6 +325,7 @@ let quotes={};
 let analyses={};
 let latestForesightResults=[];
 let latestForesightGeneratedAt=null;
+let latestForesightPerformance=null;
 let latestMarketIntelligenceRows=[];
 let marketRefreshTimer=null;
 let accountRefreshTimer=null;
@@ -1636,6 +1639,24 @@ $("refreshNewsBtn").addEventListener("click",refreshMarketNews);
 
 let foresightBusy=false;
 let foresightRefreshTimer=null;
+function renderForesightPerformance(){
+ const el=$("foresightPerformance");if(!el)return;
+ const p=latestForesightPerformance;
+ if(!p||!p.overall){el.innerHTML='<p class="small">Measured outcome summary is not available yet. Forecasts continue to be collected.</p>';return;}
+ const fmt=v=>v===null||v===undefined?"—":Number(v).toFixed(1)+"%";
+ const row=m=>'<div class="trade-item"><strong>'+escapeHTML(m.horizon||"ALL HORIZONS")+'</strong>'+
+  '<div class="row"><span>Evaluated forecasts</span><strong>'+escapeHTML(m.evaluated)+'</strong></div>'+
+  '<div class="row"><span>Directional accuracy</span><strong>'+fmt(m.directionalAccuracyPct)+'</strong></div>'+
+  '<div class="row"><span>Mean absolute return error</span><strong>'+fmt(m.meanAbsoluteReturnErrorPct)+'</strong></div>'+
+  '<div class="row"><span>Prediction interval coverage</span><strong>'+fmt(m.intervalCoveragePct)+'</strong></div></div>';
+ const n=Number(p.overall.evaluated)||0;
+ el.innerHTML='<p class="small">'+(n<30?'EARLY SAMPLE · descriptive only':'Historical sample · still not a calibrated probability model')+
+  ' · Up to '+escapeHTML(p.sampleLimit||2000)+' most recent outcomes.</p>'+
+  row({...p.overall,horizon:"ALL HORIZONS"})+
+  (Array.isArray(p.byHorizon)?p.byHorizon.map(row).join(""):"")+
+  '<p class="small">Directional accuracy compares forecast-return direction with the realized horizon-close return. Mean absolute return error is in percentage points. Interval coverage is the share of realized horizon closes inside the forecast range. These are historical measurements, not future win probabilities or trading guarantees.</p>';
+}
+
 async function runMarketForesight(){
  if(foresightBusy||!document.getElementById("foresightResults"))return;
  foresightBusy=true;
@@ -1648,6 +1669,8 @@ async function runMarketForesight(){
   if(!data?.success)throw Error(data?.error||"No foresight results returned.");
   latestForesightResults=Array.isArray(data.results)?data.results:[];
   latestForesightGeneratedAt=data.generatedAt||new Date().toISOString();
+  latestForesightPerformance=data.performance||null;
+  renderForesightPerformance();
   renderUnifiedMarketContext();
   const fmt=v=>Number(v).toLocaleString(undefined,{maximumSignificantDigits:8});
   const cell=v=>escapeHTML(v===undefined||v===null?"—":v);

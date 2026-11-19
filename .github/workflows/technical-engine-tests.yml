@@ -16,6 +16,8 @@ jobs:
         run: deno check supabase/functions/market-monitor/index.ts supabase/functions/create-mt5-approval/index.ts supabase/functions/market-monitor-v100-shadow/index.ts supabase/functions/market-monitor-v100-backtest-shadow/index.ts supabase/functions/market-foresight/index.ts supabase/functions/telegram-alerts/index.ts
       - name: Check dashboard inline JavaScript syntax
         run: node scripts/check-inline-js.mjs
+      - name: Test Market Foresight performance metrics
+        run: deno test supabase/functions/_shared/foresight-performance.test.ts
       - name: Test Market Foresight horizon outcome resolution
         run: deno test supabase/functions/_shared/foresight-outcome.test.ts
       - name: Test independent approval proof against live strategy rules

@@ -166,3 +166,12 @@ Last verified: 2026-11-19 04:02 UTC
 - Latest engine/approval CI run `44457074308` passed all checks, including the two new foresight test suites, approval proof tests and existing fixtures.
 - Latest GitHub Pages build/deployment run `44457074075` was still building when this update was written. The site at Cloudflare Pages `mktradehome.pages.dev` remains unverified from this environment.
 - Runtime validation is still pending: no post-deployment `market-foresight` invocation appeared in the checked Edge Function log window. The first dashboard scan after opening the updated dashboard should exercise version 8 and populate the scorecard when completed horizon-close candles are available.
+
+
+## Market-specific measured forecast context (2026-11-19)
+- Extended the existing read-only forecast performance summary with per-market, per-horizon metrics in addition to the existing overall and horizon summaries. Metrics are matched through persisted forecast IDs and retain the existing 2,000-outcome sample cap.
+- Opportunity Intelligence now displays measured 15M and 1H forecast history for the same market beside an already verified V63 candidate. It reports no measurement when no outcomes exist; below 30 outcomes it explicitly labels the evidence EARLY SAMPLE and does not use it to rank, approve or validate the setup. At 30 or more outcomes it shows descriptive directional accuracy, mean absolute return error and interval coverage, with an explicit warning that these are not win probabilities.
+- This is supporting historical context only. V63 remains the sole source of trade eligibility; Market Foresight cannot create, remove, rank or approve a candidate. No production signal rules, approval logic, queue, execution, database schema, RLS or grants were changed.
+- Added deterministic assertions for per-market/per-horizon grouping. Dashboard refreshes the Opportunity Intelligence panel after each successful foresight scan so it cannot silently show stale scorecard context as current.
+- Supabase breaking-change review: the November 2026 changelog entries reviewed do not affect this change; no Supabase SDK, Data API, auth, schema or deployment configuration was modified.
+- Validation and deployment: pending CI and GitHub Pages workflow completion. Cloudflare Pages deployment and post-v8 runtime scorecard population remain unverified; do not claim the live Cloudflare dashboard has this update until independently checked.

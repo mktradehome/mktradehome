@@ -29,6 +29,21 @@ Deno.test("accepts the engine's qualified 15M pullback reversal",()=>{
 Deno.test("rejects a candidate whose saved target geometry is changed",()=>{
  const f=fixture(false);f.candidate.take_profit_1+=0.2;assert(!validateIndependentCandidateProof(f.candidate,f.proof).valid);
 });
+Deno.test("accepts a valid SELL candidate with bearish score alignment",()=>{
+ const h4=frame({close:100,ema20:100.1,ema20Previous:100.15,ema50:100.2,rsi14:49,macdHistogram:-0.01});
+ const h1=frame({close:98.2,ema20:99,ema20Previous:99.2,ema50:100,rsi14:42,macdHistogram:-0.5});
+ const m15=frame({close:99.8,ema20:100,ema20Previous:100.05,ema50:100.1,rsi14:42,macdHistogram:-0.1});
+ const m5=frame({close:99.9,ema20:100,ema20Previous:100.05,ema50:100.1,rsi14:48,macdHistogram:-0.1,atr14:0.5});
+ const bid=99.79,ask=99.81,price=(bid+ask)/2,risk=Math.max(m15.atr14*1.5,m5.atr14*2,(ask-bid)*2.5);
+ const candidate:SavedCandidate={signal:"SELL",entry_price:price,stop_loss:price+risk,take_profit_1:price-2*risk,take_profit_2:price-3*risk};
+ const proof:IndependentProof={qualityScore:85,qualityScoreIsWinProbability:false,timeframes:{"4H":h4,"1H":h1,"15M":m15,"5M":m5},quote:{bid,ask,price,quoteAgeSeconds:2,marketState:"open"}};
+ assert(validateIndependentCandidateProof(candidate,proof).valid);
+});
+Deno.test("rejects a BUY candidate when 5M score strongly opposes it",()=>{
+ const f=fixture(false);
+ f.proof.timeframes!["5M"]={...f.proof.timeframes!["5M"],close:98,ema20:100,ema20Previous:100.2,ema50:101,rsi14:35,macdHistogram:-0.5};
+ assert(!validateIndependentCandidateProof(f.candidate,f.proof).valid);
+});
 Deno.test("rejects a saved quote midpoint that does not match bid and ask",()=>{
  const f=fixture(false);f.proof.quote!.price=100.5;assert(!validateIndependentCandidateProof(f.candidate,f.proof).valid);
 });

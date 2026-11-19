@@ -1,4 +1,6 @@
 import { resolveForecastOutcome } from "../_shared/foresight-outcome.ts";
+import { summarizeForecastPerformance } from "../_shared/foresight-performance.ts";
+import { resolveForecastOutcome } from "../_shared/foresight-outcome.ts";
 const headers={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type, x-monitor-secret, x-supabase-api-version","Access-Control-Allow-Methods":"POST,OPTIONS"};
 const symbols=["BTCUSD","EURUSD","XAUUSD","USDJPY"];
 const frames=[{key:"5M",interval:"5m",ms:300000},{key:"15M",interval:"15m",ms:900000},{key:"1H",interval:"1h",ms:3600000},{key:"4H",interval:"4h",ms:14400000}];
@@ -78,6 +80,14 @@ async function evaluateMatured(key:string,now:number){
  }
  return evaluated;
 }
+async function loadForecastPerformance(key:string){
+ const outcomes=await rest("market_foresight_outcomes?select=forecast_id,actual_return,interval_covered&order=evaluated_at.desc&limit=2000",key);
+ const rows=Array.isArray(outcomes)?outcomes:[];
+ const ids=[...new Set(rows.map((r:any)=>String(r.forecast_id||"")).filter((id:string)=>/^[0-9a-f-]{36}$/i.test(id)))];
+ if(!ids.length)return summarizeForecastPerformance([],[]);
+ const forecasts=await rest("market_foresight_forecasts?id=in.("+ids.join(",")+")&select=id,symbol,horizon,expected_return",key);
+ return summarizeForecastPerformance(Array.isArray(forecasts)?forecasts:[],rows);
+}
 async function archive(rows:any[],key:string){
  let saved=0;
  for(let i=0;i<rows.length;i+=400){
@@ -155,6 +165,8 @@ Deno.serve(async(req:Request)=>{
    inserted+=Array.isArray(out)?out.length:0;
   }
   const outcomesEvaluated=await evaluateMatured(key,Date.now());
-  return json({success:true,engine:"Mktradehome Market Foresight",modelVersion:"foresight-baseline-0.1.0",generatedAt,durationMs:Date.now()-started,markets:results.length,forecastsCreated:inserted,candlesArchived:archived,quoteSnapshotsArchived,outcomesEvaluated,probabilitiesCalibrated:false,createsApprovals:false,createsQueueItems:false,executesTrades:false,results});
+  let performance=null;
+  try{performance=await loadForecastPerformance(key);}catch(_){performance=null;}
+  return json({success:true,engine:"Mktradehome Market Foresight",modelVersion:"foresight-baseline-0.1.0",generatedAt,durationMs:Date.now()-started,markets:results.length,forecastsCreated:inserted,candlesArchived:archived,quoteSnapshotsArchived,outcomesEvaluated,performance,probabilitiesCalibrated:false,createsApprovals:false,createsQueueItems:false,executesTrades:false,results});
  }catch(e){return json({error:e instanceof Error?e.message:"Foresight engine failed safely."},500);}
 });

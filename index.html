@@ -173,6 +173,12 @@ label{display:block;font-size:13px;color:#c7d8ee;margin-top:10px}
 <p class="small">Forecasts are uncalibrated statistical scenarios, not probabilities or trade instructions. No approvals, queues or orders are created. WAIT remains the correct decision when evidence is weak.</p>
 </div>
 
+<div class="card" id="unifiedMarketContextCard">
+<h2>Unified Market Context</h2>
+<p>Read-only comparison of the independent technical intelligence and Market Foresight scenarios. Agreement is context, not a trade signal or probability.</p>
+<div id="unifiedMarketContext"><p class="small">Waiting for both engines to report...</p></div>
+</div>
+
 <div class="card">
 <h2>Market Analysis</h2>
 <p>5M entry timing · 15M confirmation · 1H and 4H trend direction.</p>
@@ -308,6 +314,9 @@ const marketList=[
 
 let quotes={};
 let analyses={};
+let latestForesightResults=[];
+let latestForesightGeneratedAt=null;
+let latestMarketIntelligenceRows=[];
 let marketRefreshTimer=null;
 let accountRefreshTimer=null;
 let newsRefreshTimer=null;
@@ -977,6 +986,8 @@ async function loadMarketIntelligence(){
   const {data,error}=await supabaseClient.from("market_analysis_snapshots")
    .select("symbol,bias,regime,score,summary,timeframes,updated_at").order("symbol");
   if(error)throw error;
+  latestMarketIntelligenceRows=Array.isArray(data)?data:[];
+  renderUnifiedMarketContext();
   if(!data||!data.length){
    container.innerHTML='<p class="small">No saved intelligence yet. The background monitor will populate this after its next successful scan.</p>';
    return;
@@ -1004,8 +1015,53 @@ async function loadMarketIntelligence(){
   }).join("");
  }catch(error){
   console.error("Market intelligence load failed:",error);
+  latestMarketIntelligenceRows=[];
+  renderUnifiedMarketContext();
   container.innerHTML='<p class="small">Market intelligence is temporarily unavailable. Signal approvals are unaffected.</p>';
  }
+}
+
+function renderUnifiedMarketContext(){
+ const container=$("unifiedMarketContext");
+ if(!container)return;
+ const intelligence=new Map((latestMarketIntelligenceRows||[]).map(row=>[row.symbol,row]));
+ const foresight=new Map((latestForesightResults||[]).map(row=>[row.symbol,row]));
+ const cell=value=>escapeHTML(value===undefined||value===null||value===""?"—":value);
+ const cards=marketList.map(market=>{
+  const tech=intelligence.get(market.symbol);
+  const forecast=foresight.get(market.symbol);
+  const bias=String(tech?.bias||"NEUTRAL").toUpperCase();
+  const techDirection=bias==="BULLISH"?"UP":bias==="BEARISH"?"DOWN":"NEUTRAL";
+  const horizons=Array.isArray(forecast?.forecasts)?forecast.forecasts:[];
+  const checks=horizons.map(item=>{
+   const direction=String(item.directional_bias||"SIDEWAYS").toUpperCase();
+   const relation=techDirection==="NEUTRAL"||direction==="SIDEWAYS"?"NEUTRAL":
+    direction===techDirection?"ALIGNS":"DIVERGES";
+   return {horizon:item.horizon,direction,relation};
+  });
+  const aligned=checks.filter(x=>x.relation==="ALIGNS").length;
+  const diverged=checks.filter(x=>x.relation==="DIVERGES").length;
+  const verdict= !checks.length?"WAITING FOR FORESIGHT":
+   diverged&&aligned?"MIXED EVIDENCE":
+   diverged?"DIVERGING CONTEXT":
+   aligned?"CONTEXT ALIGNS":"NO CLEAR AGREEMENT";
+  const verdictClass=diverged?"wait":aligned&&!diverged?"buy":"wait";
+  const frameData=tech?.timeframes||{};
+  const frameLine=["4H","1H","15M","5M"].map(frame=>{
+   const item=frameData[frame]||{};
+   return frame+" "+String(item.signal||"WAIT");
+  }).join(" · ");
+  const horizonLine=checks.length?checks.map(x=>x.horizon+" "+x.direction).join(" · "):"No current forecast available";
+  const updated=tech?.updated_at?new Date(tech.updated_at).toLocaleTimeString():"technical context unavailable";
+  return '<div class="trade-item"><strong>'+cell(market.name)+'</strong>'+
+   '<div class="signal '+(bias==="BULLISH"?"buy":bias==="BEARISH"?"sell":"wait")+'">Technical intelligence: '+cell(bias)+'</div>'+
+   '<div class="small">Regime: '+cell(tech?.regime||"Unavailable")+' · '+cell(frameLine)+'</div>'+
+   '<div class="small">Foresight: '+cell(horizonLine)+'</div>'+
+   '<div class="signal '+verdictClass+'">'+cell(verdict)+'</div>'+
+   '<div class="small">'+aligned+' aligned horizon(s) · '+diverged+' conflicting horizon(s). Updated: '+cell(updated)+'</div></div>';
+ }).join("");
+ const stamp=latestForesightGeneratedAt?"Last foresight scan: "+new Date(latestForesightGeneratedAt).toLocaleString():"Waiting for first successful foresight scan";
+ container.innerHTML=cards+'<p class="small">'+cell(stamp)+'. This comparison never changes BUY/SELL/WAIT rules, approval eligibility, risk limits or MT5 execution.</p>';
 }
 
 /* TRADE APPROVALS */
@@ -1528,6 +1584,9 @@ async function runMarketForesight(){
   const {data,error}=await supabaseClient.functions.invoke("market-foresight",{body:{}});
   if(error){let message=error.message||"Foresight scan failed.";try{if(error.context&&typeof error.context.clone==="function"){const d=await error.context.clone().json();message=d?.error||d?.message||message;}}catch(_){}throw Error(message);}
   if(!data?.success)throw Error(data?.error||"No foresight results returned.");
+  latestForesightResults=Array.isArray(data.results)?data.results:[];
+  latestForesightGeneratedAt=data.generatedAt||new Date().toISOString();
+  renderUnifiedMarketContext();
   const fmt=v=>Number(v).toLocaleString(undefined,{maximumSignificantDigits:8});
   const cell=v=>escapeHTML(v===undefined||v===null?"—":v);
   $("foresightResults").innerHTML=(data.results||[]).map(r=>{

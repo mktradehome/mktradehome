@@ -1,4 +1,4 @@
-import { assertEquals, assertNotEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
+import { assertAlmostEquals, assertEquals, assertNotEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import { resolveForecastOutcome } from "./foresight-outcome.ts";
 const forecast={id:"f1",generated_at:"2026-11-19T12:02:00.000Z",horizon_minutes:15,reference_price:100,expected_price:101,lower_price:98,upper_price:104};
 Deno.test("uses the first completed 5M close covering the forecast horizon, not a later price",()=>{
@@ -33,7 +33,7 @@ Deno.test("records return and absolute forecast error from horizon close",()=>{
  const result=resolveForecastOutcome(forecast,[
   {candle_time:"2026-11-19T12:15:00.000Z",high:104,low:101,close:103}
  ],Date.parse("2026-11-19T12:30:00.000Z"));
- assertEquals(result?.actual_return,0.03);
+ assertAlmostEquals(result?.actual_return??NaN,0.03,1e-12);
  assertEquals(result?.absolute_error,2);
  assertNotEquals(result?.actual_price,109);
 });

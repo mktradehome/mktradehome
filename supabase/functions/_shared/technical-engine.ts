@@ -71,7 +71,7 @@ export function normalizeCandles(input: any[], timeframe: Timeframe, now = Date.
   const rows = input.filter((c) => c && c.isOpen !== true).map((c) => {
     let raw = c.time ?? c.openTime ?? c.timestamp ?? c.open_time;
     let time = typeof raw === "string"
-      ? (/^\\d+(\\.\\d+)?$/.test(raw) ? Number(raw) : Date.parse(raw))
+      ? (/^\d+(\.\d+)?$/.test(raw) ? Number(raw) : Date.parse(raw))
       : Number(raw);
     if (Number.isFinite(time) && time > 0 && time < 1e12) time *= 1000;
     return { open: Number(c.open), high: Number(c.high), low: Number(c.low), close: Number(c.close), time };

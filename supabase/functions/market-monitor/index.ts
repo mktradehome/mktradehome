@@ -42,7 +42,6 @@ Deno.serve(async(req)=>{
     for(let i=0;i<frames.length;i++)tf[frames[i].key]=analyseTimeframe(sets[i],frames[i].key);
     const candidate=buildCandidate(tf,quote);
     if(!candidate||!validateCandidate(candidate)){
-     await db.from("market_signal_state").upsert({symbol,last_signal:"WAIT",updated_at:new Date().toISOString()});
      results.push({symbol,signal:"WAIT",reason:"Trend alignment, indicator, candle freshness, entry distance or risk checks failed.",timeframes:tf});continue;
     }
     const {data:prev,error:prevError}=await db.from("market_signal_state").select("last_signal,updated_at").eq("symbol",symbol).maybeSingle();
@@ -89,6 +88,7 @@ Deno.serve(async(req)=>{
     results.push({symbol,signal:candidate.signal,status:"Independent candidate saved; open dashboard for manual Demo review. Telegram is sent only after approval.",candidateId:row.id,inAppAlert:!alertError,telegramDelivered:false,expiresInMinutes:10,qualityScore:candidate.qualityScore,errors});
    }catch(e){results.push({symbol,signal:"WAIT",reason:e instanceof Error?e.message:"Analysis failed safely."});}
   }
+  console.log("MKTRADEHOME_SCAN",JSON.stringify(results.map(r=>({symbol:r.symbol,signal:r.signal,reason:r.reason||r.status||"",timeframes:r.timeframes?Object.fromEntries(Object.entries(r.timeframes).map(([k,v]:any)=>[k,v.signal])):undefined,quoteAgeSeconds:r.quoteAgeSeconds}))));
   return reply({success:true,engine:"mktradehome-technical-engine",gptUsed:false,results});
  }catch(e){return reply({error:e instanceof Error?e.message:"Monitor error"},500);}
 });

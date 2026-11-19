@@ -60,6 +60,7 @@ label{display:block;font-size:13px;color:#c7d8ee;margin-top:10px}
 @media(max-width:500px){.market{grid-template-columns:1fr}header{align-items:flex-start}.news-head{align-items:flex-start}}
 #marketChartWrap{height:360px;position:relative;width:100%;overflow:hidden;border-radius:9px;background:#071321;margin-top:12px}
 #marketChart{height:100%;width:100%}
+#chartTradeDetails .row{margin:6px 0} .chart-live{color:#42d392;font-weight:800} .chart-negative{color:#ff7373;font-weight:800}
 .chart-controls{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end}
 .chart-controls label{margin:0;font-size:11px}.chart-controls select,.chart-controls button{margin-top:5px;padding:10px;font-size:13px}
 .chart-legend{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:9px;font-size:12px;color:#aeb9ca}
@@ -154,6 +155,10 @@ label{display:block;font-size:13px;color:#c7d8ee;margin-top:10px}
 <button type="button" id="chartRefreshBtn" class="secondary">Refresh Chart</button>
 </div>
 <div id="marketChartWrap"><div id="marketChart"></div></div>
+<div id="chartTradePanel" class="trade-item" style="margin-top:10px">
+<strong>MT5 Trade on This Chart</strong>
+<div id="chartTradeDetails" class="small" style="margin-top:7px">No approved or open trade for this market.</div>
+</div>
 <div class="chart-legend"><span id="chartCurrentPrice">Price: loading…</span><span id="chartUpdatedAt">Waiting for candles…</span></div>
 <div id="chartStatus" class="status">Loading historical candles…</div>
 <p class="small">Chart data is supplied by the connected market-data provider and may be delayed. It is for analysis only; it does not place trades.</p>
@@ -620,6 +625,68 @@ function initMarketChart(){
  }
  return true;
 }
+let chartTradeLines=[],chartTradeTimer=null,chartActiveTrades=[];
+function clearChartTradeLines(){
+ if(marketCandleSeries){for(const line of chartTradeLines){try{marketCandleSeries.removePriceLine(line);}catch(_){}}}
+ chartTradeLines=[];
+}
+function drawChartTrade(){
+ const symbol=$("chartSymbol")?.value||"BTCUSD";
+ const q=quotes[symbol];
+ const trade=chartActiveTrades.find(t=>t.symbol===symbol);
+ clearChartTradeLines();
+ const box=$("chartTradeDetails");
+ if(!box)return;
+ if(!trade){
+  box.textContent="No approved or open trade for "+symbol+".";
+  return;
+ }
+ const side=String(trade.side||"").toUpperCase();
+ const entry=Number(trade.entry_price),sl=Number(trade.stop_loss),tp=Number(trade.take_profit);
+ const live=Number(side==="BUY"?(q?.bid||q?.price):(q?.ask||q?.price));
+ const move=Number.isFinite(live)&&Number.isFinite(entry)?(side==="BUY"?live-entry:entry-live):NaN;
+ const status=String(trade.status||"").toUpperCase();
+ const executed=status==="EXECUTED";
+ const addLine=(price,title,color,width=2,style=0)=>{
+  if(Number.isFinite(price)&&price>0&&marketCandleSeries){
+   chartTradeLines.push(marketCandleSeries.createPriceLine({price,title,color,lineWidth:width,lineStyle:style,axisLabelVisible:true,axisLabelColor:color}));
+  }
+ };
+ addLine(entry,"ENTRY", "#f5c542",2,0);
+ addLine(sl,"STOP LOSS","#ff626f",2,2);
+ addLine(tp,"TAKE PROFIT","#22c98a",2,2);
+ if(Number.isFinite(live)&&live>0)addLine(live,"LIVE PRICE","#60a5fa",1,0);
+ const moveText=Number.isFinite(move)?(move>=0?"+":"")+formatPrice(Math.abs(move))+" price units":"Unavailable";
+ const cls=move>=0?"chart-live":"chart-negative";
+ box.innerHTML='<div class="row"><span>'+escapeHTML(symbol)+' '+escapeHTML(side)+'</span><strong>'+ (executed?'MT5 EXECUTED':'APPROVED · WAITING FOR MT5')+'</strong></div>'+
+ '<div class="row"><span>Entry</span><strong>'+formatPrice(entry)+'</strong></div>'+
+ '<div class="row"><span>Current market price</span><strong>'+formatPrice(live)+'</strong></div>'+
+ '<div class="row"><span>Move from entry</span><strong class="'+cls+'">'+moveText+'</strong></div>'+
+ '<div class="row"><span>Stop loss / take profit</span><strong>'+formatPrice(sl)+' / '+formatPrice(tp)+'</strong></div>'+
+ '<div class="small">'+(executed?'Position ID: '+escapeHTML(trade.mt5_position_id??'awaiting MT5 ticket')+' · ':'')+'Lot size: '+escapeHTML(trade.lot_size??'--')+' · '+escapeHTML(trade.execution_message||'')+'</div>'+
+ '<div class="small" style="margin-top:6px">Price movement is estimated from the live market quote. Broker floating P/L and exact open-position status require the MT5 terminal to publish live position details.</div>';
+}
+async function refreshChartTrade(){
+ try{
+  const {data,error}=await supabaseClient.functions.invoke("mt5-bridge?action=dashboard_queue",{method:"GET"});
+  if(error)throw error;
+  if(data?.success!==true)throw new Error(data?.message||"Could not load MT5 trade queue.");
+  const rows=Array.isArray(data.trades)?data.trades:[];
+  const closedIds=new Set();
+  const {data:closed,error:closedError}=await supabaseClient.from("trades").select("mt5_position_id").eq("account_number",MT5_ACCOUNT).eq("account_server",MT5_SERVER).eq("status","CLOSED").not("mt5_position_id","is",null).limit(100);
+  if(!closedError)(closed||[]).forEach(x=>closedIds.add(String(x.mt5_position_id)));
+  chartActiveTrades=rows.filter(t=>{
+   const status=String(t.status||"").toLowerCase();
+   if(!["approved","executing","executed"].includes(status))return false;
+   if(t.mt5_position_id&&closedIds.has(String(t.mt5_position_id)))return false;
+   return true;
+  });
+  drawChartTrade();
+ }catch(e){
+  console.warn("Chart trade overlay:",e);
+  showMessage("chartTradeDetails","Could not refresh MT5 trade status: "+(e.message||"Please retry."));
+ }
+}
 async function refreshMarketChart(){
  const btn=$("chartRefreshBtn"),symbol=$("chartSymbol")?.value||"BTCUSD",interval=$("chartInterval")?.value||"15m";
  if(btn)btn.disabled=true;
@@ -632,6 +699,7 @@ async function refreshMarketChart(){
   if(!points.length)throw new Error("The provider returned no usable candles for this market and timeframe.");
   marketCandleSeries.setData(points);
   marketChart.timeScale().fitContent();
+  drawChartTrade();
   const last=points[points.length-1];
   $("chartCurrentPrice").textContent="Latest close: "+formatPrice(last.close);
   $("chartUpdatedAt").textContent="Updated "+new Date().toLocaleTimeString()+" · "+points.length+" candles";
@@ -644,6 +712,9 @@ async function refreshMarketChart(){
 $("chartRefreshBtn")?.addEventListener("click",refreshMarketChart);
 $("chartSymbol")?.addEventListener("change",refreshMarketChart);
 $("chartInterval")?.addEventListener("change",refreshMarketChart);
+$("chartSymbol")?.addEventListener("change",drawChartTrade);
+if(!chartTradeTimer){chartTradeTimer=setInterval(async()=>{await fetchQuotes().catch(()=>{});await refreshChartTrade();drawChartTrade();},10000);}
+refreshChartTrade();
 
 function isQuoteFresh(q,symbol){
 return !!q&&q.stale===false&&(symbol==="BTCUSD"||q.marketState==="open")&&

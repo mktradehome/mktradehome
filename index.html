@@ -898,7 +898,7 @@ const reviews=getSignalReviews();
 
 const signals=marketList.map(m=>({market:m,a:analyses[m.symbol]}))
 .filter(x=>x.a&&["BUY","SELL"].includes(x.a.overall)&&
- (x.a.engineVerified===true&&x.a.verificationStatus==="PASSED"&&Number.isSafeInteger(Number(x.a.candidateId)))&&
+ (x.a.engineVerified===true&&x.a.verificationStatus==="PASSED"&&typeof x.a.candidateId==="string"&&x.a.candidateId.trim().length>0)&&
  Number.isFinite(x.a.entry)&&Number.isFinite(x.a.sl)&&Number.isFinite(x.a.tp1)&&getSignalQuality(x.a)!=="SETUP NEEDS CONFIRMATION");
 
 if(!signals.length){

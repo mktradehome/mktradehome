@@ -71,7 +71,7 @@ async function evaluateMatured(key:string,now:number){
   const resolved=resolveForecastOutcome(f,Array.isArray(bars)?bars:[],now);
   // Missing horizon-close evidence stays PENDING; never substitute today's quote.
   if(!resolved)continue;
-  const outcome={forecast_id:f.id,evaluated_at:new Date(now).toISOString(),...resolved};
+  const outcome={forecast_id:f.id,evaluated_at:new Date(now).toISOString(),actual_price:resolved.actual_price,actual_return:resolved.actual_return,actual_high:resolved.actual_high,actual_low:resolved.actual_low,absolute_error:resolved.absolute_error,interval_covered:resolved.interval_covered,outcome_status:resolved.outcome_status,source:resolved.source};
   await rest("market_foresight_outcomes",key,"POST",outcome,"resolution=ignore-duplicates,return=minimal");
   await rest("market_foresight_forecasts?id=eq."+encodeURIComponent(f.id),key,"PATCH",{evaluation_status:"EVALUATED"},"return=minimal");
   evaluated++;
@@ -146,8 +146,6 @@ Deno.serve(async(req:Request)=>{
     results.push({symbol,status:"FORECAST_READY",referencePrice:price,referenceSource:quoteFresh?"fresh_quote_midpoint":"completed_5m_close",quoteAgeSeconds:quoteFresh?age:null,forecasts});
    }catch(e){results.push({symbol,status:"ABSTAINED",reason:e instanceof Error?e.message:"Market data unavailable."});}
   }
-  const latestPrices:Record<string,number>={};
-  for(const r of results)if(r.status==="FORECAST_READY")latestPrices[r.symbol]=r.referencePrice;
   const archived=await archive(archiveRows,key);
   const quoteSnapshotsArchived=await archiveQuotes(quoteRows,key);
   const forecastRows=results.flatMap(r=>r.forecasts||[]);

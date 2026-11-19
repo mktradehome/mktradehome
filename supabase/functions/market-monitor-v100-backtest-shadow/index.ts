@@ -269,7 +269,7 @@ const reply=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status
 function parseHistory(raw:any[],period:number):Candle[]{
  const rows=raw.filter((x:any)=>x&&!x.isOpen).map((x:any)=>{
   const v=x.time??x.openTime??x.timestamp??x.open_time;
-  let t=typeof v==="string"?(/^\\d+(\\.\\d+)?$/.test(v)?Number(v):Date.parse(v)):Number(v);
+  let t=typeof v==="string"?(/^\d+(\.\d+)?$/.test(v)?Number(v):Date.parse(v)):Number(v);
   if(Number.isFinite(t)&&t>0&&t<1e12)t*=1000;
   return {open:Number(x.open),high:Number(x.high),low:Number(x.low),close:Number(x.close),time:t};
  }).filter((x:Candle)=>[x.open,x.high,x.low,x.close,x.time].every(Number.isFinite)&&x.open>0&&x.high>=x.low&&x.high>=Math.max(x.open,x.close)&&x.low<=Math.min(x.open,x.close));

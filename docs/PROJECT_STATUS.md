@@ -79,3 +79,12 @@ Last verified: 2026-11-19 03:35 UTC
 - Updated the card title and status labels to make clear that an approved setup is not yet open, and execution-in-progress is not confirmed open. Market-price movement is explicitly not represented as broker floating P/L.
 - The actual live position feed remains unimplemented until the MT5 EA can send authenticated complete position snapshots and the bridge/database/dashboard path is deployed and tested.
 - Frontend change commit: `3b9e0384046e47dc8999ee1a6f34d8ee6801fd9f`.
+
+
+## Market Foresight Engine direction (2026-11-19)
+- Captured the user's ambition to make Mktradehome deeply analyse markets and estimate future price paths/outcomes.
+- Created `docs/MARKET_FORESIGHT_ENGINE.md` as the governing research/build contract: timestamped observation, market-regime context, calibrated probabilistic scenarios, cost-aware decisioning, walk-forward evaluation and Demo-first governance.
+- Explicitly distinguishes forecasting from certainty: Mktradehome cannot control/manipulate external markets or guarantee future prices/profits. It must abstain when evidence/data quality is inadequate.
+- V100 remains a read-only V62-strategy shadow, not a validated predictive AI model. No production strategy, risk gate, approval or execution path was changed in this work.
+- Current rolling candle history is inadequate for robust long-horizon training; a verified historical archive and forecast/outcome dataset are prerequisites.
+- Saved specification commit: `2f4041d8cbdace5dcfcf8859179e170e5c8c6ba4`.

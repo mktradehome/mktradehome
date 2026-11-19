@@ -84,8 +84,12 @@ async function loadForecastPerformance(key:string){
  const rows=Array.isArray(outcomes)?outcomes:[];
  const ids=[...new Set(rows.map((r:any)=>String(r.forecast_id||"")).filter((id:string)=>/^[0-9a-f-]{36}$/i.test(id)))];
  if(!ids.length)return summarizeForecastPerformance([],[]);
- const forecasts=await rest("market_foresight_forecasts?id=in.("+ids.join(",")+")&select=id,symbol,horizon,expected_return",key);
- return summarizeForecastPerformance(Array.isArray(forecasts)?forecasts:[],rows);
+ const forecasts:any[]=[];
+ for(let i=0;i<ids.length;i+=250){
+  const batch=await rest("market_foresight_forecasts?id=in.("+ids.slice(i,i+250).join(",")+")&select=id,symbol,horizon,expected_return",key);
+  if(Array.isArray(batch))forecasts.push(...batch);
+ }
+ return summarizeForecastPerformance(forecasts,rows);
 }
 async function archive(rows:any[],key:string){
  let saved=0;

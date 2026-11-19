@@ -85,6 +85,14 @@ async function archive(rows:any[],key:string){
  }
  return saved;
 }
+async function archiveQuotes(rows:any[],key:string){
+ let saved=0;
+ for(let i=0;i<rows.length;i+=200){
+  await rest("market_quote_archive?on_conflict=symbol%2Cobserved_at",key,"POST",rows.slice(i,i+200),"resolution=merge-duplicates,return=minimal");
+  saved+=Math.min(200,rows.length-i);
+ }
+ return saved;
+}
 Deno.serve(async(req:Request)=>{
  if(req.method==="OPTIONS")return new Response("ok",{headers});
  if(req.method!=="POST")return json({error:"POST required"},405);
@@ -103,7 +111,7 @@ Deno.serve(async(req:Request)=>{
   }
   if(!authorized)return json({error:"Sign in to run the Market Foresight scan."},401);
   const key=getServiceKey();if(!key)throw new Error("Supabase server secret is not configured.");
-  const started=Date.now(),generatedAt=new Date().toISOString(),archiveRows:any[]=[],results:any[]=[];
+  const started=Date.now(),generatedAt=new Date().toISOString(),archiveRows:any[]=[],quoteRows:any[]=[],results:any[]=[];
   const q=await provider("https://biquote.io/api/latest?symbols=BTCUSD&symbols=EURUSD&symbols=XAUUSD&symbols=USDJPY");
   const quotes=q.data||q.quotes||q;
   for(const symbol of symbols){
@@ -119,6 +127,13 @@ Deno.serve(async(req:Request)=>{
      for(const c of cs)archiveRows.push({symbol,timeframe:frame.key,candle_time:new Date(c.time).toISOString(),open:c.open,high:c.high,low:c.low,close:c.close,source:"biquote.io"});
     }
     const quote=quotes[symbol],bid=Number(quote?.bid),ask=Number(quote?.ask),age=Number(quote?.quoteAgeSeconds);
+    if(quote&&finite(bid)&&finite(ask)&&ask>=bid){
+     const rawTime=quote.timestamp??quote.time??quote.updatedAt??quote.updated_at;
+     let observed=rawTime===undefined?NaN:(typeof rawTime==="string"?(Number.isFinite(Number(rawTime))?Number(rawTime):Date.parse(rawTime)):Number(rawTime));
+     if(Number.isFinite(observed)&&observed>0&&observed<1e12)observed*=1000;
+     const timestampSource=Number.isFinite(observed)&&observed>0?"provider_timestamp":"capture_time_fallback";
+     quoteRows.push({symbol,observed_at:new Date(timestampSource==="provider_timestamp"?observed:Date.parse(generatedAt)).toISOString(),bid,ask,spread:ask-bid,quote_age_seconds:Number.isFinite(age)&&age>=0?age:null,market_state:String(quote.marketState||"unknown"),stale:quote.stale!==false,timestamp_source:timestampSource,source:"biquote.io"});
+    }
     const quoteFresh=quote&&quote.stale===false&&Number.isFinite(age)&&age>=0&&age<=30&&finite(bid)&&finite(ask)&&ask>=bid;
     const price=quoteFresh?(bid+ask)/2:byFrame["5M"][byFrame["5M"].length-1].close;
     const forecasts:any[]=[
@@ -133,6 +148,7 @@ Deno.serve(async(req:Request)=>{
   const latestPrices:Record<string,number>={};
   for(const r of results)if(r.status==="FORECAST_READY")latestPrices[r.symbol]=r.referencePrice;
   const archived=await archive(archiveRows,key);
+  const quoteSnapshotsArchived=await archiveQuotes(quoteRows,key);
   const forecastRows=results.flatMap(r=>r.forecasts||[]);
   let inserted=0;
   for(let i=0;i<forecastRows.length;i+=100){
@@ -140,6 +156,6 @@ Deno.serve(async(req:Request)=>{
    inserted+=Array.isArray(out)?out.length:0;
   }
   const outcomesEvaluated=await evaluateMatured(key,latestPrices,Date.now());
-  return json({success:true,engine:"Mktradehome Market Foresight",modelVersion:"foresight-baseline-0.1.0",generatedAt,durationMs:Date.now()-started,markets:results.length,forecastsCreated:inserted,candlesArchived:archived,outcomesEvaluated,probabilitiesCalibrated:false,createsApprovals:false,createsQueueItems:false,executesTrades:false,results});
+  return json({success:true,engine:"Mktradehome Market Foresight",modelVersion:"foresight-baseline-0.1.0",generatedAt,durationMs:Date.now()-started,markets:results.length,forecastsCreated:inserted,candlesArchived:archived,quoteSnapshotsArchived,outcomesEvaluated,probabilitiesCalibrated:false,createsApprovals:false,createsQueueItems:false,executesTrades:false,results});
  }catch(e){return json({error:e instanceof Error?e.message:"Foresight engine failed safely."},500);}
 });

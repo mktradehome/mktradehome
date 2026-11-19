@@ -37,7 +37,7 @@ Last verified: 2026-11-19 03:25 UTC
 ## Approval verification repair
 - The earlier server validator incorrectly required all timeframe categorical labels to agree. That contradicted the live engine, which uses score-based rules and allows a defined 15M pullback reversal and 5M WAIT.
 - v22 now recomputes the exact score from saved indicator evidence and validates 1H direction, 4H conflict limit, 15M structure/pullback, 5M veto, entry extension, ATR/spread risk geometry and heuristic quality score.
-- Pure validation logic is isolated in `supabase/functions/_shared/approval-proof.ts` with deterministic tests for valid setups, pullback reversals, tampered targets, stale candles and mismatched quote midpoints in `approval-proof.test.ts`.
+- Pure validation logic is isolated in `supabase/functions/_shared/approval-proof.ts` with deterministic tests for BUY and SELL setups, pullback reversals, 5M conflict rejection, tampered targets, stale candles and mismatched quote midpoints in `approval-proof.test.ts`.
 - Approval still rechecks a fresh independent live quote and entry deviation server-side. No automatic order execution was added.
 
 ## MT5 connection status

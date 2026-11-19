@@ -29,6 +29,9 @@ Deno.test("accepts the engine's qualified 15M pullback reversal",()=>{
 Deno.test("rejects a candidate whose saved target geometry is changed",()=>{
  const f=fixture(false);f.candidate.take_profit_1+=0.2;assert(!validateIndependentCandidateProof(f.candidate,f.proof).valid);
 });
+Deno.test("rejects a saved quote midpoint that does not match bid and ask",()=>{
+ const f=fixture(false);f.proof.quote!.price=100.5;assert(!validateIndependentCandidateProof(f.candidate,f.proof).valid);
+});
 Deno.test("rejects stale candle evidence",()=>{
  const f=fixture(false);f.proof.timeframes!["5M"].candleAgeSeconds=999;assert(!validateIndependentCandidateProof(f.candidate,f.proof).valid);
 });

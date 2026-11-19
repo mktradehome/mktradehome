@@ -781,33 +781,7 @@ return a.quoteFresh&&higherAligned&&lowerClear&&lowerConfirmed&&riskReward&&veri
 function renderAnalysis(){
 const container=$("analysis");
 if(!container)return;
-
-container.innerHTML=marketList.map(m=>{
-const a=analyses[m.symbol];
-
-if(!a){
-return `<div class="trade-item"><strong>${escapeHTML(m.name)}</strong><p>Waiting for analysis...</p></div>`;
-}
-
-const cls=a.overall==="BUY"?"buy":a.overall==="SELL"?"sell":"wait";
-
-return `<div class="trade-item">
-<strong>${escapeHTML(m.name)}</strong>
-<div class="signal ${cls}">${a.strength==="STRONG"?"STRONG ":""}${a.overall}</div>
-<div class="trade-status">${getSignalQuality(a)}</div>
-<div class="small">${escapeHTML(a.reason)}</div>
-<div class="small">Analysis engine: ${escapeHTML(a.aiModel||"Mktradehome Technical Engine")} · ${a.analysisMode==="MONITOR_ONLY"?"Background technical-engine check": "Rule quality score (not win probability): "+(Number(a.aiConfidence)||0)+"/100"}</div>
-<div class="small">Technical-engine checks: ${escapeHTML(a.verificationStatus||"NOT_RUN")} · ${escapeHTML(a.verificationNote||"No verification details")}</div>
-<div class="small">${escapeHTML(a.aiRiskNote||"AI analysis is not a guarantee.")}</div>
-<div class="row"><span>Entry reference</span><strong>${formatPrice(a.entry)}</strong></div>
-<div class="row"><span>Stop Loss</span><strong>${formatPrice(a.sl)}</strong></div>
-<div class="row"><span>Take Profit 1 (1:2)</span><strong>${formatPrice(a.tp1)}</strong></div>
-<div class="row"><span>Take Profit 2 (1:3)</span><strong>${formatPrice(a.tp2)}</strong></div>
-<div class="small">4H: ${a.results["4H"].signal} · 1H: ${a.results["1H"].signal}</div>
-<div class="small">15M: ${a.results["15M"].signal} · 5M: ${a.results["5M"].signal}</div>
-<div class="small">${a.quoteFresh?"Fresh quote check passed":"Fresh quote check failed"}</div>
-</div>`;
-}).join("");
+container.innerHTML='<div class="trade-item"><strong>Independent signal engine</strong><div class="signal wait">WAITING FOR VERIFIED ENTRY</div><p class="small">This panel no longer treats the dashboard’s older timeframe labels as trade signals. The independent engine’s live developing setups are shown in Market Intelligence. Only fresh, fully verified BUY/SELL candidates appear in the Trade Approval Centre with entry, stop-loss and take-profit prices.</p><p class="small">A WATCH setup is not an approval. No trade is created until all entry, price-freshness and risk checks pass.</p></div>';
 }
 
 async function loadMarketIntelligence(){
@@ -1293,6 +1267,7 @@ analyses[result.symbol]=result;
 }
 await loadSavedVerifiedCandidates();
 await loadMarketIntelligence();
+await loadTelegramConnectionStatus();
 
 renderMarkets();
 renderAnalysis();
@@ -1324,6 +1299,23 @@ $("resetBtn").addEventListener("click",resetPassword);
 $("logoutBtn").addEventListener("click",logout);
 $("accountRefreshBtn").addEventListener("click",refreshSelectedAccount);
 
+async function loadTelegramConnectionStatus(){
+ const el=$("telegramStatus"),btn=$("telegramBtn");
+ if(!el)return;
+ try{
+  const {data:userData,error:userError}=await supabaseClient.auth.getUser();
+  if(userError||!userData?.user)throw new Error("Sign in to check Telegram connection.");
+  const {data,error}=await supabaseClient.from("telegram_users").select("id,created_at").eq("user_id",userData.user.id).limit(1);
+  if(error)throw error;
+  if(data&&data.length){
+   el.textContent="Telegram account is linked. Signal-delivery test is still required.";
+   btn.textContent="Telegram Linked · Check Alerts";
+  }else{
+   el.textContent="Telegram is not linked yet. Connect your Telegram account to receive alerts.";
+   btn.textContent="Connect Telegram Alerts";
+  }
+ }catch(e){el.textContent="Could not verify Telegram connection. "+(e.message||"");}
+}
 $("telegramBtn").addEventListener("click",connectTelegram);
 $("accountSelector").addEventListener("change",()=>{updateAccountLabels();loadRiskSettings();refreshSelectedAccount();renderApprovalCentre();renderHistory();});
 $("lockBtn").addEventListener("click",lockDashboard);

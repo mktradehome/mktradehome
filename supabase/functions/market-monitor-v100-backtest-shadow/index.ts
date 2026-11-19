@@ -310,7 +310,7 @@ function metrics(trades:any[]){
  tp1HitPct:trades.length?+(trades.filter(t=>t.tp1).length/trades.length*100).toFixed(1):0};
 }
 function replay(symbol:string,data:Record<Timeframe,Candle[]>,testStart:number){
- const m15=data["15M"],all:any[]=[];let lo=0,hi=m15.length;while(lo<hi){const mid=(lo+hi)>>1;if(m15[mid].time+PERIOD_MS["15M"]<testStart)lo=mid+1;else hi=mid;}let i=Math.max(59,lo),signals=0,blocked=0;
+ const m15=data["15M"],all:any[]=[],openAtEnd:{side:string;entryTime:string;entry:number;exit:string;holdingBars:number;floatingR:number}[]=[];let lo=0,hi=m15.length;while(lo<hi){const mid=(lo+hi)>>1;if(m15[mid].time+PERIOD_MS["15M"]<testStart)lo=mid+1;else hi=mid;}let i=Math.max(59,lo),signals=0,blocked=0;
  while(i<m15.length-2){
   const signalAt=m15[i].time+PERIOD_MS["15M"];
   const f={} as Record<Timeframe,Indicators>;let enough=true;
@@ -345,7 +345,7 @@ function replay(symbol:string,data:Record<Timeframe,Candle[]>,testStart:number){
   else {const last=m15[exitIndex],floatingR=side==="BUY"?(last.close-entry)/risk:(entry-last.close)/risk;openAtEnd.push({...record,floatingR:+floatingR.toFixed(3)});}
   i=Math.max(i+1,exitIndex);
  }
- return {symbol,bars:Object.fromEntries(Object.entries(data).map(([k,v])=>[k,v.length])),signalsConsidered:signals,validationBlocks:blocked,openAtEndCount:openAtEnd.length,openMarkToMarketR:+openAtEnd.reduce((sum,t)=>sum+t.floatingR,0).toFixed(2),...metrics(all),recentTrades:all.slice(-10),recentOpenSetups:openAtEnd.slice(-10)};
+ return {symbol,bars:Object.fromEntries(Object.entries(data).map(([k,v])=>[k,v.length])),signalsConsidered:signals,validationBlocks:blocked,openAtEndCount:openAtEnd.length,openMarkToMarketR:+openAtEnd.reduce((sum:number,t:{floatingR:number})=>sum+t.floatingR,0).toFixed(2),...metrics(all),recentTrades:all.slice(-10),recentOpenSetups:openAtEnd.slice(-10)};
 }
 Deno.serve(async(req:Request)=>{
  if(req.method==="OPTIONS")return new Response("ok",{headers:cors});

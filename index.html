@@ -156,8 +156,8 @@ label{display:block;font-size:13px;color:#c7d8ee;margin-top:10px}
 </div>
 <div id="marketChartWrap"><div id="marketChart"></div></div>
 <div id="chartTradePanel" class="trade-item" style="margin-top:10px">
-<strong>MT5 Trade on This Chart</strong>
-<div id="chartTradeDetails" class="small" style="margin-top:7px">No approved or open trade for this market.</div>
+<strong>Pending Trade Setup on Chart</strong>
+<div id="chartTradeDetails" class="small" style="margin-top:7px">No pending setup for this market. Verified live MT5 positions will appear here after the terminal reporting connection is installed.</div>
 </div>
 <div class="chart-legend"><span id="chartCurrentPrice">Price: loading…</span><span id="chartUpdatedAt">Waiting for candles…</span></div>
 <div id="chartStatus" class="status">Loading historical candles…</div>
@@ -644,7 +644,7 @@ function drawChartTrade(){
  const box=$("chartTradeDetails");
  if(!box)return;
  if(!trade){
-  box.textContent="No approved or open trade for "+symbol+".";
+  box.textContent="No pending setup for "+symbol+". Live open positions are not yet connected.";
   return;
  }
  const side=String(trade.side||"").toUpperCase();
@@ -652,7 +652,7 @@ function drawChartTrade(){
  const live=Number(side==="BUY"?(q?.bid||q?.price):(q?.ask||q?.price));
  const move=Number.isFinite(live)&&Number.isFinite(entry)?(side==="BUY"?live-entry:entry-live):NaN;
  const status=String(trade.status||"").toUpperCase();
- const executed=status==="EXECUTED";
+ const pending=status==="APPROVED"||status==="EXECUTING";
  const addLine=(price,title,color,width=2,style=0)=>{
   if(Number.isFinite(price)&&price>0&&marketCandleSeries){
    chartTradeLines.push(marketCandleSeries.createPriceLine({price,title,color,lineWidth:width,lineStyle:style,axisLabelVisible:true,axisLabelColor:color}));
@@ -664,13 +664,13 @@ function drawChartTrade(){
  if(Number.isFinite(live)&&live>0)addLine(live,"LIVE PRICE","#60a5fa",1,0);
  const moveText=Number.isFinite(move)?(move>=0?"+":"")+formatPrice(Math.abs(move))+" price units":"Unavailable";
  const cls=move>=0?"chart-live":"chart-negative";
- box.innerHTML='<div class="row"><span>'+escapeHTML(symbol)+' '+escapeHTML(side)+'</span><strong>'+ (executed?'MT5 EXECUTED':'APPROVED · WAITING FOR MT5')+'</strong></div>'+
+ box.innerHTML='<div class="row"><span>'+escapeHTML(symbol)+' '+escapeHTML(side)+'</span><strong>'+ (status==="APPROVED"?"APPROVED · NOT YET OPEN":"MT5 EXECUTION IN PROGRESS · NOT CONFIRMED OPEN")+'</strong></div>'+
  '<div class="row"><span>Entry</span><strong>'+formatPrice(entry)+'</strong></div>'+
  '<div class="row"><span>Current market price</span><strong>'+formatPrice(live)+'</strong></div>'+
  '<div class="row"><span>Move from entry</span><strong class="'+cls+'">'+moveText+'</strong></div>'+
  '<div class="row"><span>Stop loss / take profit</span><strong>'+formatPrice(sl)+' / '+formatPrice(tp)+'</strong></div>'+
- '<div class="small">'+(executed?'Position ID: '+escapeHTML(trade.mt5_position_id??'awaiting MT5 ticket')+' · ':'')+'Lot size: '+escapeHTML(trade.lot_size??'--')+' · '+escapeHTML(trade.execution_message||'')+'</div>'+
- '<div class="small" style="margin-top:6px">Price movement is estimated from the live market quote. Broker floating P/L and exact open-position status require the MT5 terminal to publish live position details.</div>';
+ '<div class="small">'+''+'Lot size: '+escapeHTML(trade.lot_size??'--')+' · '+escapeHTML(trade.execution_message||'')+'</div>'+
+ '<div class="small" style="margin-top:6px">This is a pending setup reference, not a confirmed open position. Market movement is not broker P/L. Live position status and floating P/L require an authenticated MT5 position snapshot.</div>';
 }
 async function refreshChartTrade(){
  try{
@@ -678,15 +678,7 @@ async function refreshChartTrade(){
   if(error)throw error;
   if(data?.success!==true)throw new Error(data?.message||"Could not load MT5 trade queue.");
   const rows=Array.isArray(data.trades)?data.trades:[];
-  const closedIds=new Set();
-  const {data:closed,error:closedError}=await supabaseClient.from("trades").select("mt5_position_id").eq("account_number",MT5_ACCOUNT).eq("account_server",MT5_SERVER).eq("status","CLOSED").not("mt5_position_id","is",null).limit(100);
-  if(!closedError)(closed||[]).forEach(x=>closedIds.add(String(x.mt5_position_id)));
-  chartActiveTrades=rows.filter(t=>{
-   const status=String(t.status||"").toLowerCase();
-   if(!["approved","executing","executed"].includes(status))return false;
-   if(t.mt5_position_id&&closedIds.has(String(t.mt5_position_id)))return false;
-   return true;
-  });
+  chartActiveTrades=rows.filter(t=>["approved","executing"].includes(String(t.status||"").toLowerCase()));
   drawChartTrade();
  }catch(e){
   console.warn("Chart trade overlay:",e);

@@ -310,7 +310,7 @@ function metrics(trades:any[]){
  tp1HitPct:trades.length?+(trades.filter(t=>t.tp1).length/trades.length*100).toFixed(1):0};
 }
 function replay(symbol:string,data:Record<Timeframe,Candle[]>,testStart:number){
- const m15=data["15M"],all:any[]=[];let lo=0,hi=m15.length;while(lo<hi){const mid=(lo+hi)>>1;if(m15[mid].time+PERIOD_MS["15M"]<testStart)lo=mid+1;else hi=mid;}let i=Math.max(119,lo),signals=0,blocked=0;
+ const m15=data["15M"],all:any[]=[];let lo=0,hi=m15.length;while(lo<hi){const mid=(lo+hi)>>1;if(m15[mid].time+PERIOD_MS["15M"]<testStart)lo=mid+1;else hi=mid;}let i=Math.max(59,lo),signals=0,blocked=0;
  while(i<m15.length-2){
   const signalAt=m15[i].time+PERIOD_MS["15M"];
   const f={} as Record<Timeframe,Indicators>;let enough=true;
@@ -357,7 +357,7 @@ Deno.serve(async(req:Request)=>{
     const data=Object.fromEntries(loaded) as Record<Timeframe,Candle[]>;
     const testStart=Date.now()-days*86400000;
     const warmupStarts=Object.entries(data).map(([tf,bars])=>bars[59].time+PERIOD_MS[tf as Timeframe]);
-    const m15Warmup=data["15M"][Math.min(119,data["15M"].length-1)].time+PERIOD_MS["15M"];
+    const m15Warmup=data["15M"][Math.min(59,data["15M"].length-1)].time+PERIOD_MS["15M"];
     const effectiveStart=Math.max(testStart,...warmupStarts,m15Warmup);
     const effectiveEnd=Math.min(...Object.entries(data).map(([tf,bars])=>bars[bars.length-1].time+PERIOD_MS[tf as Timeframe]));
     const r=replay(symbol,data,effectiveStart);

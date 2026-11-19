@@ -287,6 +287,7 @@ async function loadHistory(symbol:string,frame:{key:Timeframe;interval:string;ms
   if(!Array.isArray(raw)||!raw.length)break;
   const batch=parseHistory(raw,frame.ms);if(!batch.length)break;
   all.push(...batch);const oldest=batch[0].time;if(oldest<=start||batch.length<2)break;
+  if(oldest<=start||batch.length<1000)break;
   const next=oldest-1;if(next>=end)break;end=next;
  }
  const unique=new Map<number,Candle>();for(const c of all)if(c.time>=start&&c.time+frame.ms<=Date.now())unique.set(c.time,c);
@@ -309,7 +310,7 @@ function metrics(trades:any[]){
  tp1HitPct:trades.length?+(trades.filter(t=>t.tp1).length/trades.length*100).toFixed(1):0};
 }
 function replay(symbol:string,data:Record<Timeframe,Candle[]>,testStart:number){
- const m15=data["15M"],all:any[]=[];let lo=0,hi=m15.length;while(lo<hi){const mid=(lo+hi)>>1;if(m15[mid].time<testStart)lo=mid+1;else hi=mid;}let i=Math.max(119,lo),signals=0,blocked=0;
+ const m15=data["15M"],all:any[]=[];let lo=0,hi=m15.length;while(lo<hi){const mid=(lo+hi)>>1;if(m15[mid].time+PERIOD_MS["15M"]<testStart)lo=mid+1;else hi=mid;}let i=Math.max(119,lo),signals=0,blocked=0;
  while(i<m15.length-2){
   const signalAt=m15[i].time+PERIOD_MS["15M"];
   const f={} as Record<Timeframe,Indicators>;let enough=true;
@@ -355,15 +356,18 @@ Deno.serve(async(req:Request)=>{
     const loaded=await Promise.all(frames.map(async frame=>[frame.key,await loadHistory(symbol,frame,days)] as const));
     const data=Object.fromEntries(loaded) as Record<Timeframe,Candle[]>;
     const testStart=Date.now()-days*86400000;
-    const r=replay(symbol,data,testStart);
-    const effectiveStart=Math.max(testStart,data["15M"][0].time+PERIOD_MS["15M"]);
+    const warmupStarts=Object.entries(data).map(([tf,bars])=>bars[59].time+PERIOD_MS[tf as Timeframe]);
+    const m15Warmup=data["15M"][Math.min(119,data["15M"].length-1)].time+PERIOD_MS["15M"];
+    const effectiveStart=Math.max(testStart,...warmupStarts,m15Warmup);
     const effectiveEnd=Math.min(...Object.entries(data).map(([tf,bars])=>bars[bars.length-1].time+PERIOD_MS[tf as Timeframe]));
-    return {...r,actualCoverageStart:new Date(effectiveStart).toISOString(),actualCoverageEnd:new Date(effectiveEnd).toISOString()};
+    const r=replay(symbol,data,effectiveStart);
+    const actualCoverageDays=Math.max(0,(effectiveEnd-effectiveStart)/86400000);
+    return {...r,actualCoverageStart:new Date(effectiveStart).toISOString(),actualCoverageEnd:new Date(effectiveEnd).toISOString(),actualCoverageDays:+actualCoverageDays.toFixed(2),coverageLimited:actualCoverageDays+0.25<days};
    }catch(e){return {symbol,error:e instanceof Error?e.message:"Historical replay failed safely."};}
   }));
   return reply({success:true,engine:"Mktradehome V100 SHADOW BACKTEST",baseline:"Exact V100 shadow buildCandidate/scoreTimeframe/validateCandidate helpers",testMode:"Historical OHLC replay only; isolated shadow; no orders, approvals, alerts, queue items, or database writes.",
    requestedDays:days,tp2Mode:"REFERENCE_ONLY_NOT_EXECUTED",generatedAt:new Date().toISOString(),assumptions:[
-    "Only completed candles are used for every timeframe.",
+    "Only completed candles are used for every timeframe. BiQuote OHLC is a rolling window, not an unlimited archive; the result reports the true common overlap after indicator warm-up.",
     "Signal is evaluated after a completed 15M candle; entry is the next 15M candle OPEN to avoid same-candle look-ahead.",
     "Entry, stop and targets are recalculated around the next-candle fill using the exact V100 ATR risk distance.",
     "The full position exits at TP1 (2R), matching the current MT5 queue which sends one take-profit price; TP2 is reference-only and is not counted as an executed exit.",

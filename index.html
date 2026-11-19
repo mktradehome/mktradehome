@@ -7,6 +7,7 @@
 <link rel="manifest" href="/manifest.json">
 <title>Mktradehome | Trading Assistant</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://unpkg.com/lightweight-charts@4.2.2/dist/lightweight-charts.standalone.production.js"></script>
 <style>
 #mkPinLock{position:fixed;inset:0;z-index:100000;background:rgba(3,7,15,.98);display:flex;align-items:center;justify-content:center;padding:22px}#mkPinCard{width:min(390px,100%);background:#101b2b;border:1px solid #d4a72c;border-radius:18px;padding:24px;box-shadow:0 18px 60px #000b}#mkPinCard h2{color:#f5c542;margin-bottom:8px}#mkPinCard p{margin-bottom:12px}#mkPinInput,#mkPinConfirm{font-size:24px;letter-spacing:9px;text-align:center}#mkPinMessage{min-height:38px;margin-top:10px;color:#f5c542;font-size:13px}#lockBtn{width:auto;margin:0 8px 0 0;padding:10px 13px}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -57,6 +58,12 @@ label{display:block;font-size:13px;color:#c7d8ee;margin-top:10px}
 .news-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
 .news-head button{width:auto;min-width:92px;margin:0;padding:9px 12px;font-size:12px}
 @media(max-width:500px){.market{grid-template-columns:1fr}header{align-items:flex-start}.news-head{align-items:flex-start}}
+#marketChartWrap{height:360px;position:relative;width:100%;overflow:hidden;border-radius:9px;background:#071321;margin-top:12px}
+#marketChart{height:100%;width:100%}
+.chart-controls{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end}
+.chart-controls label{margin:0;font-size:11px}.chart-controls select,.chart-controls button{margin-top:5px;padding:10px;font-size:13px}
+.chart-legend{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:9px;font-size:12px;color:#aeb9ca}
+@media(max-width:520px){#marketChartWrap{height:320px}.chart-controls{grid-template-columns:1fr 1fr}.chart-controls button{grid-column:1/-1}}
 .signal-ticker{position:relative;overflow:hidden;border:1px solid #29476d;border-radius:10px;background:#071321;margin:10px 0 14px;padding:11px 0;white-space:nowrap}
 .signal-ticker-track{display:inline-flex;align-items:center;gap:28px;min-width:max-content;animation:mkSignalRun 24s linear infinite}
 .signal-ticker:hover .signal-ticker-track{animation-play-state:paused}
@@ -136,6 +143,20 @@ label{display:block;font-size:13px;color:#c7d8ee;margin-top:10px}
 <h2>Markets</h2>
 <div class="signal-ticker" aria-label="Live market signal ticker"><div id="signalTickerTrack" class="signal-ticker-track"><span class="signal-ticker-item wait"><i class="dot"></i> WAITING FOR LIVE SIGNALS</span></div></div>
 <div id="markets" class="market"></div>
+</div>
+
+<div class="card" id="marketChartCard">
+<h2>Live Market Chart</h2>
+<p>Interactive candlestick chart with zoom, pan, crosshair and price scale. Choose a market and timeframe.</p>
+<div class="chart-controls">
+<label>Market<select id="chartSymbol"><option value="BTCUSD">BTC/USD</option><option value="EURUSD">EUR/USD</option><option value="XAUUSD">Gold (XAU/USD)</option><option value="USDJPY">USD/JPY</option></select></label>
+<label>Timeframe<select id="chartInterval"><option value="5m">5 minutes</option><option value="15m" selected>15 minutes</option><option value="1h">1 hour</option><option value="4h">4 hours</option></select></label>
+<button type="button" id="chartRefreshBtn" class="secondary">Refresh Chart</button>
+</div>
+<div id="marketChartWrap"><div id="marketChart"></div></div>
+<div class="chart-legend"><span id="chartCurrentPrice">Price: loading…</span><span id="chartUpdatedAt">Waiting for candles…</span></div>
+<div id="chartStatus" class="status">Loading historical candles…</div>
+<p class="small">Chart data is supplied by the connected market-data provider and may be delayed. It is for analysis only; it does not place trades.</p>
 </div>
 
 <div class="card">
@@ -562,6 +583,67 @@ isOpen:c.isOpen===true
 c.high>=c.low&&!c.isOpen
 ).sort((a,b)=>new Date(a.time)-new Date(b.time));
 }
+
+/* INTERACTIVE MARKET CHART */
+let marketChart=null, marketCandleSeries=null, chartResizeObserver=null, chartRefreshTimer=null;
+function chartTime(value){
+ if(typeof value==="number"){
+  const n=value>100000000000?Math.floor(value/1000):Math.floor(value);
+  return n>0?n:Math.floor(Date.now()/1000);
+ }
+ const parsed=Date.parse(value);
+ return Number.isFinite(parsed)?Math.floor(parsed/1000):Math.floor(Date.now()/1000);
+}
+function initMarketChart(){
+ const host=$("marketChart");
+ if(!host||!window.LightweightCharts)return false;
+ if(marketChart)return true;
+ marketChart=LightweightCharts.createChart(host,{
+  width:host.clientWidth||600,height:host.clientHeight||340,
+  layout:{background:{type:"solid",color:"#071321"},textColor:"#c8d7e8"},
+  grid:{vertLines:{color:"#172b43"},horzLines:{color:"#172b43"}},
+  rightPriceScale:{borderColor:"#29476d"},
+  timeScale:{borderColor:"#29476d",timeVisible:true,secondsVisible:false},
+  crosshair:{mode:LightweightCharts.CrosshairMode.Normal},
+  handleScroll:{mouseWheel:true,pressedMouseMove:true,horzTouchDrag:true,vertTouchDrag:true},
+  handleScale:{mouseWheel:true,pinch:true,axisPressedMouseMove:true}
+ });
+ marketCandleSeries=marketChart.addCandlestickSeries({
+  upColor:"#22c98a",downColor:"#ff626f",borderUpColor:"#22c98a",borderDownColor:"#ff626f",
+  wickUpColor:"#22c98a",wickDownColor:"#ff626f"
+ });
+ if(window.ResizeObserver){
+  chartResizeObserver=new ResizeObserver(entries=>{
+   for(const entry of entries){const w=Math.floor(entry.contentRect.width);if(w>0&&marketChart)marketChart.applyOptions({width:w});}
+  });
+  chartResizeObserver.observe(host);
+ }
+ return true;
+}
+async function refreshMarketChart(){
+ const btn=$("chartRefreshBtn"),symbol=$("chartSymbol")?.value||"BTCUSD",interval=$("chartInterval")?.value||"15m";
+ if(btn)btn.disabled=true;
+ showMessage("chartStatus","Loading "+symbol+" "+interval+" candles…");
+ try{
+  if(!initMarketChart())throw new Error("Interactive chart library did not load. Refresh the page and try again.");
+  const candles=await fetchCandles(symbol,interval);
+  const points=candles.map(c=>({time:chartTime(c.time),open:c.open,high:c.high,low:c.low,close:c.close}))
+   .filter((c,i,a)=>Number.isFinite(c.time)&&c.open>0&&c.high>=c.low&&c.close>0&&(i===0||c.time>a[i-1].time));
+  if(!points.length)throw new Error("The provider returned no usable candles for this market and timeframe.");
+  marketCandleSeries.setData(points);
+  marketChart.timeScale().fitContent();
+  const last=points[points.length-1];
+  $("chartCurrentPrice").textContent="Latest close: "+formatPrice(last.close);
+  $("chartUpdatedAt").textContent="Updated "+new Date().toLocaleTimeString()+" · "+points.length+" candles";
+  showMessage("chartStatus","Chart ready · "+symbol+" · "+interval+" · drag to move, pinch or scroll to zoom.");
+ }catch(e){
+  console.error("Market chart error:",e);
+  showMessage("chartStatus","Chart unavailable: "+(e.message||"Please try again."));
+ }finally{if(btn)btn.disabled=false;}
+}
+$("chartRefreshBtn")?.addEventListener("click",refreshMarketChart);
+$("chartSymbol")?.addEventListener("change",refreshMarketChart);
+$("chartInterval")?.addEventListener("change",refreshMarketChart);
 
 function isQuoteFresh(q,symbol){
 return !!q&&q.stale===false&&(symbol==="BTCUSD"||q.marketState==="open")&&
@@ -1289,6 +1371,7 @@ await loadTelegramConnectionStatus();
 
 renderMarkets();
 renderAnalysis();
+refreshMarketChart();
 renderApprovalCentre();
 
 showMessage("systemStatus","Market data refreshed. Independent technical engine is active; eligible saved setups are shown for manual review.");

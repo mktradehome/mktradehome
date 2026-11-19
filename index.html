@@ -718,7 +718,7 @@ const results={
 "5M":timeframeResults["5M"]||{signal:"WAIT"}
 };
 analyses[row.symbol]={
-candidateId:row.id,
+candidateId:String(row.id),
 symbol:row.symbol,overall:row.signal,entry,sl,tp1,tp2,
 quoteFresh:quoteFresh&&ageMs<=10*60*1000&&stillNearEntry,
 reason:"Restored from saved Mktradehome technical-engine analysis. "+(saved.explanation||""),
@@ -762,20 +762,14 @@ return `<div class="marketbox">
 
 function getSignalQuality(a){
 if(!a||!["BUY","SELL"].includes(a.overall))return "NOT RATED";
-const tf=a.results||{};
-const higher=["4H","1H"].map(k=>tf[k]?.signal);
-const lower=["15M","5M"].map(k=>tf[k]?.signal);
-const higherAligned=higher[0]===a.overall&&higher[1]===a.overall;
-const lowerClear=lower.every(s=>s==="WAIT"||s===a.overall);
- const lowerConfirmed=lower.includes(a.overall);
 const risk=a.overall==="BUY"?Number(a.entry)-Number(a.sl):Number(a.sl)-Number(a.entry);
 const reward=a.overall==="BUY"?Number(a.tp1)-Number(a.entry):Number(a.entry)-Number(a.tp1);
 const reward2=a.overall==="BUY"?Number(a.tp2)-Number(a.entry):Number(a.entry)-Number(a.tp2);
 const riskReward=risk>0&&reward>=risk*2&&reward2>=risk*3;
 const verified=a.engineVerified===true&&a.verificationStatus==="PASSED";
-return a.quoteFresh&&higherAligned&&lowerClear&&lowerConfirmed&&riskReward&&verified
-?"TECHNICAL RULES PASSED · NOT A WIN PROBABILITY"
-:"SETUP NEEDS CONFIRMATION";
+return a.quoteFresh&&riskReward&&verified
+?"INDEPENDENT ENGINE VERIFIED · NOT A WIN PROBABILITY"
+:"SETUP EXPIRED OR PRICE/RISK CHECK FAILED";
 }
 
 function renderAnalysis(){
@@ -878,7 +872,7 @@ const reviews=getSignalReviews();
 
 const signals=marketList.map(m=>({market:m,a:analyses[m.symbol]}))
 .filter(x=>x.a&&["BUY","SELL"].includes(x.a.overall)&&
- (x.a.engineVerified===true&&x.a.verificationStatus==="PASSED"&&typeof x.a.candidateId==="string"&&x.a.candidateId.trim().length>0)&&
+ (x.a.engineVerified===true&&x.a.verificationStatus==="PASSED"&&x.a.candidateId!==undefined&&x.a.candidateId!==null&&String(x.a.candidateId).trim().length>0)&&
  Number.isFinite(x.a.entry)&&Number.isFinite(x.a.sl)&&Number.isFinite(x.a.tp1)&&getSignalQuality(x.a)!=="SETUP NEEDS CONFIRMATION");
 
 if(!signals.length){

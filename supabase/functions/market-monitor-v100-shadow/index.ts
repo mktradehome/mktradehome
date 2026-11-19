@@ -161,7 +161,8 @@ export function buildCandidate(
   const risk = side === "BUY" ? price-stopLoss : stopLoss-price;
   const reward1 = side === "BUY" ? takeProfit1-price : price-takeProfit1;
   const reward2 = side === "BUY" ? takeProfit2-price : price-takeProfit2;
-  if (!(risk > 0 && reward1 >= 2*risk && reward2 >= 3*risk)) return null;
+  const geometryTolerance = Math.max(1, Math.abs(price)) * 1e-10;
+  if (!(risk > 0 && reward1 + geometryTolerance >= 2*risk && reward2 + geometryTolerance >= 3*risk)) return null;
   const aligned = [frames["4H"],frames["1H"],frames["15M"]].filter(f =>
     side === "BUY" ? f.ema20 >= f.ema50 : f.ema20 <= f.ema50).length;
   const lowerBonus = opposite(s5) >= 0 ? 5 : 0;

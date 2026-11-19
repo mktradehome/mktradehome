@@ -1,5 +1,6 @@
 
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { validateIndependentCandidateProof } from "../_shared/approval-proof.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -108,77 +109,11 @@ Deno.serve(async (req) => {
     }
 
     // Recheck saved indicator evidence server-side; do not trust a dashboard label.
-    const proofSide = String(candidate.signal || "").toUpperCase();
-    const frames = proof?.timeframes || {};
-    const requiredFrames = ["4H", "1H", "15M", "5M"];
-    const maxCandleAgeSeconds: Record<string, number> = { "4H": 21600, "1H": 5400, "15M": 1350, "5M": 450 };
-    const frameEvidenceValid = requiredFrames.every((key) => {
-      const f = frames[key];
-      return !!f &&
-        [f.close,f.ema20,f.ema20Previous,f.ema50,f.rsi14,f.macdHistogram,f.atr14,f.bars,f.candleAgeSeconds]
-          .every((v) => Number.isFinite(Number(v))) &&
-        Number(f.close) > 0 && Number(f.ema20) > 0 && Number(f.ema50) > 0 &&
-        Number(f.atr14) > 0 && Number(f.bars) >= 60 &&
-        Number(f.candleAgeSeconds) >= 0 &&
-        Number(f.candleAgeSeconds) <= maxCandleAgeSeconds[key];
-    });
-    const proofQuote = proof?.quote || {};
-    const clamp = (n:number,min:number,max:number) => Math.max(min,Math.min(max,n));
-    const scoreFrame = (f:any) => {
-      const atr = Math.max(Number(f.atr14), Number.EPSILON);
-      const priceVsEma = clamp((Number(f.close)-Number(f.ema20))/atr*24,-24,24);
-      const emaAlignment = clamp((Number(f.ema20)-Number(f.ema50))/atr*28,-28,28);
-      const emaSlope = clamp((Number(f.ema20)-Number(f.ema20Previous))/atr*160,-16,16);
-      const rsiMomentum = clamp((Number(f.rsi14)-50)*0.65,-13,13);
-      const macdMomentum = clamp(Number(f.macdHistogram)/atr*100,-12,12);
-      return Math.round(clamp(priceVsEma+emaAlignment+emaSlope+rsiMomentum+macdMomentum,-100,100));
-    };
-    let strategyEvidenceValid = false;
-    if (frameEvidenceValid && ["BUY","SELL"].includes(proofSide)) {
-      const h4=frames["4H"], h1=frames["1H"], m15=frames["15M"], m5=frames["5M"];
-      const s4=scoreFrame(h4), s1=scoreFrame(h1), s15=scoreFrame(m15), s5=scoreFrame(m5);
-      const opposite=(score:number)=>proofSide==="BUY"?score:-score;
-      const price=Number(proofQuote.price);
-      const m15Aligned=proofSide==="BUY"?Number(m15.ema20)>=Number(m15.ema50):Number(m15.ema20)<=Number(m15.ema50);
-      const pullbackReversal=opposite(s15)<-25 && (proofSide==="SELL"
-        ? price<Number(m15.ema50) && Number(m5.close)<Number(m5.ema20) && Number(m5.macdHistogram)<0
-        : price>Number(m15.ema50) && Number(m5.close)>Number(m5.ema20) && Number(m5.macdHistogram)>0);
-      const aligned=[h4,h1,m15].filter((f:any)=>proofSide==="BUY"
-        ? Number(f.ema20)>=Number(f.ema50) : Number(f.ema20)<=Number(f.ema50)).length;
-      const expectedQuality=Math.min(90,65+aligned*5+(opposite(s5)>=0?5:0));
-      const spread=Number(proofQuote.ask)-Number(proofQuote.bid);
-      const expectedRisk=Math.max(Number(m15.atr14)*1.5,Number(m5.atr14)*2,spread*2.5);
-      const geometryTolerance=Math.max(1,Math.abs(price))*1e-9;
-      const riskTolerance=Math.max(geometryTolerance,expectedRisk*1e-8);
-      const entry=Number(candidate.entry_price), stop=Number(candidate.stop_loss);
-      const tp1=Number(candidate.take_profit_1),tp2=Number(candidate.take_profit_2);
-      const actualRisk=proofSide==="BUY"?entry-stop:stop-entry;
-      const reward1=proofSide==="BUY"?tp1-entry:entry-tp1;
-      const reward2=proofSide==="BUY"?tp2-entry:entry-tp2;
-      strategyEvidenceValid =
-        ((proofSide==="BUY" && Number(h1.ema20)>Number(h1.ema50) && s1>=12) ||
-         (proofSide==="SELL" && Number(h1.ema20)<Number(h1.ema50) && s1<=-12)) &&
-        opposite(s4)>=-30 &&
-        ((m15Aligned && opposite(s15)>=-25) || pullbackReversal) &&
-        opposite(s5)>=-40 &&
-        Math.abs(price-Number(m15.close))<=Number(m15.atr14)*0.75 &&
-        Number.isFinite(spread) && spread>=0 && expectedRisk>0 &&
-        Math.abs(actualRisk-expectedRisk)<=riskTolerance &&
-        Math.abs(entry-price)<=geometryTolerance &&
-        Math.abs((proofSide==="BUY"?stop:stop)- (proofSide==="BUY"?price-expectedRisk:price+expectedRisk))<=riskTolerance &&
-        Math.abs(reward1-2*expectedRisk)<=riskTolerance &&
-        Math.abs(reward2-3*expectedRisk)<=riskTolerance &&
-        reward1>=2*actualRisk && reward2>=3*actualRisk &&
-        Number(proof?.qualityScore)===expectedQuality;
-    }
-    if (!frameEvidenceValid || !strategyEvidenceValid ||
-        proof?.qualityScoreIsWinProbability !== false ||
-        proofQuote.marketState !== "open" || !Number.isFinite(Number(proofQuote.quoteAgeSeconds)) ||
-        Number(proofQuote.quoteAgeSeconds) < 0 || Number(proofQuote.quoteAgeSeconds) > MAX_QUOTE_AGE_SECONDS ||
-        !Number.isFinite(Number(proofQuote.price)) || Number(proofQuote.price) <= 0 ||
-        !Number.isFinite(Number(proofQuote.bid)) || !Number.isFinite(Number(proofQuote.ask)) ||
-        Number(proofQuote.bid)<=0 || Number(proofQuote.ask)<Number(proofQuote.bid)) {
-      return response({ error: "BLOCKED: saved technical indicators failed exact independent-engine strategy validation." }, 403);
+    const validation = validateIndependentCandidateProof(candidate as any, proof as any, MAX_QUOTE_AGE_SECONDS);
+    if (!validation.valid || proof?.source !== "mktradehome-technical-engine" ||
+        proof?.engineVersion !== "1.0.0" || proof?.engineVerified !== true ||
+        proof?.verificationStatus !== "PASSED" || proof?.qualityScoreIsWinProbability !== false) {
+      return response({ error: "BLOCKED: " + (validation.reason || "independent engine proof is missing or unsupported") }, 403);
     }
 
     const createdAt = Date.parse(candidate.created_at || "");

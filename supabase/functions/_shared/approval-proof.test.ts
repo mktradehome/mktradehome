@@ -73,3 +73,26 @@ Deno.test("accepts a real persisted XAUUSD SELL candidate proof from production"
  const result=validateIndependentCandidateProof(candidate,proof);
  assert(result.valid,result.reason);
 });
+
+Deno.test("accepts a fresh persisted EURUSD SELL candidate proof with 5M WAIT",()=>{
+ const candidate:SavedCandidate={
+  signal:"SELL",
+  entry_price:1.09588,
+  stop_loss:1.0965335714285713,
+  take_profit_1:1.094572857142857,
+  take_profit_2:1.0939192857142856
+ };
+ const proof:IndependentProof={
+  qualityScore:85,
+  qualityScoreIsWinProbability:false,
+  timeframes:{
+   "5M":{close:1.09591,ema20:1.0964445178778872,ema20Previous:1.0965008102866693,ema50:1.0968550367355732,rsi14:30.829891972543393,macdHistogram:-0.00008890027807212646,atr14:0.0002550000000000052,bars:240,candleAgeSeconds:3.1,signal:"WAIT"},
+   "15M":{close:1.0956,ema20:1.096935129340682,ema20Previous:1.0970756667831885,ema50:1.0971552032348548,rsi14:28.671399941689785,macdHistogram:-0.00017295787004928555,atr14:0.00043571428571430115,bars:192,candleAgeSeconds:603.101,signal:"WAIT"},
+   "1H":{close:1.09617,ema20:1.0974106835660553,ema20Previous:1.097541309205171,ema50:1.0986032945569735,rsi14:40.27243751051001,macdHistogram:0.00005932499054694951,atr14:0.0009682142857142528,bars:168,candleAgeSeconds:1503.101,signal:"WAIT"},
+   "4H":{close:1.09716,ema20:1.1000329606049148,ema20Previous:1.1003354267749041,ema50:1.1056273707797328,rsi14:29.768681200410157,macdHistogram:0.00015417513489883678,atr14:0.0021292857142857224,bars:180,candleAgeSeconds:12303.101,signal:"WAIT"}
+  },
+  quote:{bid:1.09585,ask:1.09591,price:1.09588,quoteAgeSeconds:1,marketState:"open"}
+ };
+ const result=validateIndependentCandidateProof(candidate,proof);
+ assert(result.valid,result.reason);
+});

@@ -1086,10 +1086,21 @@ function renderOpportunityIntelligence(){
  const forecastTime=Date.parse(latestForesightGeneratedAt||"");
  const foresightFresh=Number.isFinite(forecastTime)&&now>=forecastTime&&now-forecastTime<=15*60*1000;
  const intelligence=new Map((latestMarketIntelligenceRows||[]).map(row=>[row.symbol,row]));
+ const performanceRows=Array.isArray(latestForesightPerformance?.byMarketHorizon)?latestForesightPerformance.byMarketHorizon:[];
+ const historyFor=(symbol,horizon)=>performanceRows.find(x=>String(x.symbol||"").toUpperCase()===symbol&&String(x.horizon||"").toUpperCase()===horizon);
+ const historyMarkup=(symbol)=>{
+  return ["15M","1H"].map(horizon=>{
+   const metric=historyFor(symbol,horizon),n=Number(metric?.evaluated)||0;
+   if(!metric||n===0)return '<div class="small">'+horizon+' historical forecast evidence: not measured yet.</div>';
+   if(n<30)return '<div class="small">'+horizon+' historical forecast evidence: EARLY SAMPLE ('+n+'/30 outcomes). Not used to rank or validate this setup.</div>';
+   const pct=v=>v===null||v===undefined?"—":Number(v).toFixed(1)+"%";
+   return '<div class="small">'+horizon+' historical context ('+n+' outcomes; descriptive only): direction '+pct(metric.directionalAccuracyPct)+' · return error '+pct(metric.meanAbsoluteReturnErrorPct)+' · range coverage '+pct(metric.intervalCoveragePct)+'. Not a win probability.</div>';
+  }).join("");
+ };
  const rows=marketList.map(market=>{
   const a=analyses[market.symbol];
-  const valid=a&&["BUY","SELL"].includes(a.overall)&&a.engineVerified===true&&
-   a.verificationStatus==="PASSED"&&a.candidateId!==undefined&&a.candidateId!==null&&
+  const valid=a&&["BUY","SELL"].includes(a.overall)&&
+   a.engineVerified===true&&a.verificationStatus==="PASSED"&&a.candidateId!==undefined&&a.candidateId!==null&&
    String(a.candidateId).trim()!==""&&a.quoteFresh===true&&
    [a.entry,a.sl,a.tp1,a.tp2].every(v=>Number.isFinite(Number(v)))&&
    getSignalQuality(a)==="INDEPENDENT ENGINE VERIFIED · NOT A WIN PROBABILITY";
@@ -1125,10 +1136,11 @@ function renderOpportunityIntelligence(){
    '<div class="row"><span>Stop loss</span><strong>'+formatPrice(a.sl)+'</strong></div>'+
    '<div class="row"><span>TP1 · 2R</span><strong>'+formatPrice(a.tp1)+'</strong></div>'+
    '<div class="row"><span>TP2 · 3R</span><strong>'+formatPrice(a.tp2)+'</strong></div>'+
+   historyMarkup(market.symbol)+
    '<div class="small">Candidate ID: '+escapeHTML(a.candidateId)+' · Approval remains a separate manual action.</div></div>';
  }).join("");
 }
- 
+
 /* TRADE APPROVALS */
 
 /*
@@ -1672,6 +1684,7 @@ async function runMarketForesight(){
   latestForesightPerformance=data.performance||null;
   renderForesightPerformance();
   renderUnifiedMarketContext();
+  renderOpportunityIntelligence();
   const fmt=v=>Number(v).toLocaleString(undefined,{maximumSignificantDigits:8});
   const cell=v=>escapeHTML(v===undefined||v===null?"—":v);
   $("foresightResults").innerHTML=(data.results||[]).map(r=>{

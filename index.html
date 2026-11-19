@@ -829,10 +829,16 @@ async function loadMarketIntelligence(){
     const item=tf[k]||{};
     return k+": "+(item.signal||"WAIT")+" ("+(Number(item.score)||0)+")";
    }).join(" · ");
+   const summary=String(row.summary||"");
+   const watchMatch=summary.match(/(DEVELOPING (?:BUY|SELL) SETUP[^.]*|No developing setup[^.]*)/);
+   const watchText=watchMatch?watchMatch[0]:"";
+   const watchClass=watchText.includes("BUY")?"buy":watchText.includes("SELL")?"sell":"wait";
+   const contextSummary=watchMatch?summary.replace(watchMatch[0],"").trim():summary;
    return '<div class="trade-item"><strong>'+escapeHTML(row.symbol)+'</strong>'+
     '<div class="signal '+cls+'">'+escapeHTML(row.bias)+' · '+score+'/100</div>'+
     '<div class="small">Market regime: '+escapeHTML(String(row.regime||"TRANSITION").replace("_"," "))+'</div>'+
-    '<div class="small">'+escapeHTML(row.summary||"")+'</div>'+
+    (watchText?'<div class="signal '+watchClass+'">'+escapeHTML(watchText)+'</div>':'')+
+    '<div class="small">'+escapeHTML(contextSummary)+'</div>'+
     '<div class="small">'+escapeHTML(frameLine)+'</div>'+
     '<div class="small">Updated: '+escapeHTML(row.updated_at?new Date(row.updated_at).toLocaleString():"unknown")+'</div></div>';
   }).join("");

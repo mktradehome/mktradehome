@@ -179,6 +179,13 @@ label{display:block;font-size:13px;color:#c7d8ee;margin-top:10px}
 <div id="unifiedMarketContext"><p class="small">Waiting for both engines to report...</p></div>
 </div>
 
+<div class="card" id="opportunityIntelligenceCard">
+<h2>Opportunity Intelligence</h2>
+<p>Read-only opportunity assessment. A market is considered actionable here only when the existing V63 technical engine has already produced a fresh, fully verified candidate. Foresight is supporting context only.</p>
+<div id="opportunityIntelligence"><p class="small">Waiting for live technical and foresight evidence...</p></div>
+<p class="small">This panel cannot create signals, change entry rules, approve trades or send orders. Forecast alignment is not a win probability or proof of an edge.</p>
+</div>
+
 <div class="card">
 <h2>Market Analysis</h2>
 <p>5M entry timing · 15M confirmation · 1H and 4H trend direction.</p>
@@ -1062,8 +1069,63 @@ function renderUnifiedMarketContext(){
  }).join("");
  const stamp=latestForesightGeneratedAt?"Last foresight scan: "+new Date(latestForesightGeneratedAt).toLocaleString():"Waiting for first successful foresight scan";
  container.innerHTML=cards+'<p class="small">'+cell(stamp)+'. This comparison never changes BUY/SELL/WAIT rules, approval eligibility, risk limits or MT5 execution.</p>';
+ renderOpportunityIntelligence();
 }
 
+/* READ-ONLY OPPORTUNITY INTELLIGENCE
+   The production V63 candidate remains the sole source of actionable setup eligibility.
+   Foresight can add context but can never create or upgrade a candidate.
+*/
+function renderOpportunityIntelligence(){
+ const container=$("opportunityIntelligence");
+ if(!container)return;
+ const now=Date.now();
+ const forecastTime=Date.parse(latestForesightGeneratedAt||"");
+ const foresightFresh=Number.isFinite(forecastTime)&&now>=forecastTime&&now-forecastTime<=15*60*1000;
+ const intelligence=new Map((latestMarketIntelligenceRows||[]).map(row=>[row.symbol,row]));
+ const rows=marketList.map(market=>{
+  const a=analyses[market.symbol];
+  const valid=a&&["BUY","SELL"].includes(a.overall)&&a.engineVerified===true&&
+   a.verificationStatus==="PASSED"&&a.candidateId!==undefined&&a.candidateId!==null&&
+   String(a.candidateId).trim()!==""&&a.quoteFresh===true&&
+   [a.entry,a.sl,a.tp1,a.tp2].every(v=>Number.isFinite(Number(v)))&&
+   getSignalQuality(a)==="INDEPENDENT ENGINE VERIFIED · NOT A WIN PROBABILITY";
+  if(!valid)return {market,valid:false};
+  const tech=intelligence.get(market.symbol);
+  const techTime=Date.parse(tech?.updated_at||"");
+  const techFresh=Number.isFinite(techTime)&&now>=techTime&&now-techTime<=10*60*1000;
+  const forecast=(latestForesightResults||[]).find(x=>x.symbol===market.symbol);
+  const horizons=Array.isArray(forecast?.forecasts)?forecast.forecasts:[];
+  const expected=a.overall==="BUY"?"UP":"DOWN";
+  const relevant=horizons.filter(x=>["15M","1H"].includes(String(x.horizon||"").toUpperCase()));
+  let context="FORESIGHT NOT AVAILABLE";
+  if(foresightFresh&&techFresh&&relevant.length>=2){
+   const directions=relevant.map(x=>String(x.directional_bias||"SIDEWAYS").toUpperCase());
+   context=directions.every(x=>x===expected)?"FORESIGHT ALIGNS":
+    directions.some(x=>x!==expected&&x!=="SIDEWAYS")?"FORESIGHT DIVERGES":"FORESIGHT MIXED / SIDEWAYS";
+  }else if(!techFresh)context="TECHNICAL CONTEXT STALE";
+  else if(!foresightFresh)context="FORESIGHT STALE / NOT AVAILABLE";
+  return {market,valid:true,a,context};
+ });
+ const active=rows.filter(x=>x.valid);
+ if(!active.length){
+  container.innerHTML='<div class="trade-item"><div class="signal wait">WAIT · NO CURRENT VERIFIED OPPORTUNITY</div><p class="small">No fresh V63 candidate currently passes the existing independent verification and quote-freshness checks. This is not a system failure; no setup will be manufactured.</p></div>'+
+   rows.map(x=>'<div class="small">'+escapeHTML(x.market.name)+': WAIT · no eligible candidate</div>').join("");
+  return;
+ }
+ container.innerHTML=active.map(({market,a,context})=>{
+  const cls=a.overall==="BUY"?"buy":"sell";
+  return '<div class="trade-item"><strong>'+escapeHTML(market.name)+'</strong>'+
+   '<div class="signal '+cls+'">V63 VERIFIED '+escapeHTML(a.overall)+'</div>'+
+   '<div class="small">Supporting context: '+escapeHTML(context)+'</div>'+
+   '<div class="row"><span>Entry reference</span><strong>'+formatPrice(a.entry)+'</strong></div>'+
+   '<div class="row"><span>Stop loss</span><strong>'+formatPrice(a.sl)+'</strong></div>'+
+   '<div class="row"><span>TP1 · 2R</span><strong>'+formatPrice(a.tp1)+'</strong></div>'+
+   '<div class="row"><span>TP2 · 3R</span><strong>'+formatPrice(a.tp2)+'</strong></div>'+
+   '<div class="small">Candidate ID: '+escapeHTML(a.candidateId)+' · Approval remains a separate manual action.</div></div>';
+ }).join("");
+}
+ 
 /* TRADE APPROVALS */
 
 /*

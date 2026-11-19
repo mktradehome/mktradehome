@@ -1418,6 +1418,51 @@ checkSession();
 
 </script>
 
+<style>
+#advancedTools{padding:14px}
+#advancedTools>summary{cursor:pointer;list-style:none;color:#f5c542;font-size:16px;font-weight:700}
+#advancedTools>summary::-webkit-details-marker{display:none}
+#advancedTools>summary:after{content:"＋";float:right}
+#advancedTools[open]>summary:after{content:"−"}
+#advancedTools>p{margin:8px 0 12px}
+#advancedTools .card{margin-top:10px}
+</style>
+<script>
+/* Keep the main trading view focused; move secondary panels without removing their functionality. */
+(()=>{
+ const root=document.getElementById("tradingPage");
+ if(!root||document.getElementById("advancedTools"))return;
+ const tools=document.createElement("details");
+ tools.id="advancedTools";tools.className="card";
+ tools.innerHTML="<summary>More tools & diagnostics</summary><p>Optional account details, deeper analysis, backtesting and Telegram settings.</p>";
+ const move=(node)=>{if(node)tools.appendChild(node);};
+ move(document.getElementById("accountMonitor"));
+ move(document.getElementById("historicalBacktestCard"));
+ const cards=Array.from(root.querySelectorAll(":scope > .card"));
+ for(const title of ["Market Analysis","Market Intelligence"]){
+  const card=cards.find(c=>c.querySelector("h2")?.textContent.trim()===title);
+  move(card);
+ }
+ const topCard=cards.find(c=>c.querySelector("#telegramBtn"));
+ if(topCard){
+  const heading=Array.from(topCard.querySelectorAll("h2")).find(h=>h.textContent.trim()==="Telegram Alerts");
+  if(heading){
+   const telegramCard=document.createElement("div");telegramCard.className="card";
+   let node=heading.previousElementSibling;
+   if(node&&node.tagName==="HR")node.remove();
+   node=heading;
+   while(node){
+    const next=node.nextElementSibling;telegramCard.appendChild(node);
+    if(node.id==="telegramStatus")break;
+    node=next;
+   }
+   tools.appendChild(telegramCard);
+  }
+ }
+ root.appendChild(tools);
+})();
+</script>
+
 <button id="mkSupportFab" type="button" aria-label="Open AI Support" style="position:fixed!important;right:16px!important;bottom:16px!important;left:auto!important;top:auto!important;width:auto!important;min-width:0!important;max-width:145px!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;margin:0!important;padding:10px 13px!important;border-radius:12px!important;white-space:nowrap!important;">✦ AI Support</button>
 <section id="mkSupportPanel" aria-label="Mktradehome AI Support" aria-live="polite">
   <header id="mkSupportHead"><div><strong>✦ Mktradehome AI Support</strong><div style="font-size:11px;color:#aab5c4;margin-top:3px">Here to help with your dashboard</div></div><button id="mkSupportClose" type="button" aria-label="Close chat">×</button></header>

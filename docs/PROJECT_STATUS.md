@@ -1,6 +1,6 @@
 # Mktradehome — Current Project Status
 
-Last verified: 2026-11-19 03:20 UTC
+Last verified: 2026-11-19 03:25 UTC
 
 ## Project and safety
 - Private personal Exness trading assistant; dashboard: https://mktradehome.pages.dev/
@@ -48,7 +48,7 @@ Last verified: 2026-11-19 03:20 UTC
 
 ## Repository and CI
 - `supabase/functions/market-monitor/index.ts` is synchronized with the deployed V62 production source; do not accidentally deploy the older pre-V62 helper implementation.
-- GitHub Actions now runs type-checks for production and shadow Edge Functions plus deterministic approval-proof tests on pushes and pull requests to main.
+- GitHub Actions now runs type-checks for production and shadow Edge Functions plus deterministic approval-proof tests on pushes and pull requests to main. Latest run for commit `b2166efaeefd9519cb7047ba347270f1ffa7ec9f` completed successfully (2026-11-19).
 - Legacy shared-engine tests are retained and explicitly labelled legacy; they are not proof of production V62 parity.
 
 ## Remaining work

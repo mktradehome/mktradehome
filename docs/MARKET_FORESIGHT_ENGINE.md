@@ -106,6 +106,6 @@ The Foresight Engine is not “done” until:
 
 
 ## Deployed baseline implementation notes (2026-11-19)
-The first live implementation is `supabase/functions/market-foresight/index.ts`, Supabase function version 3. It archives up to 240 completed candles per symbol/timeframe from BiQuote and records three forecast horizons per market. The dashboard invokes it at sign-in and every five minutes while open. Matured forecasts are evaluated on later scans against the archived 5M bars.
+The first live implementation is `supabase/functions/market-foresight/index.ts`, Supabase function version 5. It archives up to 240 completed candles per symbol/timeframe from BiQuote, preserves bid/ask/spread snapshots with timestamp provenance, and records three forecast horizons per market. The dashboard invokes it at sign-in and every five minutes while open. Matured forecasts are evaluated on later scans against the archived 5M bars.
 
 This is a measurement and baseline layer, not the final intelligence system. The interval relies on a normal-return assumption and has not been empirically calibrated. The forecast is not connected to BUY/SELL approvals. The next release must add robust regime/context features, baseline-vs-baseline walk-forward evaluation, cost-aware barrier labels, and data-coverage monitoring before any numeric probability is displayed.

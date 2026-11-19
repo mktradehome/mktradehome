@@ -1,6 +1,6 @@
 # Mktradehome — Current Project Status
 
-Last verified: 2026-11-19 03:35 UTC
+Last verified: 2026-11-19 03:49 UTC
 
 ## Project and safety
 - Private personal Exness trading assistant; dashboard: https://mktradehome.pages.dev/
@@ -14,6 +14,7 @@ Last verified: 2026-11-19 03:35 UTC
 - `market-monitor` v63 — ACTIVE production signal engine. Scheduled requests in recent logs returned HTTP 200; recent executions were approximately 2.4–3.3 seconds.
 - `market-monitor-v100-shadow` v5 — ACTIVE, isolated read-only strategy shadow. No production writes, alerts, approvals, queue items or trade execution.
 - `market-monitor-v100-backtest-shadow` v11 — ACTIVE, authenticated historical replay; isolated from production trading state.
+- `market-foresight` v3 — ACTIVE, authenticated baseline forecasting and historical candle archiving; no trade approvals, queue writes or execution.
 - `create-mt5-approval` v22 — ACTIVE. Its isolated proof validator also checks that the saved quote price is exactly the bid/ask midpoint. Server-side validation now uses the exact independent engine scoring and multi-timeframe rules, including valid 15M pullback reversals and 5M veto logic.
 - `mt5-bridge` v30 — ACTIVE. Dashboard queue and account-snapshot reads return HTTP 200 in recent logs.
 
@@ -88,3 +89,16 @@ Last verified: 2026-11-19 03:35 UTC
 - V100 remains a read-only V62-strategy shadow, not a validated predictive AI model. No production strategy, risk gate, approval or execution path was changed in this work.
 - Current rolling candle history is inadequate for robust long-horizon training; a verified historical archive and forecast/outcome dataset are prerequisites.
 - Saved specification commit: `2f4041d8cbdace5dcfcf8859179e170e5c8c6ba4`.
+
+
+## Market Foresight implementation (2026-11-19 03:49 UTC)
+- Deployed Supabase Edge Function `market-foresight` v3 ACTIVE. It authenticates the signed-in dashboard user through Supabase Auth (or accepts the existing monitor secret server-to-server); the service credential stays server-side.
+- Created three RLS-protected tables: `market_candle_archive`, `market_foresight_forecasts` and `market_foresight_outcomes`. Direct `anon` and `authenticated` table privileges are revoked; the Edge Function's service role is the only intended writer/reader.
+- The function retrieves completed BiQuote OHLC for BTCUSD, EURUSD, XAUUSD and USDJPY on 5M/15M/1H/4H, validates timestamp freshness, OHLC geometry and cadence, then deduplicates archive rows by symbol/timeframe/candle timestamp.
+- Baseline v0.1 produces explicit 15M/1H/4H expected-price scenarios and approximately 90% normal-assumption price intervals using recent 5M log-return drift and volatility. Directional bias is qualitative. Numeric UP/DOWN/SIDEWAYS probabilities are null and marked NOT CALIBRATED; this is not an ML model or proven predictive edge.
+- Each scan saves forecast records. Later scans evaluate matured forecasts against archived completed 5M candles and save realized return, high/low, absolute expected-price error and interval coverage. No outcome is invented if the required candle evidence is missing.
+- Added a Market Foresight dashboard card. It runs on sign-in and refreshes every five minutes while the dashboard is open, with a manual Run Foresight Scan button. It displays reference price, directional scenario, expected price and range for each horizon.
+- The feature is shadow-only. It does not modify V63 signal logic, approval rules, MT5 queue, risk controls or execution. No automatic orders were enabled.
+- Security advisor reports the three new RLS-protected tables have no user policies; this is intentional because direct user access is revoked and only server-side service access is intended. Other pre-existing project advisories remain.
+- Live runtime invocation has not yet been confirmed from this tool session; the first dashboard scan is the next end-to-end acceptance check. Do not call the archive populated or forecasts live until the function has successfully run and database rows are verified.
+- Supabase deployed function v3; GitHub source synced. Frontend commit: `2bca68c457ddacc765d816d1c8bac15545722e17`; function source commit: `cbb60c6d8230be912ed3ae6ca4f6f5bb7ba6fc8b`; CI workflow commit: `a6b9b87399a05f7690f813a50fbd04e21b6ec0e5`.

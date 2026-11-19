@@ -1,6 +1,6 @@
 # Mktradehome — Current Project Status
 
-Last verified: 2026-11-19 03:31 UTC
+Last verified: 2026-11-19 03:35 UTC
 
 ## Project and safety
 - Private personal Exness trading assistant; dashboard: https://mktradehome.pages.dev/
@@ -71,3 +71,11 @@ Last verified: 2026-11-19 03:31 UTC
 - Saved the proposed EA-to-bridge payload, validation rules, dashboard behavior and acceptance tests in `docs/MT5_POSITION_REPORTING.md`. This is a design contract only; it is not a deployed endpoint and must not be represented as a working live feed.
 - Next implementation step: obtain the exact MktradehomeBridge EA source, then implement the authenticated Demo-only position snapshot endpoint, private persistence, dashboard read action and EA polling together. Keep Real mode read-only. Reject incomplete snapshots and never infer closures from partial data.
 - No database schema, execution gate, approval rule or live trading behavior was changed in this session.
+
+
+## Chart overlay integrity correction (2026-11-19 03:35 UTC)
+- Reviewed the live chart overlay against the actual `mt5-bridge` v30 API and database schema. The bridge currently exposes the execution queue, not a broker-confirmed open-position snapshot.
+- Corrected `index.html` so the chart overlay now displays only `approved` and `executing` queue entries as pending setup references. It no longer treats `executed` queue history as proof that a position is currently open.
+- Updated the card title and status labels to make clear that an approved setup is not yet open, and execution-in-progress is not confirmed open. Market-price movement is explicitly not represented as broker floating P/L.
+- The actual live position feed remains unimplemented until the MT5 EA can send authenticated complete position snapshots and the bridge/database/dashboard path is deployed and tested.
+- Frontend change commit: `3b9e0384046e47dc8999ee1a6f34d8ee6801fd9f`.

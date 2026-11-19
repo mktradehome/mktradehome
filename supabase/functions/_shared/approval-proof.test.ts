@@ -50,3 +50,26 @@ Deno.test("rejects a saved quote midpoint that does not match bid and ask",()=>{
 Deno.test("rejects stale candle evidence",()=>{
  const f=fixture(false);f.proof.timeframes!["5M"].candleAgeSeconds=999;assert(!validateIndependentCandidateProof(f.candidate,f.proof).valid);
 });
+
+Deno.test("accepts a real persisted XAUUSD SELL candidate proof from production",()=>{
+ const candidate:SavedCandidate={
+  signal:"SELL",
+  entry_price:3699.441,
+  stop_loss:3718.0469999999996,
+  take_profit_1:3662.229,
+  take_profit_2:3643.6229999999996
+ };
+ const proof:IndependentProof={
+  qualityScore:85,
+  qualityScoreIsWinProbability:false,
+  timeframes:{
+   "5M":{close:3700.011,ema20:3729.9509849755505,ema20Previous:3733.1024272878003,ema50:3736.8083136929777,rsi14:17.697986190588793,macdHistogram:-5.395204826067454,atr14:7.654857142857087,bars:240,candleAgeSeconds:3.246},
+   "15M":{close:3700.011,ema20:3736.342668653656,ema20Previous:3740.167336977283,ema50:3744.654597410937,rsi14:27.747407747659594,macdHistogram:-4.149754104166943,atr14:12.403999999999996,bars:192,candleAgeSeconds:3.249},
+   "1H":{close:3709.285,ema20:3755.1851773924354,ema20Previous:3760.016347558598,ema50:3795.8011936049684,rsi14:31.715524238515016,macdHistogram:1.4829655609357886,atr14:23.035142857142937,bars:168,candleAgeSeconds:903.249},
+   "4H":{close:3740.246,ema20:3826.290168447272,ema20Previous:3835.3474062427167,ema50:3900.028200585187,rsi14:25.294995715928337,macdHistogram:-8.21452877170183,atr14:33.101142857142705,bars:180,candleAgeSeconds:11703.251}
+  },
+  quote:{bid:3699.357,ask:3699.525,price:3699.441,quoteAgeSeconds:0,marketState:"open"}
+ };
+ const result=validateIndependentCandidateProof(candidate,proof);
+ assert(result.valid,result.reason);
+});

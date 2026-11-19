@@ -237,15 +237,24 @@ function buildMarketIntelligence(frames:Record<Timeframe,Indicators>){
  return {bias,regime,score,summary,timeframes:Object.fromEntries(Object.entries(frames).map(([k,v])=>[k,{signal:v.signal,score:scores[k as Timeframe],close:v.close,ema20:v.ema20,ema50:v.ema50,rsi14:v.rsi14,macdHistogram:v.macdHistogram,atr14:v.atr14,candleAgeSeconds:v.candleAgeSeconds,reason:v.reason}]))};
 }
 
-export function validateCandidate(c: Candidate): boolean {
+export function candidateValidationReason(c: Candidate): string | null {
   const nums=[c.entry,c.stopLoss,c.takeProfit1,c.takeProfit2,c.riskDistance];
-  if (!nums.every(Number.isFinite) || nums.some(n=>n<=0)) return false;
-  const risk=c.signal==="BUY"?c.entry-c.stopLoss:c.stopLoss-c.entry;
-  const r1=c.signal==="BUY"?c.takeProfit1-c.entry:c.entry-c.takeProfit1;
-  const r2=c.signal==="BUY"?c.takeProfit2-c.entry:c.entry-c.takeProfit2;
-  return risk>0 && r1>=2*risk && r2>=3*risk &&
-    (c.signal==="BUY" ? c.stopLoss<c.entry&&c.takeProfit1>c.entry&&c.takeProfit2>c.entry :
-      c.stopLoss>c.entry&&c.takeProfit1<c.entry&&c.takeProfit2<c.entry);
+  if (!nums.every(Number.isFinite) || nums.some(n=>n<=0)) return "NON_FINITE_OR_NON_POSITIVE_PRICE";
+  const isBuy=c.signal==="BUY";
+  const risk=isBuy?c.entry-c.stopLoss:c.stopLoss-c.entry;
+  const r1=isBuy?c.takeProfit1-c.entry:c.entry-c.takeProfit1;
+  const r2=isBuy?c.takeProfit2-c.entry:c.entry-c.takeProfit2;
+  const tolerance=Math.max(1,Math.abs(c.entry))*1e-10;
+  if (!(risk>0)) return "STOP_LOSS_ON_WRONG_SIDE";
+  if (Math.abs(risk-c.riskDistance)>tolerance*10) return "RISK_DISTANCE_MISMATCH";
+  if (r1+ tolerance < 2*risk) return "TP1_BELOW_2R";
+  if (r2+ tolerance < 3*risk) return "TP2_BELOW_3R";
+  if (isBuy ? !(c.stopLoss<c.entry&&c.takeProfit1>c.entry&&c.takeProfit2>c.entry)
+            : !(c.stopLoss>c.entry&&c.takeProfit1<c.entry&&c.takeProfit2<c.entry)) return "TARGET_OR_STOP_SIDE_INVALID";
+  return null;
+}
+export function validateCandidate(c: Candidate): boolean {
+  return candidateValidationReason(c) === null;
 }
 
 const headers={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"content-type,x-monitor-secret","Access-Control-Allow-Methods":"POST,OPTIONS"};
@@ -300,8 +309,12 @@ Deno.serve(async(req)=>{
     const setupWatch=buildSetupWatch(tf,quote);
     intelligence.summary += " "+setupWatch.summary;
     const candidate=buildCandidate(tf,quote);
-    if(!candidate||!validateCandidate(candidate)){
+    if(!candidate){
      results.push({symbol,signal:"WAIT",reason:diagnoseCandidate(tf,quote),setupWatch,timeframes:tf,intelligence,quoteAgeSeconds:age,shadowOnly:true});continue;
+    }
+    const validationIssue=candidateValidationReason(candidate);
+    if(validationIssue){
+     results.push({symbol,signal:"WAIT",reason:"CANDIDATE_VALIDATION_REJECTED: "+validationIssue,setupWatch,timeframes:tf,intelligence,quoteAgeSeconds:age,shadowOnly:true});continue;
     }
     results.push({symbol,signal:candidate.signal,status:"SHADOW_CANDIDATE_ONLY",candidate:{entry:candidate.entry,stopLoss:candidate.stopLoss,takeProfit1:candidate.takeProfit1,takeProfit2:candidate.takeProfit2,riskDistance:candidate.riskDistance,qualityScore:candidate.qualityScore,qualityScoreIsWinProbability:false,explanation:candidate.explanation},setupWatch,timeframes:tf,intelligence,quote:{bid,ask,quoteAgeSeconds:age,marketState:quote.marketState},shadowOnly:true});
    }catch(e){results.push({symbol,signal:"WAIT",reason:e instanceof Error?e.message:"Analysis failed safely.",shadowOnly:true});}

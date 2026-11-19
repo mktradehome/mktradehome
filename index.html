@@ -57,6 +57,18 @@ label{display:block;font-size:13px;color:#c7d8ee;margin-top:10px}
 .news-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
 .news-head button{width:auto;min-width:92px;margin:0;padding:9px 12px;font-size:12px}
 @media(max-width:500px){.market{grid-template-columns:1fr}header{align-items:flex-start}.news-head{align-items:flex-start}}
+.signal-ticker{position:relative;overflow:hidden;border:1px solid #29476d;border-radius:10px;background:#071321;margin:10px 0 14px;padding:11px 0;white-space:nowrap}
+.signal-ticker-track{display:inline-flex;align-items:center;gap:28px;min-width:max-content;animation:mkSignalRun 24s linear infinite}
+.signal-ticker:hover .signal-ticker-track{animation-play-state:paused}
+.signal-ticker-item{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:800;letter-spacing:.4px}
+.signal-ticker-item .dot{width:9px;height:9px;border-radius:50%;display:inline-block}
+.signal-ticker-item.buy{color:#42d392}.signal-ticker-item.buy .dot{background:#42d392;box-shadow:0 0 10px #42d392}
+.signal-ticker-item.sell{color:#ff7373}.signal-ticker-item.sell .dot{background:#ff7373;box-shadow:0 0 10px #ff7373}
+.signal-ticker-item.wait{color:#9db5d2}.signal-ticker-item.wait .dot{background:#60a5fa}
+.signal-ticker-label{font-size:10px;color:#9db5d2;letter-spacing:1px;margin-right:8px}
+@keyframes mkSignalRun{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+@media(prefers-reduced-motion:reduce){.signal-ticker-track{animation:none}}
+
 
 /* Mktradehome AI Support chat */
 #mkSupportFab{position:fixed;right:22px;bottom:22px;z-index:9998;width:auto;max-width:150px;margin:0;border:0;border-radius:14px;padding:10px 13px;background:linear-gradient(135deg,#f5c542,#d99b16);color:#171717;font-weight:800;box-shadow:0 8px 28px #0008;cursor:pointer}
@@ -122,6 +134,7 @@ label{display:block;font-size:13px;color:#c7d8ee;margin-top:10px}
 
 <div class="card">
 <h2>Markets</h2>
+<div class="signal-ticker" aria-label="Live market signal ticker"><div id="signalTickerTrack" class="signal-ticker-track"><span class="signal-ticker-item wait"><i class="dot"></i> WAITING FOR LIVE SIGNALS</span></div></div>
 <div id="markets" class="market"></div>
 </div>
 
@@ -744,6 +757,17 @@ function renderMarkets(){
 const container=$("markets");
 if(!container)return;
 
+const tickerItems=marketList.map(m=>{
+const a=analyses[m.symbol];
+const signal=["BUY","SELL"].includes(a?.overall)?a.overall:"WAIT";
+const cls=signal==="BUY"?"buy":signal==="SELL"?"sell":"wait";
+return `<span class="signal-ticker-item ${cls}"><i class="dot"></i>${escapeHTML(m.symbol)} · ${signal}</span>`;
+});
+const ticker=document.getElementById("signalTickerTrack");
+if(ticker){
+const line=tickerItems.join('<span class="signal-ticker-label">LIVE SIGNAL</span>');
+ticker.innerHTML=line+line;
+}
 container.innerHTML=marketList.map(m=>{
 const q=quotes[m.symbol];
 const a=analyses[m.symbol];

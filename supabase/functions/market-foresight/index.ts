@@ -1,3 +1,4 @@
+import { resolveForecastOutcome } from "../_shared/foresight-outcome.ts";
 const headers={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type, x-monitor-secret, x-supabase-api-version","Access-Control-Allow-Methods":"POST,OPTIONS"};
 const symbols=["BTCUSD","EURUSD","XAUUSD","USDJPY"];
 const frames=[{key:"5M",interval:"5m",ms:300000},{key:"15M",interval:"15m",ms:900000},{key:"1H",interval:"1h",ms:3600000},{key:"4H",interval:"4h",ms:14400000}];
@@ -56,21 +57,21 @@ async function rest(path:string,key:string,method="GET",body?:any,prefer?:string
  const t=await r.text();if(!r.ok)throw new Error("Database request failed ("+r.status+"): "+t.slice(0,500));
  return t?JSON.parse(t):null;
 }
-async function evaluateMatured(key:string,latestPrices:Record<string,number>,now:number){
+async function evaluateMatured(key:string,now:number){
  const pending=await rest("market_foresight_forecasts?evaluation_status=eq.PENDING&select=id,symbol,horizon_minutes,generated_at,reference_price,expected_price,lower_price,upper_price",key);
  let evaluated=0;
  for(const f of (Array.isArray(pending)?pending:[])){
-  const expiry=Date.parse(f.generated_at)+Number(f.horizon_minutes)*60000;
-  if(!Number.isFinite(expiry)||now<expiry||!finite(Number(latestPrices[f.symbol])))continue;
-  const actual=Number(latestPrices[f.symbol]),reference=Number(f.reference_price);
-  if(!finite(reference))continue;
-  const start=new Date(Date.parse(f.generated_at)).toISOString(),end=new Date(expiry).toISOString();
-  const bars=await rest("market_candle_archive?symbol=eq."+encodeURIComponent(f.symbol)+"&timeframe=eq.5M&candle_time=gte."+encodeURIComponent(start)+"&candle_time=lte."+encodeURIComponent(end)+"&select=high,low,close&order=candle_time.asc",key);
-  const valid=Array.isArray(bars)&&bars.length>0;
-  const highs=valid?bars.map((b:any)=>Number(b.high)).filter(Number.isFinite):[];
-  const lows=valid?bars.map((b:any)=>Number(b.low)).filter(Number.isFinite):[];
-  const expected=Number(f.expected_price);
-  const outcome={forecast_id:f.id,evaluated_at:new Date(now).toISOString(),actual_price:actual,actual_return:actual/reference-1,actual_high:highs.length?Math.max(...highs):null,actual_low:lows.length?Math.min(...lows):null,absolute_error:finite(expected)?Math.abs(actual-expected):null,interval_covered:actual>=Number(f.lower_price)&&actual<=Number(f.upper_price),outcome_status:"REALIZED",source:"biquote.io_completed_5m_candles"};
+  const generated=Date.parse(f.generated_at);
+  const expiry=generated+Number(f.horizon_minutes)*60000;
+  if(!Number.isFinite(expiry)||now<expiry)continue;
+  // candle_time is the 5M candle-open timestamp. Include the candle that
+  // overlaps forecast creation and the first candle closing at/after expiry.
+  const start=new Date(generated-300000).toISOString(),end=new Date(expiry).toISOString();
+  const bars=await rest("market_candle_archive?symbol=eq."+encodeURIComponent(f.symbol)+"&timeframe=eq.5M&candle_time=gte."+encodeURIComponent(start)+"&candle_time=lte."+encodeURIComponent(end)+"&select=candle_time,high,low,close&order=candle_time.asc",key);
+  const resolved=resolveForecastOutcome(f,Array.isArray(bars)?bars:[],now);
+  // Missing horizon-close evidence stays PENDING; never substitute today's quote.
+  if(!resolved)continue;
+  const outcome={forecast_id:f.id,evaluated_at:new Date(now).toISOString(),...resolved};
   await rest("market_foresight_outcomes",key,"POST",outcome,"resolution=ignore-duplicates,return=minimal");
   await rest("market_foresight_forecasts?id=eq."+encodeURIComponent(f.id),key,"PATCH",{evaluation_status:"EVALUATED"},"return=minimal");
   evaluated++;
@@ -155,7 +156,7 @@ Deno.serve(async(req:Request)=>{
    const out=await rest("market_foresight_forecasts",key,"POST",forecastRows.slice(i,i+100),"return=representation");
    inserted+=Array.isArray(out)?out.length:0;
   }
-  const outcomesEvaluated=await evaluateMatured(key,latestPrices,Date.now());
+  const outcomesEvaluated=await evaluateMatured(key,Date.now());
   return json({success:true,engine:"Mktradehome Market Foresight",modelVersion:"foresight-baseline-0.1.0",generatedAt,durationMs:Date.now()-started,markets:results.length,forecastsCreated:inserted,candlesArchived:archived,quoteSnapshotsArchived,outcomesEvaluated,probabilitiesCalibrated:false,createsApprovals:false,createsQueueItems:false,executesTrades:false,results});
  }catch(e){return json({error:e instanceof Error?e.message:"Foresight engine failed safely."},500);}
 });

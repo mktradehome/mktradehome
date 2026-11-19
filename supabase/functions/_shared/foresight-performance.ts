@@ -14,17 +14,24 @@ function metric(rows:{expected:number;actual:number;covered:boolean}[]){
 export function summarizeForecastPerformance(forecasts:ForecastMetricRow[],outcomes:OutcomeMetricRow[]){
  const byId=new Map((Array.isArray(forecasts)?forecasts:[]).map(f=>[f.id,f]));
  const groups=new Map<string,{expected:number;actual:number;covered:boolean}[]>();
+ const marketGroups=new Map<string,{expected:number;actual:number;covered:boolean}[]>();
  for(const outcome of Array.isArray(outcomes)?outcomes:[]){
   const f=byId.get(outcome.forecast_id),expected=Number(f?.expected_return),actual=Number(outcome.actual_return);
   if(!f||!Number.isFinite(expected)||!Number.isFinite(actual)||typeof outcome.interval_covered!=="boolean")continue;
   const horizon=String(f.horizon||"UNKNOWN").toUpperCase();
   if(!groups.has(horizon))groups.set(horizon,[]);
   groups.get(horizon)!.push({expected,actual,covered:outcome.interval_covered});
+  const symbol=String(f.symbol||"").toUpperCase();
+  if(!symbol)continue;
+  const marketKey=symbol+"|"+horizon;
+  if(!marketGroups.has(marketKey))marketGroups.set(marketKey,[]);
+  marketGroups.get(marketKey)!.push({expected,actual,covered:outcome.interval_covered});
  }
  const all=[...groups.values()].flat();
  return {
   overall:metric(all),
   byHorizon:["15M","1H","4H"].map(horizon=>({horizon,...metric(groups.get(horizon)||[])})),
+  byMarketHorizon:[...marketGroups.entries()].map(([key,values])=>{const [symbol,horizon]=key.split("|");return {symbol,horizon,...metric(values)};}).sort((a,b)=>a.symbol.localeCompare(b.symbol)||a.horizon.localeCompare(b.horizon)),
   sampleLimit:2000,
   probabilitiesCalibrated:false
  };

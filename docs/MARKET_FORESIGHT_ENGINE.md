@@ -1,6 +1,6 @@
 # Mktradehome Market Foresight Engine — Research & Build Contract
 
-**Status:** Design specification; not deployed and not a proven forecasting model.  
+**Status:** Phase A foundation and Phase B statistical baseline deployed in shadow mode; not yet calibrated or proven to forecast profitably.  
 **Principle:** Forecast probabilities, never pretend to know the future. Never manipulate markets or fabricate certainty.
 
 ## 1. Product ambition
@@ -80,9 +80,9 @@ The current MT5 bridge also lacks broker-confirmed live open-position snapshots;
 
 ## 8. Delivery phases
 
-**Phase A — Measurement foundation:** archive clean candles/quotes, define forecast horizons and outcome labels, add immutable forecast/outcome records, and build data-quality monitoring.
+**Phase A — Measurement foundation (partially deployed):** the `market-foresight` function archives validated completed candles and saves forecast/outcome records. Data-quality validation covers timestamp freshness, OHLC geometry and cadence. Continuous archive coverage still depends on the dashboard being open and the scan succeeding.
 
-**Phase B — Baseline forecasting:** implement transparent statistical baseline forecasts in a read-only shadow function. Emit scenario distributions and uncertainty; no approvals or trade writes.
+**Phase B — Baseline forecasting (deployed v0.1):** recent 5M log-return drift and volatility generate 15M/1H/4H expected-price scenarios and normal-assumption intervals. Directional labels remain qualitative; probabilities are withheld until calibrated. The function is authenticated, shadow-only and does not create approvals or trades.
 
 **Phase C — Evaluation:** run chronological walk-forward tests, calibration reports, cost-aware barrier simulations and regime breakdowns. Compare against simple baselines.
 
@@ -103,3 +103,9 @@ The Foresight Engine is not “done” until:
 - all changes are tested, reviewed, documented and committed.
 
 **North star:** be early when evidence supports it, be honest when it does not, and protect capital when the market is unclear.
+
+
+## Deployed baseline implementation notes (2026-11-19)
+The first live implementation is `supabase/functions/market-foresight/index.ts`, Supabase function version 3. It archives up to 240 completed candles per symbol/timeframe from BiQuote and records three forecast horizons per market. The dashboard invokes it at sign-in and every five minutes while open. Matured forecasts are evaluated on later scans against the archived 5M bars.
+
+This is a measurement and baseline layer, not the final intelligence system. The interval relies on a normal-return assumption and has not been empirically calibrated. The forecast is not connected to BUY/SELL approvals. The next release must add robust regime/context features, baseline-vs-baseline walk-forward evaluation, cost-aware barrier labels, and data-coverage monitoring before any numeric probability is displayed.

@@ -335,3 +335,9 @@ Last verified: 2026-11-21 16:24 UTC
 - GitHub Actions run `44928008631` for commit `3aa0e2784f57dce22a8696e25a30703497cc7d0c` completed successfully. All steps passed: production/shadow Deno type-check, dashboard JavaScript checks, three candidate-geometry regression tests, foresight tests, approval-proof tests and legacy-engine tests.
 - Confirmed Supabase `market-monitor` v67 is ACTIVE and contains `index.ts` plus `candidate-geometry.ts`. No post-v67 scheduled scan result was yet visible at the exact time of this check; verify the next five-minute scan before claiming the runtime fix has reduced rejection counts.
 - Latest persisted candidate remains BTCUSD SELL #797 from 11:25:03 UTC and is expired. No candidate was approved and no trade was executed. Demo execution remains OFF; Real remains hard locked.
+
+
+### First post-v67 scheduled scan (2026-11-21 17:05 UTC)
+- Cron job `mktradehome-market-monitor` ran successfully at 17:05:00 UTC. The invocation used production deployment v67 and completed the four BTCUSD timeframe candle audits with correct 5M/15M/1H/4H cadence.
+- BTCUSD returned WAIT for a genuine directional conflict: the 1H EMA20 remained below EMA50 (SELL structure), but the composite 1H momentum score was +26, above the SELL threshold of -12; 5M momentum was BUY. EURUSD, XAUUSD and USDJPY returned WAIT because their quotes were stale or the markets were not confirmed open (Saturday session).
+- This confirms v67 is running and its diagnostics are visible. It does not yet prove the precision repair has reduced missed-candidate counts because this scan was rejected earlier at the 1H bias gate and did not reach target geometry validation. Continue monitoring subsequent scans for specific `FINAL_VALIDATION` reasons and compare candidate/rejection counts over a longer sample.

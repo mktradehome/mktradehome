@@ -1,5 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { candidateValidationReason } from "../_shared/candidate-geometry.ts";
+import { candidateValidationReason } from "./_shared/candidate-geometry.ts";
 export type Side = "BUY" | "SELL" | "WAIT";
 export type Timeframe = "5M" | "15M" | "1H" | "4H";
 

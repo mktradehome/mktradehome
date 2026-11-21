@@ -334,13 +334,15 @@ Deno.serve(async(req)=>{
      timeframes:tf,quote:{bid,ask,price:candidate.entry,quoteAgeSeconds:age,marketState:quote.marketState}
     };
     const message=[
-     "📊 MKTRADEHOME TECHNICAL SIGNAL","",symbol+" · "+candidate.signal,
+     "📊 MKTRADEHOME TECHNICAL SIGNAL","",
+     "UNAPPROVED CANDIDATE — MANUAL REVIEW REQUIRED",
+     symbol+" · "+candidate.signal,
      "Entry: "+candidate.entry,"Stop Loss: "+candidate.stopLoss,
      "TP1 (1:2): "+candidate.takeProfit1,"TP2 (1:3): "+candidate.takeProfit2,
      "Rule quality score: "+candidate.qualityScore+"/100 (not win probability)",
      "Engine: independent technical rules — no GPT API",
      "Expires in 10 minutes. Review the live chart before deciding.",
-     "Alert only — no trade has been placed."
+     "This alert does not approve or place a trade. Manual Approval Centre review is required."
     ].join("\n");
     const errors:string[]=[];
     const {data:row,error:saveError}=await db.from("trade_signals").insert({

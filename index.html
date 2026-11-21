@@ -1135,15 +1135,15 @@ function renderOpportunityIntelligence(){
  const forecastTime=Date.parse(latestForesightGeneratedAt||"");
  const foresightFresh=Number.isFinite(forecastTime)&&now>=forecastTime&&now-forecastTime<=15*60*1000;
  const intelligence=new Map((latestMarketIntelligenceRows||[]).map(row=>[row.symbol,row]));
- const performanceRows=Array.isArray(latestForesightPerformance?.byMarketHorizon)?latestForesightPerformance.byMarketHorizon:[];
+ const performanceRows=Array.isArray(latestForesightPerformance?.nonOverlappingByMarketHorizon)?latestForesightPerformance.nonOverlappingByMarketHorizon:[];
  const historyFor=(symbol,horizon)=>performanceRows.find(x=>String(x.symbol||"").toUpperCase()===symbol&&String(x.horizon||"").toUpperCase()===horizon);
  const historyMarkup=(symbol)=>{
   return ["15M","1H"].map(horizon=>{
    const metric=historyFor(symbol,horizon),n=Number(metric?.evaluated)||0;
    if(!metric||n===0)return '<div class="small">'+horizon+' historical forecast evidence: not measured yet.</div>';
-   if(n<30)return '<div class="small">'+horizon+' historical forecast evidence: EARLY SAMPLE ('+n+'/30 outcomes). Not used to rank or validate this setup.</div>';
+   if(n<30)return '<div class="small">'+horizon+' historical forecast evidence: EARLY NON-OVERLAPPING SAMPLE ('+n+'/30 outcomes). Not used to rank or validate this setup.</div>';
    const pct=v=>v===null||v===undefined?"—":Number(v).toFixed(1)+"%";
-   return '<div class="small">'+horizon+' historical context ('+n+' outcomes; descriptive only): direction '+pct(metric.directionalAccuracyPct)+' · return error '+pct(metric.meanAbsoluteReturnErrorPct)+' · range coverage '+pct(metric.intervalCoveragePct)+'. Not a win probability.</div>';
+   return '<div class="small">'+horizon+' historical context ('+n+' non-overlapping outcomes; descriptive only): expected-return sign hit '+pct(metric.directionalAccuracyPct)+' · model return error '+pct(metric.meanAbsoluteReturnErrorPct)+' · zero-return baseline error '+pct(metric.zeroReturnBaselineErrorPct)+' · improvement vs baseline '+pct(metric.improvementVsZeroBaselinePct)+' · range coverage '+pct(metric.intervalCoveragePct)+'. Not a win probability.</div>';
   }).join("");
  };
  const rows=marketList.map(market=>{
@@ -1705,17 +1705,23 @@ function renderForesightPerformance(){
  const p=latestForesightPerformance;
  if(!p||!p.overall){el.innerHTML='<p class="small">Measured outcome summary is not available yet. Forecasts continue to be collected.</p>';return;}
  const fmt=v=>v===null||v===undefined?"—":Number(v).toFixed(1)+"%";
- const row=m=>'<div class="trade-item"><strong>'+escapeHTML(m.horizon||"ALL HORIZONS")+'</strong>'+
-  '<div class="row"><span>Evaluated forecasts</span><strong>'+escapeHTML(m.evaluated)+'</strong></div>'+
-  '<div class="row"><span>Directional accuracy</span><strong>'+fmt(m.directionalAccuracyPct)+'</strong></div>'+
-  '<div class="row"><span>Mean absolute return error</span><strong>'+fmt(m.meanAbsoluteReturnErrorPct)+'</strong></div>'+
+ const row=(m,label)=>'<div class="trade-item"><strong>'+escapeHTML(m.horizon||"ALL HORIZONS")+' · '+label+'</strong>'+
+  '<div class="row"><span>Evaluated outcomes</span><strong>'+escapeHTML(m.evaluated)+'</strong></div>'+
+  '<div class="row"><span>Expected-return sign hit rate</span><strong>'+fmt(m.directionalAccuracyPct)+'</strong></div>'+
+  '<div class="row"><span>Model mean absolute return error</span><strong>'+fmt(m.meanAbsoluteReturnErrorPct)+'</strong></div>'+
+  '<div class="row"><span>Zero-return baseline error</span><strong>'+fmt(m.zeroReturnBaselineErrorPct)+'</strong></div>'+
+  '<div class="row"><span>Improvement vs zero-return baseline</span><strong>'+fmt(m.improvementVsZeroBaselinePct)+'</strong></div>'+
   '<div class="row"><span>Prediction interval coverage</span><strong>'+fmt(m.intervalCoveragePct)+'</strong></div></div>';
- const n=Number(p.overall.evaluated)||0;
- el.innerHTML='<p class="small">'+(n<30?'EARLY SAMPLE · descriptive only':'Historical sample · still not a calibrated probability model')+
+ const n=Number(p.nonOverlappingOverall?.evaluated)||0;
+ el.innerHTML='<p class="small">'+(n<30?'EARLY NON-OVERLAPPING SAMPLE · descriptive only':'Historical non-overlapping sample · still not a calibrated probability model')+
   ' · Up to '+escapeHTML(p.sampleLimit||2000)+' most recent outcomes.</p>'+
-  row({...p.overall,horizon:"ALL HORIZONS"})+
-  (Array.isArray(p.byHorizon)?p.byHorizon.map(row).join(""):"")+
-  '<p class="small">Directional accuracy compares forecast-return direction with the realized horizon-close return. Mean absolute return error is in percentage points. Interval coverage is the share of realized horizon closes inside the forecast range. These are historical measurements, not future win probabilities or trading guarantees. Forecasts are generated on overlapping rolling windows, so observations are correlated and must not be treated as independent samples.</p>';
+  '<p class="small">Rolling observations (overlapping horizons; correlated)</p>'+
+  row({...p.overall,horizon:"ALL HORIZONS"},"ROLLING")+
+  (Array.isArray(p.byHorizon)?p.byHorizon.map(m=>row(m,"ROLLING")).join(""):"")+
+  '<p class="small">Non-overlapping observations (within each market and horizon, forecast windows do not overlap)</p>'+
+  row({...p.nonOverlappingOverall,horizon:"ALL HORIZONS"},"NON-OVERLAPPING")+
+  (Array.isArray(p.nonOverlappingByHorizon)?p.nonOverlappingByHorizon.map(m=>row(m,"NON-OVERLAPPING")).join(""):"")+
+  '<p class="small">The sign hit rate compares expected-return direction with the realized horizon-close return; it is not a win probability. Mean absolute return error is compared with a zero-return/no-change baseline; negative improvement means the forecast performed worse than that simple baseline. Non-overlapping windows reduce direct horizon overlap within each market/horizon, but observations can still be dependent. Prediction intervals remain uncalibrated and historical measurements do not establish trading edge.</p>';
 }
 
 async function runMarketForesight(){

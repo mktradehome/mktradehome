@@ -372,7 +372,8 @@ function replay(symbol:string,data:Record<Timeframe,Candle[]>,testStart:number){
   if(!finite(entry)){i++;continue;}
   const quote={bid:entry,ask:entry,stale:false,marketState:"open",quoteAgeSeconds:0};
   const candidate=buildCandidate(f,quote);
-  if(!candidate||!validateCandidate(candidate)){i++;continue;}
+  if(!candidate){i++;continue;}
+  if(!validateCandidate(candidate)){validationBlocks++;i++;continue;}
   const classification=classifyValidatedSignal({
    side:candidate.signal,hardGatesPassed:true,
    frames:{
@@ -437,7 +438,8 @@ function replayShortTerm(symbol:string,data:Record<Timeframe,Candle[]>,testStart
   let exit="TIME",exitR=0,closed=false,tp1Hit=false,held=0;
   const maxHold=36,planned=i+1+maxHold,exitIndex=Math.min(planned,m5.length-1);
   for(let j=i+2;j<=exitIndex;j++){
-   held=j-(i+1);\n   const b=m5[j],stop=side==="BUY"?b.low<=sl:b.high>=sl,t1=side==="BUY"?b.high>=tp1:b.low<=tp1;
+   held=j-(i+1);
+   const b=m5[j],stop=side==="BUY"?b.low<=sl:b.high>=sl,t1=side==="BUY"?b.high>=tp1:b.low<=tp1;
    if(stop){exit="SL";exitR=-1;closed=true;break;}
    if(t1){exit="TP1";exitR=2;tp1Hit=true;closed=true;break;}
    if(j===planned){exit="TIME";exitR=side==="BUY"?(b.close-entry)/candidate.riskDistance:(entry-b.close)/candidate.riskDistance;closed=true;}

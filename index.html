@@ -1092,12 +1092,20 @@ function renderUnifiedMarketContext(){
   const bias=String(tech?.bias||"NEUTRAL").toUpperCase();
   const techDirection=bias==="BULLISH"?"UP":bias==="BEARISH"?"DOWN":"NEUTRAL";
   const horizons=Array.isArray(forecast?.forecasts)?forecast.forecasts:[];
-  const checks=horizons.map(item=>{
+  // Only 15M and 1H are considered in the context verdict. The 4H baseline
+  // has not yet shown adequate non-overlapping, no-change-benchmark evidence.
+  const decisionHorizons=horizons.filter(item=>["15M","1H"].includes(String(item.horizon||"").toUpperCase()));
+  const checks=decisionHorizons.map(item=>{
    const direction=String(item.directional_bias||"SIDEWAYS").toUpperCase();
    const relation=techDirection==="NEUTRAL"||direction==="SIDEWAYS"?"NEUTRAL":
     direction===techDirection?"ALIGNS":"DIVERGES";
    return {horizon:item.horizon,direction,relation};
   });
+  const fourHour=horizons.find(item=>String(item.horizon||"").toUpperCase()==="4H");
+  const fourHourRows=Array.isArray(latestForesightPerformance?.nonOverlappingByMarketHorizon)?latestForesightPerformance.nonOverlappingByMarketHorizon:[];
+  const fourHourMetric=fourHourRows.find(item=>String(item.symbol||"").toUpperCase()===market.symbol&&String(item.horizon||"").toUpperCase()==="4H");
+  const fourHourCount=Number(fourHourMetric?.evaluated)||0;
+  const fourHourNote=!fourHour?"4H unavailable":fourHourCount<30?"4H "+String(fourHour.directional_bias||"SIDEWAYS")+" · EXPERIMENTAL (small non-overlapping sample)":"4H "+String(fourHour.directional_bias||"SIDEWAYS")+" · EXPERIMENTAL (not used in verdict)";
   const aligned=checks.filter(x=>x.relation==="ALIGNS").length;
   const diverged=checks.filter(x=>x.relation==="DIVERGES").length;
   const verdict= !checks.length?"WAITING FOR FORESIGHT":
@@ -1110,7 +1118,7 @@ function renderUnifiedMarketContext(){
    const item=frameData[frame]||{};
    return frame+" "+String(item.signal||"WAIT");
   }).join(" · ");
-  const horizonLine=checks.length?checks.map(x=>x.horizon+" "+x.direction).join(" · "):"No current forecast available";
+  const horizonLine=(checks.length?checks.map(x=>x.horizon+" "+x.direction):[]).concat(fourHour?[fourHourNote]:[]).join(" · ")||"No current forecast available";
   const updated=tech?.updated_at?new Date(tech.updated_at).toLocaleTimeString():"technical context unavailable";
   return '<div class="trade-item"><strong>'+cell(market.name)+'</strong>'+
    '<div class="signal '+(bias==="BULLISH"?"buy":bias==="BEARISH"?"sell":"wait")+'">Technical intelligence: '+cell(bias)+'</div>'+
@@ -1120,7 +1128,7 @@ function renderUnifiedMarketContext(){
    '<div class="small">'+aligned+' aligned horizon(s) · '+diverged+' conflicting horizon(s). Updated: '+cell(updated)+'</div></div>';
  }).join("");
  const stamp=latestForesightGeneratedAt?"Last foresight scan: "+new Date(latestForesightGeneratedAt).toLocaleString():"Waiting for first successful foresight scan";
- container.innerHTML=cards+'<p class="small">'+cell(stamp)+'. This comparison never changes BUY/SELL/WAIT rules, approval eligibility, risk limits or MT5 execution.</p>';
+ container.innerHTML=cards+'<p class="small">'+cell(stamp)+'. 4H Foresight is experimental and excluded from the alignment verdict until it has sufficient non-overlapping evidence and beats a zero-return baseline. This comparison never changes BUY/SELL/WAIT rules, approval eligibility, risk limits or MT5 execution.</p>';
  renderOpportunityIntelligence();
 }
 
@@ -1161,13 +1169,17 @@ function renderOpportunityIntelligence(){
   const horizons=Array.isArray(forecast?.forecasts)?forecast.forecasts:[];
   const expected=a.overall==="BUY"?"UP":"DOWN";
   const relevant=horizons.filter(x=>["15M","1H"].includes(String(x.horizon||"").toUpperCase()));
+  const historicalRows=Array.isArray(latestForesightPerformance?.nonOverlappingByMarketHorizon)?latestForesightPerformance.nonOverlappingByMarketHorizon:[];
+  const historicalEvidence=relevant.map(x=>historicalRows.find(m=>String(m.symbol||"").toUpperCase()===market.symbol&&String(m.horizon||"").toUpperCase()===String(x.horizon||"").toUpperCase()));
+  const forecastEvidenceValidated=relevant.length>=2&&historicalEvidence.length===relevant.length&&historicalEvidence.every(m=>m&&Number(m.evaluated)>=30&&Number(m.improvementVsZeroBaselinePct)>0);
   let context="FORESIGHT NOT AVAILABLE";
-  if(foresightFresh&&techFresh&&relevant.length>=2){
+  if(foresightFresh&&techFresh&&forecastEvidenceValidated){
    const directions=relevant.map(x=>String(x.directional_bias||"SIDEWAYS").toUpperCase());
    context=directions.every(x=>x===expected)?"FORESIGHT ALIGNS":
     directions.some(x=>x!==expected&&x!=="SIDEWAYS")?"FORESIGHT DIVERGES":"FORESIGHT MIXED / SIDEWAYS";
   }else if(!techFresh)context="TECHNICAL CONTEXT STALE";
   else if(!foresightFresh)context="FORESIGHT STALE / NOT AVAILABLE";
+  else context="FORESIGHT NOT VALIDATED — small sample or no improvement over no-change baseline";
   return {market,valid:true,a,context};
  });
  const active=rows.filter(x=>x.valid);
@@ -1744,7 +1756,16 @@ async function runMarketForesight(){
   const cell=v=>escapeHTML(v===undefined||v===null?"—":v);
   $("foresightResults").innerHTML=(data.results||[]).map(r=>{
    if(r.status!=="FORECAST_READY")return '<div class="trade-item"><strong>'+cell(r.symbol)+'</strong><div class="small">ABSTAINED · '+cell(r.reason)+'</div></div>';
-   const rows=(r.forecasts||[]).map(x=>'<div class="row"><span>'+cell(x.horizon)+' · '+cell(x.directional_bias)+'</span><strong>'+cell(fmt(x.expected_price))+'</strong></div><div class="small">Range: '+cell(fmt(x.lower_price))+' – '+cell(fmt(x.upper_price))+' · Expected move: '+cell((Number(x.expected_return)*100).toFixed(3))+'%</div>').join("");
+   const performanceRows=Array.isArray(latestForesightPerformance?.nonOverlappingByMarketHorizon)?latestForesightPerformance.nonOverlappingByMarketHorizon:[];
+   const rows=(r.forecasts||[]).map(x=>{
+    const horizon=String(x.horizon||"").toUpperCase();
+    const metric=performanceRows.find(m=>String(m.symbol||"").toUpperCase()===String(r.symbol||"").toUpperCase()&&String(m.horizon||"").toUpperCase()===horizon);
+    const sample=Number(metric?.evaluated)||0;
+    const improvement=Number(metric?.improvementVsZeroBaselinePct);
+    const validation=horizon==="4H"?"EXPERIMENTAL · excluded from alignment":
+     !metric||sample<30||!Number.isFinite(improvement)||improvement<=0?"EXPERIMENTAL · not validated vs no-change":"EARLY HISTORICAL SUPPORT · not calibrated";
+    return '<div class="row"><span>'+cell(x.horizon)+' · '+cell(x.directional_bias)+'</span><strong>'+cell(fmt(x.expected_price))+'</strong></div><div class="small">'+cell(validation)+' · '+sample+' non-overlapping outcomes · Range: '+cell(fmt(x.lower_price))+' – '+cell(fmt(x.upper_price))+' · Expected move: '+cell((Number(x.expected_return)*100).toFixed(3))+'%</div>';
+   }).join("");
    return '<div class="trade-item"><strong>'+cell(r.symbol)+'</strong><div class="small">Reference '+cell(fmt(r.referencePrice))+' · '+cell(r.referenceSource)+'</div>'+rows+'</div>';
   }).join("");
   showMessage("foresightStatus","LIVE · "+cell(data.forecastsCreated)+" forecasts saved · "+cell(data.candlesArchived)+" candle observations archived · "+cell(data.outcomesEvaluated)+" matured forecasts evaluated · "+new Date(data.generatedAt).toLocaleString()+". Probabilities are not calibrated.");

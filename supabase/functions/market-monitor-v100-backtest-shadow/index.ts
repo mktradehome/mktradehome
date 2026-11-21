@@ -373,7 +373,7 @@ function replay(symbol:string,data:Record<Timeframe,Candle[]>,testStart:number){
   const quote={bid:entry,ask:entry,stale:false,marketState:"open",quoteAgeSeconds:0};
   const candidate=buildCandidate(f,quote);
   if(!candidate){i++;continue;}
-  if(!validateCandidate(candidate)){validationBlocks++;i++;continue;}
+  if(!validateCandidate(candidate)){blocked++;i++;continue;}
   const classification=classifyValidatedSignal({
    side:candidate.signal,hardGatesPassed:true,
    frames:{

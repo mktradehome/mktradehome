@@ -1,5 +1,6 @@
 import { classifyValidatedSignal } from "./signal-classification.ts";
 import { buildShortTermCandidate } from "./short-term-shadow.ts";
+import { baselineRejectionReason } from "./baseline-diagnostics.ts";
 
 export type Side = "BUY" | "SELL" | "WAIT";
 export type Timeframe = "5M" | "15M" | "1H" | "4H";
@@ -354,7 +355,8 @@ function metrics(trades:any[]){
  tp1HitPct:trades.length?+(trades.filter(t=>t.tp1).length/trades.length*100).toFixed(1):0};
 }
 function replay(symbol:string,data:Record<Timeframe,Candle[]>,testStart:number){
- const m15=data["15M"],all:any[]=[],openAtEnd:{side:string;signalClass:"GOOD_AND_CLEAR"|"NORMAL"|"WAIT";displayLabel:"GOOD AND CLEAR SIGNAL"|"NORMAL SIGNAL"|"WAIT";entryTime:string;entry:number;exit:string;holdingBars:number;floatingR:number}[]=[];let lo=0,hi=m15.length;while(lo<hi){const mid=(lo+hi)>>1;if(m15[mid].time+PERIOD_MS["15M"]<testStart)lo=mid+1;else hi=mid;}let i=Math.max(59,lo),signals=0,blocked=0,staleDataBlocks=0;
+ const m15=data["15M"],all:any[]=[],openAtEnd:{side:string;signalClass:"GOOD_AND_CLEAR"|"NORMAL"|"WAIT";displayLabel:"GOOD AND CLEAR SIGNAL"|"NORMAL SIGNAL"|"WAIT";entryTime:string;entry:number;exit:string;holdingBars:number;floatingR:number}[]=[];let lo=0,hi=m15.length;while(lo<hi){const mid=(lo+hi)>>1;if(m15[mid].time+PERIOD_MS["15M"]<testStart)lo=mid+1;else hi=mid;}let i=Math.max(59,lo),signals=0,blocked=0,staleDataBlocks=0,barsEvaluated=0;
+ const rejectionReasons:Record<string,number>={};
  while(i<m15.length-2){
   const signalAt=m15[i].time+PERIOD_MS["15M"];
   const f={} as Record<Timeframe,Indicators>;let enough=true;
@@ -405,7 +407,7 @@ function replay(symbol:string,data:Record<Timeframe,Candle[]>,testStart:number){
  const normal=all.filter(t=>t.signalClass==="NORMAL");
  const openGoodAndClear=openAtEnd.filter(t=>t.signalClass==="GOOD_AND_CLEAR");
  const openNormal=openAtEnd.filter(t=>t.signalClass==="NORMAL");
- return {symbol,bars:Object.fromEntries(Object.entries(data).map(([k,v])=>[k,v.length])),signalsConsidered:signals,validationBlocks:blocked,staleDataBlocks,openAtEndCount:openAtEnd.length,openMarkToMarketR:+openAtEnd.reduce((sum:number,t:{floatingR:number})=>sum+t.floatingR,0).toFixed(2),...metrics(all),bySignalClass:{goodAndClear:{...metrics(goodAndClear),openAtEnd:openGoodAndClear.length},normal:{...metrics(normal),openAtEnd:openNormal.length}},recentTrades:all.slice(-10),recentOpenSetups:openAtEnd.slice(-10)};
+ return {symbol,bars:Object.fromEntries(Object.entries(data).map(([k,v])=>[k,v.length])),barsEvaluated,signalsConsidered:signals,validationBlocks:blocked,staleDataBlocks,rejectionReasons,rejectionReasonTotal:Object.values(rejectionReasons).reduce((a,b)=>a+b,0),openAtEndCount:openAtEnd.length,openMarkToMarketR:+openAtEnd.reduce((sum:number,t:{floatingR:number})=>sum+t.floatingR,0).toFixed(2),...metrics(all),bySignalClass:{goodAndClear:{...metrics(goodAndClear),openAtEnd:openGoodAndClear.length},normal:{...metrics(normal),openAtEnd:openNormal.length}},recentTrades:all.slice(-10),recentOpenSetups:openAtEnd.slice(-10)};
 }
 
 function replayShortTerm(symbol:string,data:Record<Timeframe,Candle[]>,testStart:number){

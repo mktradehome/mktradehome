@@ -186,3 +186,5 @@ Last verified: 2026-11-19 04:02 UTC
 - Phase 0 is broker-truth first: obtain and back up the exact EA source; implement complete Demo position snapshots and idempotent close-report recovery; verify one full Demo lifecycle.
 - No production code, database schema, V63 rules, approval logic, risk controls, MT5 execution behavior, or deployed services were changed. This is a documentation-only research plan on an isolated branch; it is not deployed.
 - Reference review: Pocket Option official platform materials and ESMA's AI-investing caution. Vendor feature descriptions are not independent proof of profitability.
+
+- Dashboard information architecture expanded per user request: separate Overview, My Account, Watch Charts, Market Scanner, Approval Centre, Open Trades, Trade History, Performance, Alerts & Activity, and Settings. Desktop left sidebar; mobile bottom navigation plus More menu. Keep this design isolated until implementation and route tests pass.

@@ -213,3 +213,7 @@ Last verified: 2026-11-19 04:02 UTC
 
 - GitHub Actions run `44906595619` completed successfully for the revision containing both navigation and focused review-session modules; all 11 workflow steps passed, including both new JavaScript syntax checks and all existing strategy/approval tests.
 - A subsequent code review caught that the legacy `advancedTools` wrapper also has class `card`, so its generic card branch could intercept it before its children were routed. Fixed the branch order to unwrap and route its child cards first, then remove the empty wrapper. Fix commit: `8f9cdfb47f621c7b92a7b7b0b73b3997e5bc6c1a`. This correction is newer than the successful CI run and needs its own CI result.
+
+- GitHub Actions run `44906641766` completed successfully on navigation-routing fix commit `8f9cdfb47f621c7b92a7b7b0b73b3997e5bc6c1a`. All 11 workflow steps passed, including production/shadow Edge Function type-checks, both Vision 2.0 module syntax checks, Foresight tests, approval-proof tests and legacy engine fixtures.
+- Draft PR #3 remains open, mergeable and unmerged. It contains the segmented dashboard shell and focused review-session UI. No production deployment has been triggered.
+- Full browser-based testing is still outstanding; CI validates syntax and existing backend tests but does not simulate authenticated browser interactions or mobile layout.

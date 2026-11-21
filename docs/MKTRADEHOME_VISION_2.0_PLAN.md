@@ -87,3 +87,26 @@ Start with Phase 0. The recent user-reported BTCUSD +9.70 result is encouraging 
 - ESMA AI-investing warning: https://www.esma.europa.eu/sites/default/files/2025-03/ESMA_Warning_on_the_use_of_AI_-_Malta_-_EN.pdf — reminder that AI signals can be wrong and cannot guarantee outcomes.
 
 Pocket Option's own descriptions are vendor materials, not independent validation of its AI performance or trading results.
+
+
+## Dashboard information architecture (user-requested)
+The dashboard must be a multi-section workspace, not one long vertical feed. Keep the existing dark premium visual identity and make navigation obvious on desktop and phone.
+
+Primary navigation sections:
+1. **Overview** — account health, balance/equity freshness, current session status, strongest eligible opportunity, and concise alerts.
+2. **My Account** — connected MT5 account/server label, Demo/Real mode shown prominently, balance/equity/margin/free margin with capture time, connection status, and safe account settings. Never expose credentials.
+3. **Watch Charts** — dedicated chart workspace with market selector for BTCUSD, EURUSD, XAUUSD and USDJPY; timeframe controls (5M, 15M, 1H, 4H); clear quote/data freshness; indicator/context overlays; chart must not imply a broker position unless broker-confirmed.
+4. **Market Scanner** — four-market comparison and ranked eligible V63 opportunities with transparent reasons; explicit WAIT when none qualify.
+5. **Approval Centre** — pending trade proposals, full entry/SL/TP/risk details, expiry, approve/reject actions, and clear approval state.
+6. **Open Trades** — only broker-confirmed live positions, with direction, volume, entry/current price, SL/TP, floating P/L, and last sync time. If the bridge is offline or snapshot stale, display STALE/UNKNOWN rather than guessed values.
+7. **Trade History** — closed broker-confirmed trades, realized P/L, R multiple, costs when available, close reason, and sync/verification status. User-reported P/L must be visibly distinguished from broker-verified P/L.
+8. **Performance** — measured outcomes by market, strategy version, session and regime; sample sizes and uncertainty must be visible.
+9. **Alerts & Activity** — signal changes, approvals, execution acknowledgements, connectivity, reconciliation failures and system events.
+10. **Settings** — watchlist, chart preferences, alert preferences and risk display settings. Risk limits are protected; any changes require explicit confirmation and must never silently relax safeguards.
+
+Navigation behavior:
+- Desktop: persistent left sidebar with icons and readable labels; content changes in the main workspace without stacking every section into one page.
+- Mobile: compact bottom navigation for the most-used sections (Overview, Charts, Scanner, Trades, Account) plus a clearly accessible More menu for remaining sections. Touch targets should be comfortable.
+- Use distinct page titles, selected-navigation state, breadcrumbs where helpful, consistent summary cards and clear empty/loading/error states.
+- Preserve responsive layout, accessible contrast, keyboard focus and large readable numbers. No fake data: unavailable/stale values must be labelled.
+- The current dashboard is not to be replaced until the new navigation and all routes are implemented and tested on a separate branch. Keep existing functionality intact during migration.

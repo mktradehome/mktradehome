@@ -95,6 +95,37 @@ label{display:block;font-size:13px;color:#c7d8ee;margin-top:10px}
 #mkSupportSend:disabled{opacity:.5;cursor:wait}
 @media(max-width:520px){#mkSupportFab{right:12px;bottom:12px;width:auto;max-width:125px;margin:0;padding:9px 11px;font-size:12px}#mkSupportPanel{right:12px;bottom:58px;width:min(300px,calc(100vw - 24px));height:min(360px,calc(100vh - 80px))}}
 
+
+/* Vision 2.0 segmented workstation */
+.mk-v2-shell{display:grid;grid-template-columns:210px minmax(0,1fr);gap:18px;align-items:start}
+.mk-v2-sidebar{position:sticky;top:14px;display:flex;flex-direction:column;gap:6px;padding:12px;background:rgba(5,13,27,.94);border:1px solid #29476d;border-radius:14px}
+.mk-v2-brand{color:#f5c542;font-weight:800;font-size:13px;letter-spacing:.8px;padding:8px 10px 12px}
+.mk-v2-nav button{width:100%;text-align:left;margin:0;padding:11px 12px;background:transparent;color:#c7d8ee;border:1px solid transparent;font-size:13px}
+.mk-v2-nav button.active{background:#17365f;border-color:#d4a72c;color:#fff}
+.mk-v2-main{min-width:0}
+.mk-v2-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:2px 0 14px}
+.mk-v2-heading h2{font-size:21px;color:#f5c542;margin:0}
+.mk-v2-heading p{margin-top:4px}
+.mk-v2-view[hidden]{display:none!important}
+.mk-v2-mobile-nav{display:none}
+.mk-v2-more{position:fixed;z-index:10001;left:12px;right:12px;bottom:74px;padding:12px;background:#101b2b;border:1px solid #d4a72c;border-radius:14px;box-shadow:0 12px 40px #000c}
+.mk-v2-more button{margin:3px 0;text-align:left;background:#17365f}
+.mk-v2-placeholder{border:1px dashed #56708e;background:rgba(8,26,48,.82);border-radius:12px;padding:16px;margin-bottom:14px}
+.mk-v2-placeholder strong{color:#f5c542}
+#pagesTrack{display:none!important}
+#dashboard>.page-nav{display:none!important}
+@media(max-width:760px){
+ body{padding:12px 12px 88px}
+ .container{max-width:100%}
+ .mk-v2-shell{display:block}
+ .mk-v2-sidebar{display:none}
+ .mk-v2-heading{margin-top:4px}
+ .mk-v2-mobile-nav{position:fixed;z-index:10000;left:8px;right:8px;bottom:8px;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:4px;padding:7px;background:rgba(5,13,27,.97);border:1px solid #29476d;border-radius:15px;box-shadow:0 8px 30px #000b}
+ .mk-v2-mobile-nav button{margin:0;padding:9px 2px;min-height:48px;font-size:10px;line-height:1.2;background:transparent;color:#c7d8ee;border:1px solid transparent}
+ .mk-v2-mobile-nav button.active{background:#17365f;border-color:#d4a72c;color:#fff}
+ .mk-v2-more{bottom:70px}
+}
+
 </style>
 </head>
 <body>
@@ -1917,5 +1948,6 @@ form.addEventListener("submit",async(event)=>{
 })();
 </script>
 
+<script src="./vision2-dashboard.js"></script>
 </body>
 </html>

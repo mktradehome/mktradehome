@@ -297,6 +297,47 @@ async function loadHistory(symbol:string,frame:{key:Timeframe;interval:string;ms
  if(result.length<60)throw new Error(symbol+" "+frame.key+" has fewer than 60 completed historical candles.");
  return result;
 }
+
+function getArchiveServiceKey(){
+ const legacy=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+ if(legacy)return legacy;
+ const keys=Deno.env.get("SUPABASE_SECRET_KEYS");
+ if(keys){try{return JSON.parse(keys).default||"";}catch{}}
+ return "";
+}
+async function loadArchivedHistory(symbol:string,frame:{key:Timeframe;interval:string;ms:number},days:number):Promise<Candle[]>{
+ const base=Deno.env.get("SUPABASE_URL"),key=getArchiveServiceKey();
+ if(!base||!key)throw new Error("Server-side archive credentials are unavailable.");
+ const start=Date.now()-(days+12)*86400000,all:any[]=[];
+ for(let offset=0;offset<100000;offset+=1000){
+  const url=new URL(base+"/rest/v1/market_candle_archive");
+  url.searchParams.set("symbol","eq."+symbol);
+  url.searchParams.set("timeframe","eq."+frame.key);
+  url.searchParams.set("select","candle_time,open,high,low,close");
+  url.searchParams.set("candle_time","gte."+new Date(start).toISOString());
+  url.searchParams.set("order","candle_time.asc");
+  url.searchParams.set("limit","1000");
+  url.searchParams.set("offset",String(offset));
+  const headers:Record<string,string>={apikey:key,Accept:"application/json"};
+  if(!key.startsWith("sb_secret_"))headers.Authorization="Bearer "+key;
+  const response=await fetch(url,{headers,signal:AbortSignal.timeout(20000)});
+  if(!response.ok)throw new Error("Archived "+symbol+" "+frame.key+" history HTTP "+response.status);
+  const batch=await response.json();
+  if(!Array.isArray(batch))throw new Error("Archived "+symbol+" "+frame.key+" history response is invalid.");
+  all.push(...batch.map((row:any)=>({...row,time:row.candle_time})));
+  if(batch.length<1000)break;
+ }
+ return parseHistory(all,frame.ms);
+}
+async function loadCombinedHistory(symbol:string,frame:{key:Timeframe;interval:string;ms:number},days:number){
+ let archived:Candle[]=[],provider:Candle[]=[],archiveError="",providerError="";
+ try{archived=await loadArchivedHistory(symbol,frame,days);}catch(e){archiveError=e instanceof Error?e.message:"Archive unavailable";}
+ try{provider=await loadHistory(symbol,frame,days);}catch(e){providerError=e instanceof Error?e.message:"Provider unavailable";}
+ const combined=parseHistory([...archived,...provider],frame.ms);
+ if(combined.length<60)throw new Error(symbol+" "+frame.key+" has insufficient history. Archive: "+(archiveError||archived.length+" bars")+". Provider: "+(providerError||provider.length+" bars")+".");
+ return {bars:combined,archiveBars:archived.length,providerBars:provider.length,source:archived.length&&provider.length?"archive+rolling-provider":archived.length?"archive":"rolling-provider"};
+}
+
 function completedAt(bars:Candle[],at:number,period:number):Candle[]{
  let lo=0,hi=bars.length;
  while(lo<hi){const mid=(lo+hi)>>1;if(bars[mid].time+period<=at)lo=mid+1;else hi=mid;}
@@ -312,7 +353,7 @@ function metrics(trades:any[]){
  tp1HitPct:trades.length?+(trades.filter(t=>t.tp1).length/trades.length*100).toFixed(1):0};
 }
 function replay(symbol:string,data:Record<Timeframe,Candle[]>,testStart:number){
- const m15=data["15M"],all:any[]=[],openAtEnd:{side:string;entryTime:string;entry:number;exit:string;holdingBars:number;floatingR:number}[]=[];let lo=0,hi=m15.length;while(lo<hi){const mid=(lo+hi)>>1;if(m15[mid].time+PERIOD_MS["15M"]<testStart)lo=mid+1;else hi=mid;}let i=Math.max(59,lo),signals=0,blocked=0;
+ const m15=data["15M"],all:any[]=[],openAtEnd:{side:string;entryTime:string;entry:number;exit:string;holdingBars:number;floatingR:number}[]=[];let lo=0,hi=m15.length;while(lo<hi){const mid=(lo+hi)>>1;if(m15[mid].time+PERIOD_MS["15M"]<testStart)lo=mid+1;else hi=mid;}let i=Math.max(59,lo),signals=0,blocked=0,staleDataBlocks=0;
  while(i<m15.length-2){
   const signalAt=m15[i].time+PERIOD_MS["15M"];
   const f={} as Record<Timeframe,Indicators>;let enough=true;
@@ -322,6 +363,8 @@ function replay(symbol:string,data:Record<Timeframe,Candle[]>,testStart:number){
    f[tf]=analyseTimeframe(bars,tf,signalAt);
   }
   if(!enough){i++;continue;}
+  const staleFrame=([ "5M","15M","1H","4H" ] as Timeframe[]).some(tf=>f[tf].candleAgeSeconds>PERIOD_MS[tf]*1.5/1000);
+  if(staleFrame){staleDataBlocks++;i++;continue;}
   // No look-ahead: signal is evaluated after the completed 15M bar;
   // entry is the OPEN of the next 15M bar.
   const fillBar=m15[i+1],entry=fillBar.open;
@@ -360,7 +403,7 @@ function replay(symbol:string,data:Record<Timeframe,Candle[]>,testStart:number){
  const normal=all.filter(t=>t.signalClass==="NORMAL");
  const openGoodAndClear=openAtEnd.filter(t=>t.signalClass==="GOOD_AND_CLEAR");
  const openNormal=openAtEnd.filter(t=>t.signalClass==="NORMAL");
- return {symbol,bars:Object.fromEntries(Object.entries(data).map(([k,v])=>[k,v.length])),signalsConsidered:signals,validationBlocks:blocked,openAtEndCount:openAtEnd.length,openMarkToMarketR:+openAtEnd.reduce((sum:number,t:{floatingR:number})=>sum+t.floatingR,0).toFixed(2),...metrics(all),bySignalClass:{goodAndClear:{...metrics(goodAndClear),openAtEnd:openGoodAndClear.length},normal:{...metrics(normal),openAtEnd:openNormal.length}},recentTrades:all.slice(-10),recentOpenSetups:openAtEnd.slice(-10)};
+ return {symbol,bars:Object.fromEntries(Object.entries(data).map(([k,v])=>[k,v.length])),signalsConsidered:signals,validationBlocks:blocked,staleDataBlocks,openAtEndCount:openAtEnd.length,openMarkToMarketR:+openAtEnd.reduce((sum:number,t:{floatingR:number})=>sum+t.floatingR,0).toFixed(2),...metrics(all),bySignalClass:{goodAndClear:{...metrics(goodAndClear),openAtEnd:openGoodAndClear.length},normal:{...metrics(normal),openAtEnd:openNormal.length}},recentTrades:all.slice(-10),recentOpenSetups:openAtEnd.slice(-10)};
 }
 Deno.serve(async(req:Request)=>{
  if(req.method==="OPTIONS")return new Response("ok",{headers:cors});
@@ -371,8 +414,9 @@ Deno.serve(async(req:Request)=>{
   const body=await req.json().catch(()=>({}));const days=Math.min(30,Math.max(7,Number(body.days)||14));
   const results=await Promise.all(symbols.map(async symbol=>{
    try{
-    const loaded=await Promise.all(frames.map(async frame=>[frame.key,await loadHistory(symbol,frame,days)] as const));
-    const data=Object.fromEntries(loaded) as Record<Timeframe,Candle[]>;
+    const loaded=await Promise.all(frames.map(async frame=>[frame.key,await loadCombinedHistory(symbol,frame,days)] as const));
+    const data=Object.fromEntries(loaded.map(([key,value])=>[key,value.bars])) as Record<Timeframe,Candle[]>;
+    const historySources=Object.fromEntries(loaded.map(([key,value])=>[key,{source:value.source,archivedBars:value.archiveBars,rollingProviderBars:value.providerBars}]));
     const testStart=Date.now()-days*86400000;
     const warmupStarts=Object.entries(data).map(([tf,bars])=>bars[59].time+PERIOD_MS[tf as Timeframe]);
     const m15Warmup=data["15M"][Math.min(59,data["15M"].length-1)].time+PERIOD_MS["15M"];
@@ -380,18 +424,18 @@ Deno.serve(async(req:Request)=>{
     const effectiveEnd=Math.min(...Object.entries(data).map(([tf,bars])=>bars[bars.length-1].time+PERIOD_MS[tf as Timeframe]));
     const r=replay(symbol,data,effectiveStart);
     const actualCoverageDays=Math.max(0,(effectiveEnd-effectiveStart)/86400000);
-    return {...r,actualCoverageStart:new Date(effectiveStart).toISOString(),actualCoverageEnd:new Date(effectiveEnd).toISOString(),actualCoverageDays:+actualCoverageDays.toFixed(2),coverageLimited:actualCoverageDays+0.25<days};
+    return {...r,historySources,actualCoverageStart:new Date(effectiveStart).toISOString(),actualCoverageEnd:new Date(effectiveEnd).toISOString(),actualCoverageDays:+actualCoverageDays.toFixed(2),coverageLimited:actualCoverageDays+0.25<days};
    }catch(e){return {symbol,error:e instanceof Error?e.message:"Historical replay failed safely."};}
   }));
   return reply({success:true,engine:"Mktradehome V100 SHADOW BACKTEST",baseline:"Exact V100 shadow buildCandidate/scoreTimeframe/validateCandidate helpers",testMode:"Historical OHLC replay only; isolated shadow; no orders, approvals, alerts, queue items, or database writes.",
    requestedDays:days,tp2Mode:"REFERENCE_ONLY_NOT_EXECUTED",generatedAt:new Date().toISOString(),assumptions:[
-    "Only completed candles are used for every timeframe. BiQuote OHLC is a rolling window, not an unlimited archive; the result reports the true common overlap after indicator warm-up.",
+    "Only completed candles are used. Historical candles are loaded from the project-owned market_candle_archive and merged with the provider rolling window; the result reports true common overlap after indicator warm-up. The archive grows only while the Market Foresight collector is running.",
     "Signal is evaluated after a completed 15M candle; entry is the next 15M candle OPEN to avoid same-candle look-ahead.",
     "Entry, stop and targets are recalculated around the next-candle fill using the V100 ATR risk formula. Historical bid/ask is unavailable, so spread is zero in replay and the live spread-based stop-distance component is omitted; live and historical stop distances may differ.",
     "The full position exits at TP1 (2R), matching the current MT5 queue which sends one take-profit price; TP2 is reference-only and is not counted as an executed exit.",
     "If SL and TP1 touch in the same candle, SL is assumed first; maximum holding is 24 hours. Setups without enough future candles at the end of the history window are shown separately as unclosed and excluded from win-rate and profit-factor metrics.",
     "Historical commission, swap, slippage and broker execution are unavailable and excluded; results are gross, not net-realistic.",
-    "The market-open condition is assumed for replay windows; weekends/market closures are not independently modelled.",
+    "Historical quote/session state is unavailable for every candle, so market-open is still an explicit replay assumption. Stale timeframe evidence is now skipped when its last completed candle is older than 1.5 timeframe periods; weekend/session gaps are not interpreted as tradable bars.",
     "Quality score is not a win probability."
    ],productionWrites:false,createsApprovals:false,createsQueueItems:false,telegramAlerts:false,executesTrades:false,results});
  }catch(e){return reply({error:e instanceof Error?e.message:"Shadow backtest failed safely."},500);}

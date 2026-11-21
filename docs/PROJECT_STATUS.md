@@ -395,3 +395,11 @@ Last verified: 2026-11-21 16:24 UTC
 - Production `market-monitor` v67, thresholds, database schema, queues, alerts, manual approval, Demo execution OFF and Real hard lock remain unchanged. No trading action occurred.
 
 - Verification update: the six classifier regression cases were executed locally with Node's TypeScript type-stripping runner and all six passed. This is a focused runtime check, not a Deno/Supabase deployment or a GitHub Actions result. The non-finite timeframe evidence case was tightened to return WAIT rather than NORMAL.
+
+## Unified signal-class replay measurement (2026-11-21)
+- Updated only the isolated `market-monitor-v100-backtest-shadow` source to apply the shared `signal-classification.ts` classifier to candidates that have already passed the existing shadow candidate builder and validation.
+- Historical replay now reports closed-trade metrics separately for `GOOD_AND_CLEAR` and `NORMAL`, including trade count, win rate, net/average R, profit factor and maximum drawdown, plus unclosed-at-window-end counts by class.
+- This is measurement, not a new candidate generator: no entry gate, 1H/4H/15M/5M threshold, entry-extension rule, ATR stop, 2R/3R target, or replay fill assumption was loosened. Both classes inherit the exact same candidate validation and simulation rules.
+- The change is isolated to the shadow backtest source. It does not change production `market-monitor`, live alerts, dashboard labels, approvals, queue records, Demo execution, or Real-account protections. It has not been deployed and no new backtest result has yet been generated.
+- Source commit: `c9e6a7c3fdb44f48889d67eae7d61c33be359888`. The existing classifier regression tests remain the current focused tests; the updated shadow replay still requires CI/type-check and an authenticated run before any performance conclusion.
+- Data caveat remains: BiQuote history is rolling/limited; historical bid/ask spread, commission, swap, slippage and broker fills are not fully represented. Gross shadow results must not be treated as expected live performance.

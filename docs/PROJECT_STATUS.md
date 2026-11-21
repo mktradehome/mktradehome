@@ -227,3 +227,13 @@ Last verified: 2026-11-19 04:02 UTC
 - Verified the Vision 2.0 draft PR #3 is still open, draft, unmerged and mergeable. GitHub Actions run `44906719666` for branch head `e37db174afd44149cc1bee6ff2d1ba7dc8144075` completed successfully.
 - Cloudflare's PR bot reported a successful isolated branch-preview deployment for commit `e37db17`, with preview `https://vision-2-0-research-plan.mktradehome.pages.dev`. This is a branch preview, not a merge to `main`; do not treat it as production deployment or proof of browser acceptance.
 - Next required input is the exact `MktradehomeBridge.mq5` source from the Lenovo laptop. Back it up unchanged before editing; then implement and test the EA/bridge contract together on this isolated branch.
+
+
+## Vision 2.0 dashboard release (2026-11-21 13:29 UTC)
+- Draft PR #3 was merged into main at merge commit 90900b3c0df43ab239c3aca5812e99b2f3cade32. The merge contains the segmented dashboard navigation and Focused Market Review UI.
+- GitHub Actions run 44909068947 (engine and approval tests) completed successfully for the merge commit.
+- GitHub Pages build/deployment run 44909068596 completed successfully for the merge commit. Cloudflare Pages production deployment at mktradehome.pages.dev has not been independently verified from the available deployment evidence; do not equate GitHub Pages success or the earlier Cloudflare preview success with Cloudflare production confirmation.
+- User manually confirmed on the Cloudflare preview that mobile navigation sections and Watch Charts work. The user also inspected Market Scanner; displayed content includes a personal review timer, four markets, stale weekend FX/gold quotes, BTC fresh quote, WAIT decisions, and uncalibrated foresight scorecard. Market closure is expected for weekend FX/gold; stale quotes must remain blocked from approvals.
+- Remaining production acceptance checks: sign-in/PIN, chart resize, approval actions, history/records, logout/session handling, and explicit confirmation that Cloudflare production serves this merge. Do not claim these are tested.
+- No V63 rules, approvals, risk limits, Supabase schema/functions, MT5 execution, or account permissions were changed by this dashboard release.
+- Highest-value next engineering milestone remains broker-truth: obtain the exact MktradehomeBridge.mq5 source from the user's Lenovo laptop, make an unchanged backup, then implement complete authenticated Demo position snapshots and durable idempotent close reporting across EA, bridge, storage and dashboard. Do not fabricate open positions or P/L; do not edit the EA without its exact source.

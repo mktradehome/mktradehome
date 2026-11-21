@@ -88,3 +88,14 @@ Values above are examples only, not an actual account or trade. Account identity
 
 ## Implementation gate
 Do not implement the server/database/dashboard contract against guesses about the EA. First obtain the exact `.mq5` source and make an untouched backup. Inspect its existing authentication, polling cadence, account-mode guard, execution acknowledgement and close-report code. Then implement the matching EA and server changes together on an isolated branch, test Demo-only with synthetic payloads, and run one manually approved Demo trade through the complete lifecycle. No Real-account write path, production deployment or execution automation is part of this phase.
+
+
+## Implementation progress — 2026-11-21 (Demo position snapshot phase)
+
+The exact user-supplied Demo EA source was inspected and backed up unchanged. A candidate source revision was prepared as `MktradehomeBridge_v2.22_open_positions.mq5`; it adds a complete open-position array to the existing account snapshot. Each position includes MT5 position identifier, ticket, broker symbol, side, volume, entry, SL, TP, current price, floating profit, swap and open time. The candidate has **not** been compiled or installed yet.
+
+The Supabase `mt5_account_snapshots` table now has `positions jsonb NOT NULL DEFAULT []` and `positions_complete boolean NOT NULL DEFAULT false`. The `mt5-bridge` Edge Function is deployed as version 32. It validates the optional position array and stores whether the snapshot is complete; dashboard reads include both fields. The separate Real EA is unchanged; snapshots from older bridges without a position array are marked incomplete, not interpreted as zero open positions.
+
+The dashboard now passes the authenticated snapshot's position payload to the Vision 2.0 Open Trades view, which renders broker-reported positions and explicitly distinguishes incomplete or stale data. This dashboard change is committed on main.
+
+**Not yet verified:** MetaEditor compilation; EA installation on the Demo terminal; successful authenticated position upload; visible Demo position card in the live dashboard; empty-snapshot handling against a real terminal; and close-report recovery/outbox. Do not call the feature live until those checks pass. No V63 eligibility, approval, execution, lot-size, or risk rules were changed. Real-account EA and execution path remain untouched.

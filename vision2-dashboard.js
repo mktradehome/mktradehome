@@ -51,7 +51,9 @@
    if(node.classList?.contains("card")){
     const key=mapCard(node,page.id);views[key].querySelector(".mk-v2-content").appendChild(node);
    }else if(node.id==="advancedTools"){
-    views.settings.querySelector(".mk-v2-content").appendChild(node);
+    Array.from(node.querySelectorAll(":scope > .card")).forEach(card=>{
+     const key=mapCard(card,page.id);views[key].querySelector(".mk-v2-content").appendChild(card);
+    });
    }
   });
  });

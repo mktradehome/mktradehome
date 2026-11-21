@@ -13,7 +13,7 @@ jobs:
         with:
           deno-version: v2.x
       - name: Type-check production and shadow Edge Functions
-        run: deno check supabase/functions/market-monitor/index.ts supabase/functions/create-mt5-approval/index.ts supabase/functions/market-monitor-v100-shadow/index.ts supabase/functions/market-monitor-v100-backtest-shadow/index.ts supabase/functions/market-foresight/index.ts supabase/functions/telegram-alerts/index.ts
+        run: deno check supabase/functions/market-monitor/index.ts supabase/functions/create-mt5-approval/index.ts supabase/functions/market-monitor-v100-shadow/index.ts supabase/functions/market-monitor-v100-backtest-shadow/index.ts supabase/functions/market-monitor-v100-backtest-shadow/short-term-shadow.ts supabase/functions/market-foresight/index.ts supabase/functions/telegram-alerts/index.ts
       - name: Check dashboard inline JavaScript syntax
         run: node scripts/check-inline-js.mjs
       - name: Check Vision 2.0 navigation JavaScript syntax
@@ -22,6 +22,8 @@ jobs:
         run: node --check vision2-session.js
       - name: Test candidate geometry floating-point tolerance and risk boundaries
         run: deno test supabase/functions/market-monitor/candidate-geometry.test.ts
+      - name: Test isolated short-term shadow candidate rules
+        run: deno test supabase/functions/market-monitor-v100-backtest-shadow/short-term-shadow.test.ts
       - name: Test Market Foresight performance metrics
         run: deno test supabase/functions/_shared/foresight-performance.test.ts
       - name: Test Market Foresight horizon outcome resolution

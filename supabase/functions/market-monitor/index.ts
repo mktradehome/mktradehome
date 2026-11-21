@@ -178,7 +178,7 @@ function diagnoseCandidate(frames: Record<Timeframe, Indicators>, quote: {bid:nu
   const h1Score=scoreTimeframe(h1), h4Score=scoreTimeframe(h4), m15Score=scoreTimeframe(m15), m5Score=scoreTimeframe(m5);
   const side:"BUY"|"SELL"| "WAIT" = h1.ema20>h1.ema50?"BUY":h1.ema20<h1.ema50?"SELL":"WAIT";
   if(side==="WAIT") return "NO_1H_DIRECTION: 1H EMA20 and EMA50 are flat/equal; no directional bias.";
-  if(Math.abs(h1Score)<12) return "WEAK_1H_BIAS: 1H EMA direction exists but momentum score is below 12 (score "+h1Score+").";
+  if((side==="BUY"&&h1Score<12)||(side==="SELL"&&h1Score>-12)) return "WEAK_1H_BIAS: 1H EMA structure and directional momentum do not agree strongly enough for "+side+" (score "+h1Score+").";
   const opposite=(score:number)=>side==="BUY"?score:-score;
   if(opposite(h4Score)<-30) return "4H_CONFLICT: 4H strongly opposes the 1H "+side+" bias (score "+h4Score+").";
   const aligned=side==="BUY"?m15.ema20>=m15.ema50:m15.ema20<=m15.ema50;
@@ -380,6 +380,13 @@ Deno.serve(async(req)=>{
   }
   console.log("MKTRADEHOME_SCAN", JSON.stringify(results.map((r:any) => {
     const detail:any = {symbol:r.symbol, signal:r.signal, reason:r.reason||r.status||"", quoteAgeSeconds:r.quoteAgeSeconds};
+    if (r.candidateId !== undefined) {
+      detail.candidateId = r.candidateId;
+      detail.qualityScore = r.qualityScore;
+      detail.inAppAlertSaved = r.inAppAlert;
+      detail.telegramDelivered = r.telegramDelivered;
+      detail.notificationErrors = (r.errors||[]).filter((message:string) => /notification|alert/i.test(message));
+    }
     if (r.timeframes) detail.timeframes = Object.fromEntries(Object.entries(r.timeframes).map(([k,v]:any) => [k, {
       signal:v.signal, close:v.close, ema20:v.ema20, ema50:v.ema50, rsi14:v.rsi14,
       macdHistogram:v.macdHistogram, atr14:v.atr14, bars:v.bars,

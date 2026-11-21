@@ -51,5 +51,5 @@ Deno.test("rejects non-finite directional scores from Good and Clear tier", () =
   const input = fixture();
   input.frames["15M"].directionalScore = Number.NaN;
   const result = classifyValidatedSignal(input);
-  assert(result.label === "NORMAL");
+  assert(result.label === "WAIT");
 });

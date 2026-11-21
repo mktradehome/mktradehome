@@ -348,3 +348,10 @@ Last verified: 2026-11-21 16:24 UTC
 - Updated `index.html` so a technical snapshot is considered fresh only when its timestamp is within the last 15 minutes and not in the future. Stale rows now show `STALE SNAPSHOT`, suppress old developing-setup text, and the unified context verdict becomes `STALE TECHNICAL DATA · WAIT FOR FRESH SCAN`. Existing frame values remain visible as historical context with a stale label.
 - This is dashboard presentation only: no scanner, candidate filters, alerting, approval, queue, risk or MT5 execution logic was changed. Commit: `d72ac089275ef801cf436df811c685b82dd62eeb`.
 - GitHub Actions run `44928623241` (engine/approval checks) and Pages deployment run `44928622313` were triggered for this commit. At documentation time, both were still in progress; do not claim deployment or full CI success until their final results are checked.
+
+
+### Final dashboard deployment verification (2026-11-21)
+- Latest engine/approval workflow run `44928657406` for commit `c999ca7fca8666577e4463631301253cf69b8ecf` completed SUCCESS.
+- Latest Pages build/deployment workflow run `44928657100` for the same commit completed SUCCESS. The earlier deployment attempt for dashboard commit `d72ac089275ef801cf436df811c685b82dd62eeb` was cancelled by a newer commit; the final commit is the one successfully deployed.
+- Supabase production `market-monitor` remains v67 ACTIVE. Dashboard freshness guard is deployed to Pages. No trading engine, signal thresholds, approval workflow or execution setting was changed by the dashboard fix.
+- Remaining verification: inspect a fresh live dashboard view and collect further post-v67 scan samples to measure whether precision-only target-validation rejections have decreased. No improvement in trade frequency or profitability is claimed yet.

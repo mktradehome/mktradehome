@@ -968,6 +968,7 @@ symbol:row.symbol,overall:row.signal,entry,sl,tp1,tp2,
 quoteFresh:quoteFresh&&ageMs<=10*60*1000&&stillNearEntry,
 reason:"Restored from saved Mktradehome technical-engine analysis. "+(saved.explanation||""),
 results,aiModel:"Mktradehome Technical Engine",aiConfidence:Number(row.confidence)||0,
+signalClass:saved.signalClass||"LEGACY_UNCLASSIFIED",displayLabel:saved.displayLabel||"LEGACY SIGNAL · NOT CLASSIFIED",
 strength:saved.strength==="STRONG"?"STRONG":"STANDARD",
 engineVerified:isEngine,verificationStatus:"PASSED",
 verificationNote:"Independent technical-engine checks passed.",
@@ -1285,6 +1286,7 @@ const statusText=status==="approved"
 
 return `<div class="approval-trade">
 <h3>${escapeHTML(market.name)} · ${a.strength==="STRONG"?"STRONG ":""}${a.overall}</h3>
+<div class="trade-status">${escapeHTML(a.displayLabel||"LEGACY SIGNAL · NOT CLASSIFIED")}</div>
 <div class="trade-status">INDEPENDENT TECHNICAL RULES PASSED</div>
 <div class="trade-status">${getSignalQuality(a)}</div>
 <div class="trade-status">${statusText}</div>

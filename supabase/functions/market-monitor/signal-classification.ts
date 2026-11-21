@@ -40,6 +40,11 @@ export function classifyValidatedSignal(input: SignalClassificationInput): Signa
     return { label: "WAIT", displayLabel: "WAIT", reason: "Candidate has not passed every mandatory validation gate." };
   }
 
+  const requiredFrames = [input.frames["4H"], input.frames["1H"], input.frames["15M"], input.frames["5M"]];
+  if (requiredFrames.some(frame => !frame || !Number.isFinite(frame.directionalScore))) {
+    return { label: "WAIT", displayLabel: "WAIT", reason: "Timeframe quality evidence is incomplete or non-finite." };
+  }
+
   const direction = input.side === "BUY" ? 1 : -1;
   const alignedAndStrong = (frame: TimeframeQuality, minimum: number) =>
     frame.emaAligned === true &&

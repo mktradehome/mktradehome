@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { candidateValidationReason } from "./candidate-geometry.ts";
+import { classifyValidatedSignal } from "./signal-classification.ts";
 export type Side = "BUY" | "SELL" | "WAIT";
 export type Timeframe = "5M" | "15M" | "1H" | "4H";
 
@@ -313,6 +314,21 @@ Deno.serve(async(req)=>{
      results.push({symbol,signal:"WAIT",reason:diagnoseCandidate(tf,quote),setupWatch,timeframes:tf,intelligence,
       intelligenceSaved:!intelligenceError});continue;
     }
+    const qualityFrame = (frame: Indicators) => ({
+     emaAligned: candidate.signal === "BUY" ? frame.ema20 >= frame.ema50 : frame.ema20 <= frame.ema50,
+     directionalScore: scoreTimeframe(frame)
+    });
+    const classification = classifyValidatedSignal({
+     side: candidate.signal,
+     hardGatesPassed: true,
+     frames: {
+      "4H": qualityFrame(tf["4H"]),
+      "1H": qualityFrame(tf["1H"]),
+      "15M": qualityFrame(tf["15M"]),
+      "5M": qualityFrame(tf["5M"])
+     }
+    });
+    if (classification.label === "WAIT") throw new Error("Validated candidate could not be safely classified.");
     const {data:prev,error:prevError}=await db.from("market_signal_state").select("last_signal,updated_at").eq("symbol",symbol).maybeSingle();
     if(prevError)throw prevError;
     const ageMs=prev?.updated_at?Date.now()-Date.parse(prev.updated_at):Infinity;
@@ -329,12 +345,14 @@ Deno.serve(async(req)=>{
      verificationStatus:"PASSED",gptVerified:false,fallbackVerified:false,
      checkedAt:created,expiresAt:new Date(Date.now()+600000).toISOString(),
      qualityScore:candidate.qualityScore,qualityScoreIsWinProbability:false,
+     signalClass:classification.label,displayLabel:classification.displayLabel,classificationReason:classification.reason,
      explanation:candidate.explanation,risk_note:"Rule-based analysis is not a guarantee. Check the live chart before manual Demo approval.",
      timeframes:tf,quote:{bid,ask,price:candidate.entry,quoteAgeSeconds:age,marketState:quote.marketState}
     };
     const message=[
      "📊 MKTRADEHOME TECHNICAL SIGNAL","",
      "UNAPPROVED CANDIDATE — MANUAL REVIEW REQUIRED",
+     classification.displayLabel,
      symbol+" · "+candidate.signal,
      "Entry: "+candidate.entry,"Stop Loss: "+candidate.stopLoss,
      "TP1 (1:2): "+candidate.takeProfit1,"TP2 (1:3): "+candidate.takeProfit2,
@@ -376,7 +394,7 @@ Deno.serve(async(req)=>{
     }
     const {error:stateError}=await db.from("market_signal_state").upsert({symbol,last_signal:candidate.signal,updated_at:created});
     if(stateError)errors.push("State: "+stateError.message);
-    results.push({symbol,signal:candidate.signal,status:"Independent candidate saved for manual Demo review. Alert delivery attempted immediately; no approval or trade was created.",candidateId:row.id,inAppAlert:!alertError,telegramDelivered,expiresInMinutes:10,qualityScore:candidate.qualityScore,intelligence,intelligenceSaved:!intelligenceError,errors});
+    results.push({symbol,signal:candidate.signal,signalClass:classification.label,displayLabel:classification.displayLabel,status:"Independent candidate saved for manual Demo review. Alert delivery attempted immediately; no approval or trade was created.",candidateId:row.id,inAppAlert:!alertError,telegramDelivered,expiresInMinutes:10,qualityScore:candidate.qualityScore,intelligence,intelligenceSaved:!intelligenceError,errors});
    }catch(e){results.push({symbol,signal:"WAIT",reason:e instanceof Error?e.message:"Analysis failed safely."});}
   }
   console.log("MKTRADEHOME_SCAN", JSON.stringify(results.map((r:any) => {
@@ -384,6 +402,8 @@ Deno.serve(async(req)=>{
     if (r.candidateId !== undefined) {
       detail.candidateId = r.candidateId;
       detail.qualityScore = r.qualityScore;
+      detail.signalClass = r.signalClass;
+      detail.displayLabel = r.displayLabel;
       detail.inAppAlertSaved = r.inAppAlert;
       detail.telegramDelivered = r.telegramDelivered;
       detail.notificationErrors = (r.errors||[]).filter((message:string) => /notification|alert/i.test(message));

@@ -1060,13 +1060,18 @@ async function loadMarketIntelligence(){
     return k+": "+(item.signal||"WAIT")+" ("+(Number(item.score)||0)+")";
    }).join(" · ");
    const summary=String(row.summary||"");
-   const watchMatch=summary.match(/(DEVELOPING (?:BUY|SELL) SETUP[^.]*|No developing setup[^.]*)/);
+   const updatedMs=Date.parse(row.updated_at||"");
+   const ageMs=Date.now()-updatedMs;
+   const snapshotFresh=Number.isFinite(updatedMs)&&ageMs>=0&&ageMs<=15*60*1000;
+   const watchMatch=snapshotFresh?summary.match(/(DEVELOPING (?:BUY|SELL) SETUP[^.]*|No developing setup[^.]*)/):null;
    const watchText=watchMatch?watchMatch[0]:"";
    const watchClass=watchText.includes("BUY")?"buy":watchText.includes("SELL")?"sell":"wait";
-   const contextSummary=watchMatch?summary.replace(watchMatch[0],"").trim():summary;
+   const contextSummary=snapshotFresh?(watchMatch?summary.replace(watchMatch[0],"").trim():summary):"Last saved market context is stale. No live developing setup is confirmed; wait for a fresh scan.";
+   const displayClass=snapshotFresh?cls:"wait";
+   const displayBias=snapshotFresh?(escapeHTML(row.bias)+' · '+score+'/100'):"STALE SNAPSHOT";
    return '<div class="trade-item"><strong>'+escapeHTML(row.symbol)+'</strong>'+
-    '<div class="signal '+cls+'">'+escapeHTML(row.bias)+' · '+score+'/100</div>'+
-    '<div class="small">Market regime: '+escapeHTML(String(row.regime||"TRANSITION").replace("_"," "))+'</div>'+
+    '<div class="signal '+displayClass+'">'+displayBias+'</div>'+
+    '<div class="small">Market regime: '+(snapshotFresh?escapeHTML(String(row.regime||"TRANSITION").replace("_"," ")):"Unavailable — snapshot stale")+'</div>'+
     (watchText?'<div class="signal '+watchClass+'">'+escapeHTML(watchText)+'</div>':'')+
     '<div class="small">'+escapeHTML(contextSummary)+'</div>'+
     '<div class="small">'+escapeHTML(frameLine)+'</div>'+
@@ -1089,8 +1094,11 @@ function renderUnifiedMarketContext(){
  const cards=marketList.map(market=>{
   const tech=intelligence.get(market.symbol);
   const forecast=foresight.get(market.symbol);
-  const bias=String(tech?.bias||"NEUTRAL").toUpperCase();
-  const techDirection=bias==="BULLISH"?"UP":bias==="BEARISH"?"DOWN":"NEUTRAL";
+  const techUpdated=Date.parse(tech?.updated_at||"");
+  const techAge=Date.now()-techUpdated;
+  const techFresh=Number.isFinite(techUpdated)&&techAge>=0&&techAge<=15*60*1000;
+  const bias=techFresh?String(tech?.bias||"NEUTRAL").toUpperCase():"STALE";
+  const techDirection=!techFresh?"NEUTRAL":bias==="BULLISH"?"UP":bias==="BEARISH"?"DOWN":"NEUTRAL";
   const horizons=Array.isArray(forecast?.forecasts)?forecast.forecasts:[];
   // Only 15M and 1H are considered in the context verdict. The 4H baseline
   // has not yet shown adequate non-overlapping, no-change-benchmark evidence.
@@ -1109,7 +1117,7 @@ function renderUnifiedMarketContext(){
   const fourHourNote=!fourHour?"4H unavailable":fourHourCount<30?"4H "+String(fourHour.directional_bias||"SIDEWAYS")+" · EXPERIMENTAL (small non-overlapping sample)":!Number.isFinite(fourHourImprovement)||fourHourImprovement<=0?"4H "+String(fourHour.directional_bias||"SIDEWAYS")+" · EXPERIMENTAL (not beating no-change baseline)":"4H "+String(fourHour.directional_bias||"SIDEWAYS")+" · EXPERIMENTAL (not used in verdict)";
   const aligned=checks.filter(x=>x.relation==="ALIGNS").length;
   const diverged=checks.filter(x=>x.relation==="DIVERGES").length;
-  const verdict= !checks.length?(fourHour?"NO VALIDATED FORESIGHT HORIZONS":"WAITING FOR FORESIGHT"):
+  const verdict= !techFresh?"STALE TECHNICAL DATA · WAIT FOR FRESH SCAN":!checks.length?(fourHour?"NO VALIDATED FORESIGHT HORIZONS":"WAITING FOR FORESIGHT"):
    diverged&&aligned?"MIXED EVIDENCE":
    diverged?"DIVERGING CONTEXT":
    aligned?"CONTEXT ALIGNS":"NO CLEAR AGREEMENT";
@@ -1122,8 +1130,8 @@ function renderUnifiedMarketContext(){
   const horizonLine=(checks.length?checks.map(x=>x.horizon+" "+x.direction):[]).concat(fourHour?[fourHourNote]:[]).join(" · ")||"No current forecast available";
   const updated=tech?.updated_at?new Date(tech.updated_at).toLocaleTimeString():"technical context unavailable";
   return '<div class="trade-item"><strong>'+cell(market.name)+'</strong>'+
-   '<div class="signal '+(bias==="BULLISH"?"buy":bias==="BEARISH"?"sell":"wait")+'">Technical intelligence: '+cell(bias)+'</div>'+
-   '<div class="small">Regime: '+cell(tech?.regime||"Unavailable")+' · '+cell(frameLine)+'</div>'+
+   '<div class="signal '+(techFresh?(bias==="BULLISH"?"buy":bias==="BEARISH"?"sell":"wait"):"wait")+'">Technical intelligence: '+cell(bias)+'</div>'+
+   '<div class="small">Regime: '+cell(techFresh?(tech?.regime||"Unavailable"):"Unavailable — snapshot stale")+' · '+cell(frameLine)+'</div>'+
    '<div class="small">Foresight: '+cell(horizonLine)+'</div>'+
    '<div class="signal '+verdictClass+'">'+cell(verdict)+'</div>'+
    '<div class="small">'+aligned+' aligned horizon(s) · '+diverged+' conflicting horizon(s). Updated: '+cell(updated)+'</div></div>';

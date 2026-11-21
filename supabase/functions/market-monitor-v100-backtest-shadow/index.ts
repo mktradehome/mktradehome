@@ -434,10 +434,10 @@ function replayShortTerm(symbol:string,data:Record<Timeframe,Candle[]>,testStart
    }])) as any});
   signals++;
   const side=candidate.signal,sl=candidate.stopLoss,tp1=candidate.takeProfit1;
-  let exit="TIME",exitR=0,closed=false,tp1Hit=false;
+  let exit="TIME",exitR=0,closed=false,tp1Hit=false,held=0;
   const maxHold=36,planned=i+1+maxHold,exitIndex=Math.min(planned,m5.length-1);
   for(let j=i+2;j<=exitIndex;j++){
-   const b=m5[j],stop=side==="BUY"?b.low<=sl:b.high>=sl,t1=side==="BUY"?b.high>=tp1:b.low<=tp1;
+   held=j-(i+1);\n   const b=m5[j],stop=side==="BUY"?b.low<=sl:b.high>=sl,t1=side==="BUY"?b.high>=tp1:b.low<=tp1;
    if(stop){exit="SL";exitR=-1;closed=true;break;}
    if(t1){exit="TP1";exitR=2;tp1Hit=true;closed=true;break;}
    if(j===planned){exit="TIME";exitR=side==="BUY"?(b.close-entry)/candidate.riskDistance:(entry-b.close)/candidate.riskDistance;closed=true;}
@@ -445,7 +445,7 @@ function replayShortTerm(symbol:string,data:Record<Timeframe,Candle[]>,testStart
   const record={side,signalClass:classification.label,displayLabel:classification.displayLabel,
    entryTime:new Date(fillBar.time).toISOString(),entry:+entry.toPrecision(10),stopLoss:+sl.toPrecision(10),
    takeProfit1:+tp1.toPrecision(10),takeProfit2:+candidate.takeProfit2.toPrecision(10),riskDistance:+candidate.riskDistance.toPrecision(10),
-   exit,holdingBars:Math.min(exitIndex,i+1+(closed?maxHold:maxHold))-(i+1)};
+   exit,holdingBars:held};
   if(closed)trades.push({...record,r:+exitR.toFixed(3),tp1:tp1Hit});
   else {const last=m5[exitIndex],floatingR=side==="BUY"?(last.close-entry)/candidate.riskDistance:(entry-last.close)/candidate.riskDistance;openAtEnd.push({...record,floatingR:+floatingR.toFixed(3)});}
   if(!closed)break;
@@ -477,7 +477,8 @@ Deno.serve(async(req:Request)=>{
     const m15Warmup=data["15M"][Math.min(59,data["15M"].length-1)].time+PERIOD_MS["15M"];
     const effectiveStart=Math.max(testStart,...warmupStarts,m15Warmup);
     const effectiveEnd=Math.min(...Object.entries(data).map(([tf,bars])=>bars[bars.length-1].time+PERIOD_MS[tf as Timeframe]));
-    const r=replay(symbol,data,effectiveStart);\n    const shortTermShadow=replayShortTerm(symbol,data,effectiveStart);
+    const r=replay(symbol,data,effectiveStart);
+    const shortTermShadow=replayShortTerm(symbol,data,effectiveStart);
     const actualCoverageDays=Math.max(0,(effectiveEnd-effectiveStart)/86400000);
     return {...r,shortTermShadow,historySources,actualCoverageStart:new Date(effectiveStart).toISOString(),actualCoverageEnd:new Date(effectiveEnd).toISOString(),actualCoverageDays:+actualCoverageDays.toFixed(2),coverageLimited:actualCoverageDays+0.25<days};
    }catch(e){return {symbol,error:e instanceof Error?e.message:"Historical replay failed safely."};}
@@ -491,7 +492,8 @@ Deno.serve(async(req:Request)=>{
     "If SL and TP1 touch in the same candle, SL is assumed first; maximum holding is 24 hours. Setups without enough future candles at the end of the history window are shown separately as unclosed and excluded from win-rate and profit-factor metrics.",
     "Historical commission, swap, slippage and broker execution are unavailable and excluded; results are gross, not net-realistic.",
     "Historical quote/session state is unavailable for every candle, so market-open is still an explicit replay assumption. Stale timeframe evidence is now skipped when its last completed candle is older than 1.5 timeframe periods; weekend/session gaps are not interpreted as tradable bars.",
-    "Quality score is not a win probability.",\n    "Short-term shadow uses completed 15M direction and completed 5M momentum confirmation; 1H/4H are conflict vetoes only. Entry is the next 5M open, stop uses max(1.5x 5M ATR, 0.75x 15M ATR), TP1 is 2R, TP2 is reference-only, and maximum hold is 3 hours.",\n    "Short-term results are isolated research only. Historical spread, bid/ask, session state, commission, swap, slippage and broker execution are unavailable; no live signal, alert, approval or order is created."
+    "Quality score is not a win probability.",
+    "Short-term shadow uses completed 15M direction and completed 5M momentum confirmation; 1H/4H are conflict vetoes only. Entry is the next 5M open, stop uses max(1.5x 5M ATR, 0.75x 15M ATR), TP1 is 2R, TP2 is reference-only, and maximum hold is 3 hours.",\n    "Short-term results are isolated research only. Historical spread, bid/ask, session state, commission, swap, slippage and broker execution are unavailable; no live signal, alert, approval or order is created."
    ],productionWrites:false,createsApprovals:false,createsQueueItems:false,telegramAlerts:false,executesTrades:false,results});
  }catch(e){return reply({error:e instanceof Error?e.message:"Shadow backtest failed safely."},500);}
 });

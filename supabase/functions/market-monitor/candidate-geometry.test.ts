@@ -21,7 +21,7 @@ Deno.test("accepts BUY and SELL targets when only binary floating-point noise is
 
 Deno.test("rejects a genuinely undersized target beyond numerical tolerance", () => {
   const c = fixture("SELL");
-  c.takeProfit1 -= 0.001;
+  c.takeProfit1 += 0.001;
   assert(candidateValidationReason(c) === "TP1_BELOW_2R");
 });
 

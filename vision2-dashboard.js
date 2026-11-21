@@ -48,12 +48,14 @@
  };
  sourcePages.forEach(page=>{
   Array.from(page.children).forEach(node=>{
-   if(node.classList?.contains("card")){
-    const key=mapCard(node,page.id);views[key].querySelector(".mk-v2-content").appendChild(node);
-   }else if(node.id==="advancedTools"){
+   if(node.id==="advancedTools"){
+    /* Unwrap the legacy More tools container first; it also has class=card. */
     Array.from(node.querySelectorAll(":scope > .card")).forEach(card=>{
      const key=mapCard(card,page.id);views[key].querySelector(".mk-v2-content").appendChild(card);
     });
+    node.remove();
+   }else if(node.classList?.contains("card")){
+    const key=mapCard(node,page.id);views[key].querySelector(".mk-v2-content").appendChild(node);
    }
   });
  });

@@ -393,11 +393,11 @@ function replay(symbol:string,data:Record<Timeframe,Candle[]>,testStart:number){
     "5M":{emaAligned:candidate.signal==="BUY"?f["5M"].ema20>=f["5M"].ema50:f["5M"].ema20<=f["5M"].ema50,directionalScore:scoreTimeframe(f["5M"])}
    }
   });
-  signals++;
   const risk=candidate.riskDistance,side=candidate.signal,sl=side==="BUY"?entry-risk:entry+risk;
   const tp1=side==="BUY"?entry+2*risk:entry-2*risk,tp2=side==="BUY"?entry+3*risk:entry-3*risk;
   const filledCandidate:Candidate={signal:side,entry,stopLoss:sl,takeProfit1:tp1,takeProfit2:tp2,riskDistance:risk,qualityScore:candidate.qualityScore,explanation:candidate.explanation};
-  if(!validateCandidate(filledCandidate)){blocked++;i++;continue;}
+  if(!validateCandidate(filledCandidate)){blocked++;rejectionReasons.FILLED_GEOMETRY_VALIDATION=(rejectionReasons.FILLED_GEOMETRY_VALIDATION||0)+1;i++;continue;}
+  signals++;
   let first=false,exitR=0,exit="TIME",closed=false;
   const plannedExitIndex=i+1+96,exitIndex=Math.min(plannedExitIndex,m15.length-1);
   for(let j=i+2;j<=exitIndex;j++){

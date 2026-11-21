@@ -1,4 +1,4 @@
-import { classifyValidatedSignal } from "../market-monitor/signal-classification.ts";
+import { classifyValidatedSignal } from "./signal-classification.ts";
 
 export type Side = "BUY" | "SELL" | "WAIT";
 export type Timeframe = "5M" | "15M" | "1H" | "4H";

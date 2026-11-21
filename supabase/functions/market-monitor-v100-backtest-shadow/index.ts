@@ -1,3 +1,5 @@
+import { classifyValidatedSignal } from "../market-monitor/signal-classification.ts";
+
 export type Side = "BUY" | "SELL" | "WAIT";
 export type Timeframe = "5M" | "15M" | "1H" | "4H";
 
@@ -327,6 +329,15 @@ function replay(symbol:string,data:Record<Timeframe,Candle[]>,testStart:number){
   const quote={bid:entry,ask:entry,stale:false,marketState:"open",quoteAgeSeconds:0};
   const candidate=buildCandidate(f,quote);
   if(!candidate||!validateCandidate(candidate)){i++;continue;}
+  const classification=classifyValidatedSignal({
+   side:candidate.signal,hardGatesPassed:true,
+   frames:{
+    "4H":{emaAligned:candidate.signal==="BUY"?f["4H"].ema20>=f["4H"].ema50:f["4H"].ema20<=f["4H"].ema50,directionalScore:scoreTimeframe(f["4H"])},
+    "1H":{emaAligned:candidate.signal==="BUY"?f["1H"].ema20>=f["1H"].ema50:f["1H"].ema20<=f["1H"].ema50,directionalScore:scoreTimeframe(f["1H"])},
+    "15M":{emaAligned:candidate.signal==="BUY"?f["15M"].ema20>=f["15M"].ema50:f["15M"].ema20<=f["15M"].ema50,directionalScore:scoreTimeframe(f["15M"])},
+    "5M":{emaAligned:candidate.signal==="BUY"?f["5M"].ema20>=f["5M"].ema50:f["5M"].ema20<=f["5M"].ema50,directionalScore:scoreTimeframe(f["5M"])}
+   }
+  });
   signals++;
   const risk=candidate.riskDistance,side=candidate.signal,sl=side==="BUY"?entry-risk:entry+risk;
   const tp1=side==="BUY"?entry+2*risk:entry-2*risk,tp2=side==="BUY"?entry+3*risk:entry-3*risk;
@@ -340,12 +351,16 @@ function replay(symbol:string,data:Record<Timeframe,Candle[]>,testStart:number){
    if(t1){first=true;exitR=2;exit="TP1";closed=true;break;}
    if(j===plannedExitIndex){const signed=side==="BUY"?(b.close-entry)/risk:(entry-b.close)/risk;exitR=signed;exit="TIME";closed=true;}
   }
-  const record={side,entryTime:new Date(fillBar.time).toISOString(),entry:+entry.toPrecision(10),exit,holdingBars:exitIndex-(i+1)};
+  const record={side,signalClass:classification.label,displayLabel:classification.displayLabel,entryTime:new Date(fillBar.time).toISOString(),entry:+entry.toPrecision(10),exit,holdingBars:exitIndex-(i+1)};
   if(closed)all.push({...record,r:+exitR.toFixed(3),tp1:first});
   else {const last=m15[exitIndex],floatingR=side==="BUY"?(last.close-entry)/risk:(entry-last.close)/risk;openAtEnd.push({...record,floatingR:+floatingR.toFixed(3)});}
   i=Math.max(i+1,exitIndex);
  }
- return {symbol,bars:Object.fromEntries(Object.entries(data).map(([k,v])=>[k,v.length])),signalsConsidered:signals,validationBlocks:blocked,openAtEndCount:openAtEnd.length,openMarkToMarketR:+openAtEnd.reduce((sum:number,t:{floatingR:number})=>sum+t.floatingR,0).toFixed(2),...metrics(all),recentTrades:all.slice(-10),recentOpenSetups:openAtEnd.slice(-10)};
+ const goodAndClear=all.filter(t=>t.signalClass==="GOOD_AND_CLEAR");
+ const normal=all.filter(t=>t.signalClass==="NORMAL");
+ const openGoodAndClear=openAtEnd.filter(t=>t.signalClass==="GOOD_AND_CLEAR");
+ const openNormal=openAtEnd.filter(t=>t.signalClass==="NORMAL");
+ return {symbol,bars:Object.fromEntries(Object.entries(data).map(([k,v])=>[k,v.length])),signalsConsidered:signals,validationBlocks:blocked,openAtEndCount:openAtEnd.length,openMarkToMarketR:+openAtEnd.reduce((sum:number,t:{floatingR:number})=>sum+t.floatingR,0).toFixed(2),...metrics(all),bySignalClass:{goodAndClear:{...metrics(goodAndClear),openAtEnd:openGoodAndClear.length},normal:{...metrics(normal),openAtEnd:openNormal.length}},recentTrades:all.slice(-10),recentOpenSetups:openAtEnd.slice(-10)};
 }
 Deno.serve(async(req:Request)=>{
  if(req.method==="OPTIONS")return new Response("ok",{headers:cors});

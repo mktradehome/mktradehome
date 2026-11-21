@@ -217,3 +217,13 @@ Last verified: 2026-11-19 04:02 UTC
 - GitHub Actions run `44906641766` completed successfully on navigation-routing fix commit `8f9cdfb47f621c7b92a7b7b0b73b3997e5bc6c1a`. All 11 workflow steps passed, including production/shadow Edge Function type-checks, both Vision 2.0 module syntax checks, Foresight tests, approval-proof tests and legacy engine fixtures.
 - Draft PR #3 remains open, mergeable and unmerged. It contains the segmented dashboard shell and focused review-session UI. No production deployment has been triggered.
 - Full browser-based testing is still outstanding; CI validates syntax and existing backend tests but does not simulate authenticated browser interactions or mobile layout.
+
+
+## Vision 2.0 broker-truth hardening (2026-11-21)
+- Strengthened `docs/MT5_POSITION_REPORTING.md` with complete-snapshot semantics, per-terminal monotonic sequence numbers, idempotent snapshot IDs, server-side Demo account binding, out-of-order rejection, and safe empty-snapshot reconciliation.
+- Added a durable EA close-report outbox contract: persist until acknowledged, deterministic broker-deal idempotency, acknowledgement only after durable commit, restart-safe retries, and conflict surfacing.
+- Expanded acceptance tests for replay, stale/out-of-order snapshots, duplicate close delivery, restart recovery and acknowledgement durability.
+- This remains a design contract only. The exact MQL5 EA source is still absent from the repository, and the Supabase connector did not grant read access during this session. No Edge Function, database schema, RLS, V63 rule, approval gate, account permission or execution behavior was changed.
+- Verified the Vision 2.0 draft PR #3 is still open, draft, unmerged and mergeable. GitHub Actions run `44906719666` for branch head `e37db174afd44149cc1bee6ff2d1ba7dc8144075` completed successfully.
+- Cloudflare's PR bot reported a successful isolated branch-preview deployment for commit `e37db17`, with preview `https://vision-2-0-research-plan.mktradehome.pages.dev`. This is a branch preview, not a merge to `main`; do not treat it as production deployment or proof of browser acceptance.
+- Next required input is the exact `MktradehomeBridge.mq5` source from the Lenovo laptop. Back it up unchanged before editing; then implement and test the EA/bridge contract together on this isolated branch.

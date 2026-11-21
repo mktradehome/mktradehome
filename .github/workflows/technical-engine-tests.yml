@@ -21,7 +21,7 @@ jobs:
       - name: Check Vision 2.0 review-session JavaScript syntax
         run: node --check vision2-session.js
       - name: Test candidate geometry floating-point tolerance and risk boundaries
-        run: deno test supabase/functions/_shared/candidate-geometry.test.ts
+        run: deno test supabase/functions/market-monitor/candidate-geometry.test.ts
       - name: Test Market Foresight performance metrics
         run: deno test supabase/functions/_shared/foresight-performance.test.ts
       - name: Test Market Foresight horizon outcome resolution

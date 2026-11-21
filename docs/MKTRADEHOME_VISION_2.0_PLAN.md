@@ -1,6 +1,6 @@
 # Mktradehome Vision 2.0 — Research and Safe Upgrade Plan
 
-**Status:** Research/design only; isolated branch. No production strategy, approval, risk, database, or MT5 execution behavior changed.
+**Status:** UI navigation shell implemented on isolated branch; feature rollout and browser acceptance testing remain in progress. No production strategy, approval, risk, database, or MT5 execution behavior changed.
 
 ## Objective
 
@@ -110,3 +110,12 @@ Navigation behavior:
 - Use distinct page titles, selected-navigation state, breadcrumbs where helpful, consistent summary cards and clear empty/loading/error states.
 - Preserve responsive layout, accessible contrast, keyboard focus and large readable numbers. No fake data: unavailable/stale values must be labelled.
 - The current dashboard is not to be replaced until the new navigation and all routes are implemented and tested on a separate branch. Keep existing functionality intact during migration.
+
+
+## Implementation progress — 2026-11-21
+- Implemented the first Vision 2.0 dashboard shell in `vision2-dashboard.js`, linked from `index.html`. Existing dashboard cards are reorganized into distinct named workspaces, with a persistent desktop sidebar and compact mobile bottom navigation plus a More panel.
+- Existing market chart, market scanner/intelligence, foresight, opportunity intelligence, approval centre, account selector/monitor, records, backtest, news and reminder components are retained and relocated; their existing DOM IDs and bound handlers are preserved.
+- Added an Open Trades workspace that explicitly states the individual MT5 position feed is not yet verified. It does not fabricate position rows or floating P/L.
+- Added a CI syntax-check step for the new navigation module. Local static parse check passed; the full CI workflow has not yet run on this isolated branch.
+- The bounded scan-session controls, enhanced opportunity ranking, event-calendar context, richer chart overlays/indicators and expanded journal/performance views remain future phases. They are not claimed as implemented by this UI shell.
+- All changes remain isolated on `vision-2.0-research-plan`; no merge or deployment. Before release, test login/PIN, navigation, charts after relocation, scanner refresh, approval/rejection, records forms, mobile layouts and logout/session handling.

@@ -126,3 +126,5 @@ Navigation behavior:
 - Session state is stored locally in the browser and resumes after refresh until its end time. The user can end it early. It does not create Supabase rows, alerts, approvals, queue items or trades.
 - The panel explicitly discloses that the production/background monitor continues scanning all four markets on its existing cadence; the focus list is a personal review checklist, not an engine filter. The Refresh All Markets action invokes the existing dashboard refresh control only.
 - Added a CI syntax check for `vision2-session.js`. No production scanner cadence, V63 rules, approval proof, risk controls or MT5 execution code changed.
+
+- A code review found and fixed an ordering issue in the migration of the old `advancedTools` wrapper: because the wrapper itself also has class `card`, it must be unwrapped before generic card routing. The child account, backtest, analysis and Telegram cards are now routed into their dedicated sections. Fix commit: `8f9cdfb47f621c7b92a7b7b0b73b3997e5bc6c1a`; this newest fix still needs CI verification.

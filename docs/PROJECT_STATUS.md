@@ -237,3 +237,13 @@ Last verified: 2026-11-19 04:02 UTC
 - Remaining production acceptance checks: sign-in/PIN, chart resize, approval actions, history/records, logout/session handling, and explicit confirmation that Cloudflare production serves this merge. Do not claim these are tested.
 - No V63 rules, approvals, risk limits, Supabase schema/functions, MT5 execution, or account permissions were changed by this dashboard release.
 - Highest-value next engineering milestone remains broker-truth: obtain the exact MktradehomeBridge.mq5 source from the user's Lenovo laptop, make an unchanged backup, then implement complete authenticated Demo position snapshots and durable idempotent close reporting across EA, bridge, storage and dashboard. Do not fabricate open positions or P/L; do not edit the EA without its exact source.
+
+
+## Broker position reporting — progress update (2026-11-21)
+
+- User supplied both Demo and Real EA source files. Demo source was backed up unchanged; Real source was inspected but not edited.
+- Prepared candidate Demo EA v2.22 to send the full open-position list alongside the existing account snapshot. Candidate file is not yet compiled or installed.
+- Added `positions` JSONB and `positions_complete` to `public.mt5_account_snapshots`.
+- Deployed `mt5-bridge` Edge Function v32. The authenticated dashboard snapshot now returns the position payload and completeness flag; old/Real bridge snapshots without the array remain explicitly incomplete.
+- Updated `index.html` and `vision2-dashboard.js` so Open Trades can render actual broker-reported position details and stale/incomplete states. GitHub commits: `425f69889d74cde40b6e9e09281c790bdd30706c` and `b920322f8a836fba5f6f1daac70cf8a61d96738a`.
+- Pending: compile candidate in MetaEditor, install on Demo only, verify a complete snapshot reaches Supabase and renders in the dashboard, then separately harden/retest durable close-report retry. No Real EA, V63 rules, approvals, risk limits or order-execution settings were changed.

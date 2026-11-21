@@ -128,3 +128,5 @@ Navigation behavior:
 - Added a CI syntax check for `vision2-session.js`. No production scanner cadence, V63 rules, approval proof, risk controls or MT5 execution code changed.
 
 - A code review found and fixed an ordering issue in the migration of the old `advancedTools` wrapper: because the wrapper itself also has class `card`, it must be unwrapped before generic card routing. The child account, backtest, analysis and Telegram cards are now routed into their dedicated sections. Fix commit: `8f9cdfb47f621c7b92a7b7b0b73b3997e5bc6c1a`; this newest fix still needs CI verification.
+
+- The advanced-tools routing correction passed the full existing GitHub Actions workflow on commit `8f9cdfb47f621c7b92a7b7b0b73b3997e5bc6c1a` (run `44906641766`). The draft PR remains unmerged. Browser/mobile interaction testing is still required before release.

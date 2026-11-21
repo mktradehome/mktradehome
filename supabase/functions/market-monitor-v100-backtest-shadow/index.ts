@@ -495,7 +495,8 @@ Deno.serve(async(req:Request)=>{
     "Historical commission, swap, slippage and broker execution are unavailable and excluded; results are gross, not net-realistic.",
     "Historical quote/session state is unavailable for every candle, so market-open is still an explicit replay assumption. Stale timeframe evidence is now skipped when its last completed candle is older than 1.5 timeframe periods; weekend/session gaps are not interpreted as tradable bars.",
     "Quality score is not a win probability.",
-    "Short-term shadow uses completed 15M direction and completed 5M momentum confirmation; 1H/4H are conflict vetoes only. Entry is the next 5M open, stop uses max(1.5x 5M ATR, 0.75x 15M ATR), TP1 is 2R, TP2 is reference-only, and maximum hold is 3 hours.",\n    "Short-term results are isolated research only. Historical spread, bid/ask, session state, commission, swap, slippage and broker execution are unavailable; no live signal, alert, approval or order is created."
+    "Short-term shadow uses completed 15M direction and completed 5M momentum confirmation; 1H/4H are conflict vetoes only. Entry is the next 5M open, stop uses max(1.5x 5M ATR, 0.75x 15M ATR), TP1 is 2R, TP2 is reference-only, and maximum hold is 3 hours.",
+    "Short-term results are isolated research only. Historical spread, bid/ask, session state, commission, swap, slippage and broker execution are unavailable; no live signal, alert, approval or order is created."
    ],productionWrites:false,createsApprovals:false,createsQueueItems:false,telegramAlerts:false,executesTrades:false,results});
  }catch(e){return reply({error:e instanceof Error?e.message:"Shadow backtest failed safely."},500);}
 });

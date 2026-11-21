@@ -475,3 +475,5 @@ Last verified: 2026-11-21 16:24 UTC
 - The shadow replay now counts evaluated bars and aggregates baseline rejection reasons per market, alongside the existing baseline trade results and isolated 5M/15M shadow results. This should expose whether the 1H bias gate, 4H conflict, 15M structure, 5M veto or entry extension is the dominant cause of no signals.
 - This is diagnostic instrumentation only. It does not change candidate acceptance, classification, risk, alerts, approvals, queue writes or execution. It has not been deployed. The authenticated replay still needs to be run from a signed-in dashboard session to produce measured results.
 - Validation status: source changes were inspected on the feature branch; Deno tests have not yet been executed in this environment. Run the repository CI on the PR before deployment.
+
+- Updated the dashboard's V100 replay results renderer on this branch to display bars evaluated and the ranked per-market rejection reason counts, so the results are visible on the phone rather than hidden in raw JSON. This dashboard change is not published; it is part of the draft PR only.

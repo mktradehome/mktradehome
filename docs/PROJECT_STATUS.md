@@ -188,3 +188,13 @@ Last verified: 2026-11-19 04:02 UTC
 - Reference review: Pocket Option official platform materials and ESMA's AI-investing caution. Vendor feature descriptions are not independent proof of profitability.
 
 - Dashboard information architecture expanded per user request: separate Overview, My Account, Watch Charts, Market Scanner, Approval Centre, Open Trades, Trade History, Performance, Alerts & Activity, and Settings. Desktop left sidebar; mobile bottom navigation plus More menu. Keep this design isolated until implementation and route tests pass.
+
+
+## Vision 2.0 dashboard shell implementation (2026-11-21)
+- Added `vision2-dashboard.js` and linked it from `index.html` on the isolated `vision-2.0-research-plan` branch.
+- Reorganizes existing dashboard cards into separate Overview, My Account, Watch Charts, Market Scanner, Approval Centre, Open Trades, Trade History, Performance, Alerts & Activity, Settings and My Journey sections.
+- Desktop uses a persistent left navigation rail; mobile uses a compact bottom navigation with a More panel. Existing cards and DOM elements are moved intact so their existing event handlers and IDs remain available.
+- Added an explicit Open Trades status explaining that individual live positions are not yet available until a complete authenticated MT5 EA snapshot feed is implemented. No simulated positions or floating P/L are shown.
+- This is a presentation/navigation change only. No production signal engine, V63 eligibility rules, V100 shadow, approval flow, risk limits, Supabase schema/functions, MT5 execution or account permissions were changed.
+- Static JavaScript parse check for the new navigation file passed in the authoring environment. Full browser interaction, mobile layout, chart resize, auth/PIN, approval actions, and Cloudflare Pages preview still require end-to-end testing. No deployment or merge to main has been performed.
+- Implementation commits: `63f3d06633ed694d4de1720ecb1dc2774c42aabb` (navigation module), `24bd5bfb186122c1ed6e1382dd8436b6662b38ae` (HTML integration).

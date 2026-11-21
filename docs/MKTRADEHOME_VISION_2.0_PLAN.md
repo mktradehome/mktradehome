@@ -119,3 +119,10 @@ Navigation behavior:
 - Added a CI syntax-check step for the new navigation module. Local static parse check passed; the full CI workflow has not yet run on this isolated branch.
 - The bounded scan-session controls, enhanced opportunity ranking, event-calendar context, richer chart overlays/indicators and expanded journal/performance views remain future phases. They are not claimed as implemented by this UI shell.
 - All changes remain isolated on `vision-2.0-research-plan`; no merge or deployment. Before release, test login/PIN, navigation, charts after relocation, scanner refresh, approval/rejection, records forms, mobile layouts and logout/session handling.
+
+
+## Focused review session UI — 2026-11-21
+- Added a local-only Focused Market Review panel in the Market Scanner workspace. The user can choose BTCUSD, EURUSD, XAUUSD and/or USDJPY and a 15/30/60/120-minute review timer.
+- Session state is stored locally in the browser and resumes after refresh until its end time. The user can end it early. It does not create Supabase rows, alerts, approvals, queue items or trades.
+- The panel explicitly discloses that the production/background monitor continues scanning all four markets on its existing cadence; the focus list is a personal review checklist, not an engine filter. The Refresh All Markets action invokes the existing dashboard refresh control only.
+- Added a CI syntax check for `vision2-session.js`. No production scanner cadence, V63 rules, approval proof, risk controls or MT5 execution code changed.

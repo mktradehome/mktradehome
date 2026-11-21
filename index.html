@@ -1105,10 +1105,11 @@ function renderUnifiedMarketContext(){
   const fourHourRows=Array.isArray(latestForesightPerformance?.nonOverlappingByMarketHorizon)?latestForesightPerformance.nonOverlappingByMarketHorizon:[];
   const fourHourMetric=fourHourRows.find(item=>String(item.symbol||"").toUpperCase()===market.symbol&&String(item.horizon||"").toUpperCase()==="4H");
   const fourHourCount=Number(fourHourMetric?.evaluated)||0;
-  const fourHourNote=!fourHour?"4H unavailable":fourHourCount<30?"4H "+String(fourHour.directional_bias||"SIDEWAYS")+" · EXPERIMENTAL (small non-overlapping sample)":"4H "+String(fourHour.directional_bias||"SIDEWAYS")+" · EXPERIMENTAL (not used in verdict)";
+  const fourHourImprovement=Number(fourHourMetric?.improvementVsZeroBaselinePct);
+  const fourHourNote=!fourHour?"4H unavailable":fourHourCount<30?"4H "+String(fourHour.directional_bias||"SIDEWAYS")+" · EXPERIMENTAL (small non-overlapping sample)":!Number.isFinite(fourHourImprovement)||fourHourImprovement<=0?"4H "+String(fourHour.directional_bias||"SIDEWAYS")+" · EXPERIMENTAL (not beating no-change baseline)":"4H "+String(fourHour.directional_bias||"SIDEWAYS")+" · EXPERIMENTAL (not used in verdict)";
   const aligned=checks.filter(x=>x.relation==="ALIGNS").length;
   const diverged=checks.filter(x=>x.relation==="DIVERGES").length;
-  const verdict= !checks.length?"WAITING FOR FORESIGHT":
+  const verdict= !checks.length?(fourHour?"NO VALIDATED FORESIGHT HORIZONS":"WAITING FOR FORESIGHT"):
    diverged&&aligned?"MIXED EVIDENCE":
    diverged?"DIVERGING CONTEXT":
    aligned?"CONTEXT ALIGNS":"NO CLEAR AGREEMENT";

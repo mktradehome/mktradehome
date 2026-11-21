@@ -18,6 +18,8 @@ jobs:
         run: node scripts/check-inline-js.mjs
       - name: Check Vision 2.0 navigation JavaScript syntax
         run: node --check vision2-dashboard.js
+      - name: Check Vision 2.0 review-session JavaScript syntax
+        run: node --check vision2-session.js
       - name: Test Market Foresight performance metrics
         run: deno test supabase/functions/_shared/foresight-performance.test.ts
       - name: Test Market Foresight horizon outcome resolution

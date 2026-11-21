@@ -109,3 +109,19 @@ The Foresight Engine is not “done” until:
 The first live implementation is `supabase/functions/market-foresight/index.ts`, Supabase function version 5. It archives up to 240 completed candles per symbol/timeframe from BiQuote, preserves bid/ask/spread snapshots with timestamp provenance, and records three forecast horizons per market. The dashboard invokes it at sign-in and every five minutes while open. Matured forecasts are evaluated on later scans against the archived 5M bars.
 
 This is a measurement and baseline layer, not the final intelligence system. The interval relies on a normal-return assumption and has not been empirically calibrated. The forecast is not connected to BUY/SELL approvals. The next release must add robust regime/context features, baseline-vs-baseline walk-forward evaluation, cost-aware barrier labels, and data-coverage monitoring before any numeric probability is displayed.
+
+
+## 10. Forecast evaluation: overlap-aware scorecard and naive benchmark
+
+The baseline engine emits forecasts repeatedly, often before an earlier forecast for the same market and horizon has matured. These rolling observations are useful operational telemetry, but their outcomes overlap and are correlated. A raw count of rolling forecasts must not be presented as an independent sample size.
+
+The scorecard therefore reports two views:
+
+- **Rolling observations:** retain descriptive metrics for all available matured forecasts, clearly labelled as correlated rolling windows.
+- **Non-overlapping observations:** for each symbol and horizon separately, sort forecasts chronologically, retain the earliest forecast, and skip subsequent forecasts until the retained forecast's horizon has elapsed. This removes direct overlap between forecast windows within that symbol/horizon. It does not guarantee statistical independence; market returns may remain autocorrelated.
+
+Both views report the sign agreement between expected_return and the realized horizon-close return, mean absolute return error, and prediction-interval coverage. The sign hit rate is not a win probability and is not necessarily identical to the qualitative UP/DOWN/SIDEWAYS label.
+
+The scorecard also compares mean absolute return error with a zero-return/no-change benchmark. Positive improvement means the drift forecast reduced average absolute error relative to predicting no return; negative improvement means it performed worse. This is a forecasting benchmark, not proof of tradable net expectancy. Spread, commission, slippage, execution, and risk-adjusted strategy returns require separate tests.
+
+Opportunity commentary uses the non-overlapping per-market/per-horizon sample and remains descriptive. Small samples are labelled early and are not used to rank setups. No forecast probability is displayed until calibration and time-ordered out-of-sample validation support it.

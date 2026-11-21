@@ -210,3 +210,6 @@ Last verified: 2026-11-19 04:02 UTC
 - Added CI syntax checking for both Vision 2.0 JavaScript modules. A new PR check is expected for the latest commit; it has not yet completed.
 - Latest UI work commits: `f9b02ab2b39481953504a49903562112b2288cd3` (review-session module), `d48a9227555ba67cf4bbcd6d59eade57ff9ac8c6` (HTML integration). The first PR CI run tested the earlier navigation-only revision, not these newest additions.
 - Full browser/mobile interaction testing remains outstanding. No merge, deployment, database migration, production strategy change, risk-rule change or MT5 execution change was performed.
+
+- GitHub Actions run `44906595619` completed successfully for the revision containing both navigation and focused review-session modules; all 11 workflow steps passed, including both new JavaScript syntax checks and all existing strategy/approval tests.
+- A subsequent code review caught that the legacy `advancedTools` wrapper also has class `card`, so its generic card branch could intercept it before its children were routed. Fixed the branch order to unwrap and route its child cards first, then remove the empty wrapper. Fix commit: `8f9cdfb47f621c7b92a7b7b0b73b3997e5bc6c1a`. This correction is newer than the successful CI run and needs its own CI result.

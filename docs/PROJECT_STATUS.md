@@ -177,3 +177,12 @@ Last verified: 2026-11-19 04:02 UTC
 - CI run `44457697371` completed successfully: production/shadow Edge Function type-check, dashboard inline JavaScript syntax, forecast performance tests (including per-market grouping), horizon outcome tests, independent approval proof tests and legacy fixtures all passed.
 - Deployed `market-foresight` **version 9 ACTIVE** with the per-market/per-horizon performance payload. Deployment hash: `f4603fccbc11e2b624c376d8d8f01a2c4e8b8ab64add1a15b02410d18497522e`. Active function source was re-read and confirms the shared performance helper is included. No database schema, RLS or grants changed.
 - GitHub Pages build/deployment run `44457697432` was still in progress at the time of this status update. Cloudflare Pages deployment and post-v9 runtime scorecard population remain unverified; do not claim the live Cloudflare dashboard has this update until independently checked.
+
+
+## Vision 2.0 research plan (2026-11-21)
+- Created `docs/MKTRADEHOME_VISION_2.0_PLAN.md` on isolated branch `vision-2.0-research-plan`.
+- Reviewed Pocket Option's public descriptions of its charting/signals, trade history and session-based AI Trader. Adapted product ideas only: bounded scan sessions, transparent ranking of already-eligible candidates, richer market context, event/session awareness, explainable summaries and verified trade journaling.
+- Explicitly excluded fixed-expiry trading, social-copy instructions, unverified AI accuracy claims, unofficial account APIs, and any bypass of manual approval.
+- Phase 0 is broker-truth first: obtain and back up the exact EA source; implement complete Demo position snapshots and idempotent close-report recovery; verify one full Demo lifecycle.
+- No production code, database schema, V63 rules, approval logic, risk controls, MT5 execution behavior, or deployed services were changed. This is a documentation-only research plan on an isolated branch; it is not deployed.
+- Reference review: Pocket Option official platform materials and ESMA's AI-investing caution. Vendor feature descriptions are not independent proof of profitability.

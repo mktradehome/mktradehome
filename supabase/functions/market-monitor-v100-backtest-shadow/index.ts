@@ -353,7 +353,7 @@ function metrics(trades:any[]){
  tp1HitPct:trades.length?+(trades.filter(t=>t.tp1).length/trades.length*100).toFixed(1):0};
 }
 function replay(symbol:string,data:Record<Timeframe,Candle[]>,testStart:number){
- const m15=data["15M"],all:any[]=[],openAtEnd:{side:string;signalClass:"GOOD_AND_CLEAR"|"NORMAL";displayLabel:string;entryTime:string;entry:number;exit:string;holdingBars:number;floatingR:number}[]=[];let lo=0,hi=m15.length;while(lo<hi){const mid=(lo+hi)>>1;if(m15[mid].time+PERIOD_MS["15M"]<testStart)lo=mid+1;else hi=mid;}let i=Math.max(59,lo),signals=0,blocked=0,staleDataBlocks=0;
+ const m15=data["15M"],all:any[]=[],openAtEnd:{side:string;signalClass:"GOOD_AND_CLEAR"|"NORMAL"|"WAIT";displayLabel:"GOOD AND CLEAR SIGNAL"|"NORMAL SIGNAL"|"WAIT";entryTime:string;entry:number;exit:string;holdingBars:number;floatingR:number}[]=[];let lo=0,hi=m15.length;while(lo<hi){const mid=(lo+hi)>>1;if(m15[mid].time+PERIOD_MS["15M"]<testStart)lo=mid+1;else hi=mid;}let i=Math.max(59,lo),signals=0,blocked=0,staleDataBlocks=0;
  while(i<m15.length-2){
   const signalAt=m15[i].time+PERIOD_MS["15M"];
   const f={} as Record<Timeframe,Indicators>;let enough=true;

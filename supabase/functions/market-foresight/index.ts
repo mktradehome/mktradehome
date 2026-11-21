@@ -86,7 +86,7 @@ async function loadForecastPerformance(key:string){
  if(!ids.length)return summarizeForecastPerformance([],[]);
  const forecasts:any[]=[];
  for(let i=0;i<ids.length;i+=250){
-  const batch=await rest("market_foresight_forecasts?id=in.("+ids.slice(i,i+250).join(",")+")&select=id,symbol,horizon,expected_return",key);
+  const batch=await rest("market_foresight_forecasts?id=in.("+ids.slice(i,i+250).join(",")+")&select=id,symbol,horizon,horizon_minutes,generated_at,expected_return",key);
   if(Array.isArray(batch))forecasts.push(...batch);
  }
  return summarizeForecastPerformance(forecasts,rows);

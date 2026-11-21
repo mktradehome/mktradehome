@@ -372,10 +372,18 @@ function replay(symbol:string,data:Record<Timeframe,Candle[]>,testStart:number){
   // entry is the OPEN of the next 15M bar.
   const fillBar=m15[i+1],entry=fillBar.open;
   if(!finite(entry)){i++;continue;}
+  barsEvaluated++;
   const quote={bid:entry,ask:entry,stale:false,marketState:"open",quoteAgeSeconds:0};
   const candidate=buildCandidate(f,quote);
-  if(!candidate){i++;continue;}
-  if(!validateCandidate(candidate)){blocked++;i++;continue;}
+  if(!candidate){
+   const reason=baselineRejectionReason({frames:f,scores:{
+    "4H":scoreTimeframe(f["4H"]),"1H":scoreTimeframe(f["1H"]),
+    "15M":scoreTimeframe(f["15M"]),"5M":scoreTimeframe(f["5M"])
+   },price:entry,spread:0});
+   rejectionReasons[reason]=(rejectionReasons[reason]||0)+1;
+   i++;continue;
+  }
+  if(!validateCandidate(candidate)){blocked++;rejectionReasons.FINAL_VALIDATION=(rejectionReasons.FINAL_VALIDATION||0)+1;i++;continue;}
   const classification=classifyValidatedSignal({
    side:candidate.signal,hardGatesPassed:true,
    frames:{

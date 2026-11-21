@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { candidateValidationReason } from "../_shared/candidate-geometry.ts";
 export type Side = "BUY" | "SELL" | "WAIT";
 export type Timeframe = "5M" | "15M" | "1H" | "4H";
 
@@ -162,7 +163,8 @@ export function buildCandidate(
   const risk = side === "BUY" ? price-stopLoss : stopLoss-price;
   const reward1 = side === "BUY" ? takeProfit1-price : price-takeProfit1;
   const reward2 = side === "BUY" ? takeProfit2-price : price-takeProfit2;
-  if (!(risk > 0 && reward1 >= 2*risk && reward2 >= 3*risk)) return null;
+  const geometryTolerance = Math.max(1, Math.abs(price)) * 1e-10;
+  if (!(risk > 0 && reward1 + geometryTolerance >= 2*risk && reward2 + geometryTolerance >= 3*risk)) return null;
   const aligned = [frames["4H"],frames["1H"],frames["15M"]].filter(f =>
     side === "BUY" ? f.ema20 >= f.ema50 : f.ema20 <= f.ema50).length;
   const lowerBonus = opposite(s5) >= 0 ? 5 : 0;
@@ -191,7 +193,11 @@ function diagnoseCandidate(frames: Record<Timeframe, Indicators>, quote: {bid:nu
   if(Math.abs(price-m15.close)>m15.atr14*.75) return "ENTRY_TOO_EXTENDED: current quote is more than 0.75 of 15M ATR from the reference close.";
   const risk=Math.max(m15.atr14*1.5,m5.atr14*2,(quote.ask-quote.bid)*2.5);
   if(!finite(risk)||risk>=price) return "RISK_INVALID: ATR/spread-based stop distance is invalid.";
-  return "OTHER_VALIDATION: candidate passed directional checks but failed final validation; inspect risk and price inputs.";
+  const stopLoss=side==="BUY"?price-risk:price+risk;
+  const takeProfit1=side==="BUY"?price+2*risk:price-2*risk;
+  const takeProfit2=side==="BUY"?price+3*risk:price-3*risk;
+  const validationReason=candidateValidationReason({signal:side,entry:price,stopLoss,takeProfit1,takeProfit2,riskDistance:risk});
+  return validationReason ? "FINAL_VALIDATION: "+validationReason : "FINAL_VALIDATION: candidate builder returned null after geometry passed; inspect internal state.";
 }
 
 
@@ -239,14 +245,7 @@ function buildMarketIntelligence(frames:Record<Timeframe,Indicators>){
 }
 
 export function validateCandidate(c: Candidate): boolean {
-  const nums=[c.entry,c.stopLoss,c.takeProfit1,c.takeProfit2,c.riskDistance];
-  if (!nums.every(Number.isFinite) || nums.some(n=>n<=0)) return false;
-  const risk=c.signal==="BUY"?c.entry-c.stopLoss:c.stopLoss-c.entry;
-  const r1=c.signal==="BUY"?c.takeProfit1-c.entry:c.entry-c.takeProfit1;
-  const r2=c.signal==="BUY"?c.takeProfit2-c.entry:c.entry-c.takeProfit2;
-  return risk>0 && r1>=2*risk && r2>=3*risk &&
-    (c.signal==="BUY" ? c.stopLoss<c.entry&&c.takeProfit1>c.entry&&c.takeProfit2>c.entry :
-      c.stopLoss>c.entry&&c.takeProfit1<c.entry&&c.takeProfit2<c.entry);
+  return candidateValidationReason(c) === null;
 }
 
 const headers={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"content-type,x-monitor-secret","Access-Control-Allow-Methods":"POST,OPTIONS"};

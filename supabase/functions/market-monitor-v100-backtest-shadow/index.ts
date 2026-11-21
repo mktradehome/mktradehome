@@ -1,4 +1,5 @@
 import { classifyValidatedSignal } from "./signal-classification.ts";
+import { buildShortTermCandidate } from "./short-term-shadow.ts";
 
 export type Side = "BUY" | "SELL" | "WAIT";
 export type Timeframe = "5M" | "15M" | "1H" | "4H";
@@ -405,6 +406,60 @@ function replay(symbol:string,data:Record<Timeframe,Candle[]>,testStart:number){
  const openNormal=openAtEnd.filter(t=>t.signalClass==="NORMAL");
  return {symbol,bars:Object.fromEntries(Object.entries(data).map(([k,v])=>[k,v.length])),signalsConsidered:signals,validationBlocks:blocked,staleDataBlocks,openAtEndCount:openAtEnd.length,openMarkToMarketR:+openAtEnd.reduce((sum:number,t:{floatingR:number})=>sum+t.floatingR,0).toFixed(2),...metrics(all),bySignalClass:{goodAndClear:{...metrics(goodAndClear),openAtEnd:openGoodAndClear.length},normal:{...metrics(normal),openAtEnd:openNormal.length}},recentTrades:all.slice(-10),recentOpenSetups:openAtEnd.slice(-10)};
 }
+
+function replayShortTerm(symbol:string,data:Record<Timeframe,Candle[]>,testStart:number){
+ const m5=data["5M"],trades:any[]=[],openAtEnd:any[]=[];
+ let lo=0,hi=m5.length;while(lo<hi){const mid=(lo+hi)>>1;if(m5[mid].time+PERIOD_MS["5M"]<testStart)lo=mid+1;else hi=mid;}
+ let i=Math.max(59,lo),signals=0,staleDataBlocks=0,validationBlocks=0;
+ while(i<m5.length-2){
+  const signalAt=m5[i].time+PERIOD_MS["5M"];
+  const f={} as Record<Timeframe,Indicators>;let enough=true;
+  for(const tf of ["4H","1H","15M","5M"] as Timeframe[]){
+   const bars=tf==="5M"?m5.slice(0,i+1):completedAt(data[tf],signalAt,PERIOD_MS[tf]);
+   if(bars.length<60){enough=false;break;}
+   f[tf]=analyseTimeframe(bars,tf,signalAt);
+  }
+  if(!enough){i++;continue;}
+  if((["5M","15M","1H","4H"] as Timeframe[]).some(tf=>f[tf].candleAgeSeconds>PERIOD_MS[tf]*1.5/1000)){
+   staleDataBlocks++;i++;continue;
+  }
+  // Signal only after a completed 5M candle; fill at the next 5M open.
+  const fillBar=m5[i+1],entry=fillBar.open;
+  const candidate=buildShortTermCandidate(f,entry);
+  if(!candidate||!validateCandidate(candidate)){i++;continue;}
+  const classification=classifyValidatedSignal({side:candidate.signal,hardGatesPassed:true,
+   frames:Object.fromEntries((["4H","1H","15M","5M"] as Timeframe[]).map(tf=>[tf,{
+    emaAligned:candidate.signal==="BUY"?f[tf].ema20>=f[tf].ema50:f[tf].ema20<=f[tf].ema50,
+    directionalScore:scoreTimeframe(f[tf])
+   }])) as any});
+  signals++;
+  const side=candidate.signal,sl=candidate.stopLoss,tp1=candidate.takeProfit1;
+  let exit="TIME",exitR=0,closed=false,tp1Hit=false;
+  const maxHold=36,planned=i+1+maxHold,exitIndex=Math.min(planned,m5.length-1);
+  for(let j=i+2;j<=exitIndex;j++){
+   const b=m5[j],stop=side==="BUY"?b.low<=sl:b.high>=sl,t1=side==="BUY"?b.high>=tp1:b.low<=tp1;
+   if(stop){exit="SL";exitR=-1;closed=true;break;}
+   if(t1){exit="TP1";exitR=2;tp1Hit=true;closed=true;break;}
+   if(j===planned){exit="TIME";exitR=side==="BUY"?(b.close-entry)/candidate.riskDistance:(entry-b.close)/candidate.riskDistance;closed=true;}
+  }
+  const record={side,signalClass:classification.label,displayLabel:classification.displayLabel,
+   entryTime:new Date(fillBar.time).toISOString(),entry:+entry.toPrecision(10),stopLoss:+sl.toPrecision(10),
+   takeProfit1:+tp1.toPrecision(10),takeProfit2:+candidate.takeProfit2.toPrecision(10),riskDistance:+candidate.riskDistance.toPrecision(10),
+   exit,holdingBars:Math.min(exitIndex,i+1+(closed?maxHold:maxHold))-(i+1)};
+  if(closed)trades.push({...record,r:+exitR.toFixed(3),tp1:tp1Hit});
+  else {const last=m5[exitIndex],floatingR=side==="BUY"?(last.close-entry)/candidate.riskDistance:(entry-last.close)/candidate.riskDistance;openAtEnd.push({...record,floatingR:+floatingR.toFixed(3)});}
+  if(!closed)break;
+  i=Math.max(i+1,exitIndex);
+ }
+ const good=trades.filter(t=>t.signalClass==="GOOD_AND_CLEAR"),normal=trades.filter(t=>t.signalClass==="NORMAL");
+ return {symbol,mode:"15M direction + completed 5M confirmation; 1H/4H conflict veto only",bars5M:m5.length,
+  acceptedSignals:signals,staleDataBlocks,validationBlocks,openAtEnd:openAtEnd.length,
+  openMarkToMarketR:+openAtEnd.reduce((sum,t)=>sum+t.floatingR,0).toFixed(2),
+  ...metrics(trades),bySignalClass:{goodAndClear:{...metrics(good),openAtEnd:openAtEnd.filter(t=>t.signalClass==="GOOD_AND_CLEAR").length},
+   normal:{...metrics(normal),openAtEnd:openAtEnd.filter(t=>t.signalClass==="NORMAL").length}},
+  recentTrades:trades.slice(-10),recentOpenSetups:openAtEnd.slice(-10)};
+}
+
 Deno.serve(async(req:Request)=>{
  if(req.method==="OPTIONS")return new Response("ok",{headers:cors});
  if(req.method!=="POST")return reply({error:"POST required"},405);
@@ -422,12 +477,12 @@ Deno.serve(async(req:Request)=>{
     const m15Warmup=data["15M"][Math.min(59,data["15M"].length-1)].time+PERIOD_MS["15M"];
     const effectiveStart=Math.max(testStart,...warmupStarts,m15Warmup);
     const effectiveEnd=Math.min(...Object.entries(data).map(([tf,bars])=>bars[bars.length-1].time+PERIOD_MS[tf as Timeframe]));
-    const r=replay(symbol,data,effectiveStart);
+    const r=replay(symbol,data,effectiveStart);\n    const shortTermShadow=replayShortTerm(symbol,data,effectiveStart);
     const actualCoverageDays=Math.max(0,(effectiveEnd-effectiveStart)/86400000);
-    return {...r,historySources,actualCoverageStart:new Date(effectiveStart).toISOString(),actualCoverageEnd:new Date(effectiveEnd).toISOString(),actualCoverageDays:+actualCoverageDays.toFixed(2),coverageLimited:actualCoverageDays+0.25<days};
+    return {...r,shortTermShadow,historySources,actualCoverageStart:new Date(effectiveStart).toISOString(),actualCoverageEnd:new Date(effectiveEnd).toISOString(),actualCoverageDays:+actualCoverageDays.toFixed(2),coverageLimited:actualCoverageDays+0.25<days};
    }catch(e){return {symbol,error:e instanceof Error?e.message:"Historical replay failed safely."};}
   }));
-  return reply({success:true,engine:"Mktradehome V100 SHADOW BACKTEST",baseline:"Exact V100 shadow buildCandidate/scoreTimeframe/validateCandidate helpers",testMode:"Historical OHLC replay only; isolated shadow; no orders, approvals, alerts, queue items, or database writes.",
+  return reply({success:true,engine:"Mktradehome V100 + isolated short-term shadow research",baseline:"V100 unchanged; short-term module is separately replayed and cannot create live candidates",testMode:"Historical OHLC replay only; isolated shadow; no orders, approvals, alerts, queue items, or database writes.",
    requestedDays:days,tp2Mode:"REFERENCE_ONLY_NOT_EXECUTED",generatedAt:new Date().toISOString(),assumptions:[
     "Only completed candles are used. Historical candles are loaded from the project-owned market_candle_archive and merged with the provider rolling window; the result reports true common overlap after indicator warm-up. The archive grows only while the Market Foresight collector is running.",
     "Signal is evaluated after a completed 15M candle; entry is the next 15M candle OPEN to avoid same-candle look-ahead.",
@@ -436,7 +491,7 @@ Deno.serve(async(req:Request)=>{
     "If SL and TP1 touch in the same candle, SL is assumed first; maximum holding is 24 hours. Setups without enough future candles at the end of the history window are shown separately as unclosed and excluded from win-rate and profit-factor metrics.",
     "Historical commission, swap, slippage and broker execution are unavailable and excluded; results are gross, not net-realistic.",
     "Historical quote/session state is unavailable for every candle, so market-open is still an explicit replay assumption. Stale timeframe evidence is now skipped when its last completed candle is older than 1.5 timeframe periods; weekend/session gaps are not interpreted as tradable bars.",
-    "Quality score is not a win probability."
+    "Quality score is not a win probability.",\n    "Short-term shadow uses completed 15M direction and completed 5M momentum confirmation; 1H/4H are conflict vetoes only. Entry is the next 5M open, stop uses max(1.5x 5M ATR, 0.75x 15M ATR), TP1 is 2R, TP2 is reference-only, and maximum hold is 3 hours.",\n    "Short-term results are isolated research only. Historical spread, bid/ask, session state, commission, swap, slippage and broker execution are unavailable; no live signal, alert, approval or order is created."
    ],productionWrites:false,createsApprovals:false,createsQueueItems:false,telegramAlerts:false,executesTrades:false,results});
  }catch(e){return reply({error:e instanceof Error?e.message:"Shadow backtest failed safely."},500);}
 });

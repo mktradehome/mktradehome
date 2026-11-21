@@ -201,3 +201,12 @@ Last verified: 2026-11-19 04:02 UTC
 
 - Follow-up layout review corrected the legacy collapsible-tools container: account monitoring now routes to My Account, historical replay to Performance, and secondary analysis cards to Market Scanner rather than being stranded under Settings. Navigation module syntax rechecked successfully. Follow-up commit: `60ecdd88611728eb97066e14f35ca5bc49929f91`.
 - CI workflow now includes `node --check vision2-dashboard.js` (commit `631a5bafe0ada4879b740382f3228914445a333f`); this workflow has not yet executed for the isolated branch.
+
+
+## Vision 2.0 validation and review sessions (2026-11-21)
+- Opened draft PR #3 against main for isolated validation: https://github.com/mktradehome/mktradehome/pull/3. It remains draft and unmerged; no deployment was triggered.
+- GitHub Actions run `44906479529` completed successfully for the first navigation-shell revision: production/shadow Edge Function type-checks, existing inline dashboard JS syntax, new navigation JS syntax, Foresight metrics/outcome tests, independent approval-proof tests and legacy shared-engine fixtures all passed.
+- Added a Focused Market Review panel to the Market Scanner workspace: four-market focus checklist, 15/30/60/120-minute local timer, resume-after-refresh and end-session controls. This is deliberately a personal review timer only; it does not alter the existing all-market background scan cadence, production V63 eligibility, approval flow or execution.
+- Added CI syntax checking for both Vision 2.0 JavaScript modules. A new PR check is expected for the latest commit; it has not yet completed.
+- Latest UI work commits: `f9b02ab2b39481953504a49903562112b2288cd3` (review-session module), `d48a9227555ba67cf4bbcd6d59eade57ff9ac8c6` (HTML integration). The first PR CI run tested the earlier navigation-only revision, not these newest additions.
+- Full browser/mobile interaction testing remains outstanding. No merge, deployment, database migration, production strategy change, risk-rule change or MT5 execution change was performed.

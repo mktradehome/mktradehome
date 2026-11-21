@@ -177,3 +177,53 @@ Last verified: 2026-11-19 04:02 UTC
 - CI run `44457697371` completed successfully: production/shadow Edge Function type-check, dashboard inline JavaScript syntax, forecast performance tests (including per-market grouping), horizon outcome tests, independent approval proof tests and legacy fixtures all passed.
 - Deployed `market-foresight` **version 9 ACTIVE** with the per-market/per-horizon performance payload. Deployment hash: `f4603fccbc11e2b624c376d8d8f01a2c4e8b8ab64add1a15b02410d18497522e`. Active function source was re-read and confirms the shared performance helper is included. No database schema, RLS or grants changed.
 - GitHub Pages build/deployment run `44457697432` was still in progress at the time of this status update. Cloudflare Pages deployment and post-v9 runtime scorecard population remain unverified; do not claim the live Cloudflare dashboard has this update until independently checked.
+
+
+## Vision 2.0 research plan (2026-11-21)
+- Created `docs/MKTRADEHOME_VISION_2.0_PLAN.md` on isolated branch `vision-2.0-research-plan`.
+- Reviewed Pocket Option's public descriptions of its charting/signals, trade history and session-based AI Trader. Adapted product ideas only: bounded scan sessions, transparent ranking of already-eligible candidates, richer market context, event/session awareness, explainable summaries and verified trade journaling.
+- Explicitly excluded fixed-expiry trading, social-copy instructions, unverified AI accuracy claims, unofficial account APIs, and any bypass of manual approval.
+- Phase 0 is broker-truth first: obtain and back up the exact EA source; implement complete Demo position snapshots and idempotent close-report recovery; verify one full Demo lifecycle.
+- No production code, database schema, V63 rules, approval logic, risk controls, MT5 execution behavior, or deployed services were changed. This is a documentation-only research plan on an isolated branch; it is not deployed.
+- Reference review: Pocket Option official platform materials and ESMA's AI-investing caution. Vendor feature descriptions are not independent proof of profitability.
+
+- Dashboard information architecture expanded per user request: separate Overview, My Account, Watch Charts, Market Scanner, Approval Centre, Open Trades, Trade History, Performance, Alerts & Activity, and Settings. Desktop left sidebar; mobile bottom navigation plus More menu. Keep this design isolated until implementation and route tests pass.
+
+
+## Vision 2.0 dashboard shell implementation (2026-11-21)
+- Added `vision2-dashboard.js` and linked it from `index.html` on the isolated `vision-2.0-research-plan` branch.
+- Reorganizes existing dashboard cards into separate Overview, My Account, Watch Charts, Market Scanner, Approval Centre, Open Trades, Trade History, Performance, Alerts & Activity, Settings and My Journey sections.
+- Desktop uses a persistent left navigation rail; mobile uses a compact bottom navigation with a More panel. Existing cards and DOM elements are moved intact so their existing event handlers and IDs remain available.
+- Added an explicit Open Trades status explaining that individual live positions are not yet available until a complete authenticated MT5 EA snapshot feed is implemented. No simulated positions or floating P/L are shown.
+- This is a presentation/navigation change only. No production signal engine, V63 eligibility rules, V100 shadow, approval flow, risk limits, Supabase schema/functions, MT5 execution or account permissions were changed.
+- Static JavaScript parse check for the new navigation file passed in the authoring environment. Full browser interaction, mobile layout, chart resize, auth/PIN, approval actions, and Cloudflare Pages preview still require end-to-end testing. No deployment or merge to main has been performed.
+- Implementation commits: `63f3d06633ed694d4de1720ecb1dc2774c42aabb` (navigation module), `24bd5bfb186122c1ed6e1382dd8436b6662b38ae` (HTML integration).
+
+- Follow-up layout review corrected the legacy collapsible-tools container: account monitoring now routes to My Account, historical replay to Performance, and secondary analysis cards to Market Scanner rather than being stranded under Settings. Navigation module syntax rechecked successfully. Follow-up commit: `60ecdd88611728eb97066e14f35ca5bc49929f91`.
+- CI workflow now includes `node --check vision2-dashboard.js` (commit `631a5bafe0ada4879b740382f3228914445a333f`); this workflow has not yet executed for the isolated branch.
+
+
+## Vision 2.0 validation and review sessions (2026-11-21)
+- Opened draft PR #3 against main for isolated validation: https://github.com/mktradehome/mktradehome/pull/3. It remains draft and unmerged; no deployment was triggered.
+- GitHub Actions run `44906479529` completed successfully for the first navigation-shell revision: production/shadow Edge Function type-checks, existing inline dashboard JS syntax, new navigation JS syntax, Foresight metrics/outcome tests, independent approval-proof tests and legacy shared-engine fixtures all passed.
+- Added a Focused Market Review panel to the Market Scanner workspace: four-market focus checklist, 15/30/60/120-minute local timer, resume-after-refresh and end-session controls. This is deliberately a personal review timer only; it does not alter the existing all-market background scan cadence, production V63 eligibility, approval flow or execution.
+- Added CI syntax checking for both Vision 2.0 JavaScript modules. A new PR check is expected for the latest commit; it has not yet completed.
+- Latest UI work commits: `f9b02ab2b39481953504a49903562112b2288cd3` (review-session module), `d48a9227555ba67cf4bbcd6d59eade57ff9ac8c6` (HTML integration). The first PR CI run tested the earlier navigation-only revision, not these newest additions.
+- Full browser/mobile interaction testing remains outstanding. No merge, deployment, database migration, production strategy change, risk-rule change or MT5 execution change was performed.
+
+- GitHub Actions run `44906595619` completed successfully for the revision containing both navigation and focused review-session modules; all 11 workflow steps passed, including both new JavaScript syntax checks and all existing strategy/approval tests.
+- A subsequent code review caught that the legacy `advancedTools` wrapper also has class `card`, so its generic card branch could intercept it before its children were routed. Fixed the branch order to unwrap and route its child cards first, then remove the empty wrapper. Fix commit: `8f9cdfb47f621c7b92a7b7b0b73b3997e5bc6c1a`. This correction is newer than the successful CI run and needs its own CI result.
+
+- GitHub Actions run `44906641766` completed successfully on navigation-routing fix commit `8f9cdfb47f621c7b92a7b7b0b73b3997e5bc6c1a`. All 11 workflow steps passed, including production/shadow Edge Function type-checks, both Vision 2.0 module syntax checks, Foresight tests, approval-proof tests and legacy engine fixtures.
+- Draft PR #3 remains open, mergeable and unmerged. It contains the segmented dashboard shell and focused review-session UI. No production deployment has been triggered.
+- Full browser-based testing is still outstanding; CI validates syntax and existing backend tests but does not simulate authenticated browser interactions or mobile layout.
+
+
+## Vision 2.0 broker-truth hardening (2026-11-21)
+- Strengthened `docs/MT5_POSITION_REPORTING.md` with complete-snapshot semantics, per-terminal monotonic sequence numbers, idempotent snapshot IDs, server-side Demo account binding, out-of-order rejection, and safe empty-snapshot reconciliation.
+- Added a durable EA close-report outbox contract: persist until acknowledged, deterministic broker-deal idempotency, acknowledgement only after durable commit, restart-safe retries, and conflict surfacing.
+- Expanded acceptance tests for replay, stale/out-of-order snapshots, duplicate close delivery, restart recovery and acknowledgement durability.
+- This remains a design contract only. The exact MQL5 EA source is still absent from the repository, and the Supabase connector did not grant read access during this session. No Edge Function, database schema, RLS, V63 rule, approval gate, account permission or execution behavior was changed.
+- Verified the Vision 2.0 draft PR #3 is still open, draft, unmerged and mergeable. GitHub Actions run `44906719666` for branch head `e37db174afd44149cc1bee6ff2d1ba7dc8144075` completed successfully.
+- Cloudflare's PR bot reported a successful isolated branch-preview deployment for commit `e37db17`, with preview `https://vision-2-0-research-plan.mktradehome.pages.dev`. This is a branch preview, not a merge to `main`; do not treat it as production deployment or proof of browser acceptance.
+- Next required input is the exact `MktradehomeBridge.mq5` source from the Lenovo laptop. Back it up unchanged before editing; then implement and test the EA/bridge contract together on this isolated branch.

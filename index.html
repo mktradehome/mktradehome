@@ -179,6 +179,14 @@ label{display:block;font-size:13px;color:#c7d8ee;margin-top:10px}
 </div>
 
 <div class="card" id="accountSelectorCard"><h2>Trading Account</h2><p>Choose the account view. Real mode is visible, but live account data and trade approvals remain locked until its MT5 connection is verified.</p><label for="accountSelector">Selected account</label><select id="accountSelector"><option value="demo" selected>Exness Demo · Trial10</option><option value="real">Exness Real · View mode (connection pending)</option></select><div class="small" id="accountModeNote">Demo monitoring and approvals are available. Real mode is display-only for now; no live orders can be approved or executed.</div></div>
+<div class="card" id="openPositionsCard">
+<h2>Open MT5 Positions</h2>
+<div class="small" id="positionsFeedStatus">Waiting for a verified Demo MT5 position snapshot...</div>
+<div class="row"><span>Total floating P/L</span><strong id="positionsTotalPnl">--</strong></div>
+<div class="small" id="positionsPnlNote">P/L totals appear only when the broker position snapshot is complete and fresh.</div>
+<div id="openPositionsList" class="small" style="margin-top:10px">No verified position data yet.</div>
+<div class="small" id="positionsUpdatedAt" style="margin-top:8px">Last update: --</div>
+</div>
 <div class="card" id="accountMonitor"><h2 id="accountMonitorTitle">Exness Demo Account Monitor</h2><p>Live account information received from the selected MT5 bridge.</p><button id="accountRefreshBtn" class="secondary">Refresh Demo Account Data</button><div id="accountStatus" class="status">Waiting for selected MT5 account data...</div><div id="accountData" class="hidden"><hr><div class="row"><span>Balance</span><strong id="accountBalance">--</strong></div><div class="row"><span>Equity</span><strong id="accountEquity">--</strong></div><div class="row"><span>Used margin</span><strong id="accountMargin">--</strong></div><div class="row"><span>Free margin</span><strong id="accountFreeMargin">--</strong></div><div class="row"><span>Currency</span><strong id="accountCurrency">--</strong></div><div class="row"><span>Leverage</span><strong id="accountLeverage">--</strong></div><div class="row"><span>Open position count</span><strong id="accountPositions">--</strong></div><div class="row"><span>Account server</span><strong id="accountServer">--</strong></div><div class="small" id="accountUpdated"></div></div><p class="small">Account details follow the selector. This snapshot gives account totals and an open-position count, not individual position details.</p></div>
 
 <div class="card">
@@ -569,6 +577,8 @@ window.dispatchEvent(new CustomEvent("mktradehome:positions",{detail:{
  positions:brokerPositions,
  complete:positionsComplete,
  stale:!!data.stale,
+ ageSeconds:Number.isFinite(Number(data.age_seconds))?Number(data.age_seconds):null,
+ openPositions:vals[5],
  account:real?"real":"demo",
  currency:x.currency||"USD",
  capturedAt:x.captured_at||x.capturedAt||null
@@ -580,6 +590,56 @@ $("accountUpdated").textContent="Snapshot time: "+(t?new Date(t).toLocaleString(
 showMessage("accountStatus",data.stale?(real?"Real account snapshot is stale. Live approvals remain locked.":"Demo snapshot is stale. Check MT5."):(!positionsComplete?(real?"Real account snapshot received, but its position list is incomplete. Do not rely on position totals. Live approvals remain locked.":"Demo account snapshot received, but its position list is incomplete. Do not rely on position totals."):(real?"Real account snapshot received in read-only mode. Live approvals remain locked.":"Demo account snapshot received successfully from MT5.")));
 }catch(e){console.error(e);$("accountData").classList.add("hidden");showMessage("accountStatus","Unable to retrieve "+(real?"Real":"Demo")+" data: "+(e.message||"Unknown error"));}finally{btn.disabled=false;}
 }
+
+function renderBrokerPositions(detail){
+ const status=$("positionsFeedStatus"),list=$("openPositionsList"),total=$("positionsTotalPnl"),note=$("positionsPnlNote"),updated=$("positionsUpdatedAt");
+ if(!status||!list||!total||!note||!updated)return;
+ const currency=String(detail.currency||"USD");
+ const positions=Array.isArray(detail.positions)?detail.positions:[];
+ const captured=detail.capturedAt?new Date(detail.capturedAt):null;
+ const age=Number.isFinite(detail.ageSeconds)?detail.ageSeconds:(captured&&!Number.isNaN(captured.getTime())?Math.max(0,Math.floor((Date.now()-captured.getTime())/1000)):null);
+ const stale=detail.stale===true||(age!==null&&age>180);
+ const count=Number(detail.openPositions);
+ const validCount=Number.isInteger(count)&&count>=0&&count<=100;
+ const ids=new Set();
+ const validRows=positions.every(p=>{
+  if(!p||typeof p!=="object"||!Number.isSafeInteger(Number(p.position_id))||Number(p.position_id)<=0||
+    typeof p.symbol!=="string"||!["BTCUSD","EURUSD","XAUUSD","USDJPY"].includes(p.symbol)||
+    !["BUY","SELL"].includes(String(p.side).toUpperCase())||
+    !Number.isFinite(Number(p.volume))||Number(p.volume)<=0||
+    !Number.isFinite(Number(p.entry_price))||Number(p.entry_price)<=0||
+    !Number.isFinite(Number(p.current_price))||Number(p.current_price)<=0||
+    !Number.isFinite(Number(p.profit))||!Number.isFinite(Number(p.swap)))return false;
+  const id=String(p.position_id);if(ids.has(id))return false;ids.add(id);return true;
+ });
+ const complete=detail.complete===true&&validCount&&positions.length===count&&positions.length<=100&&validRows;
+ updated.textContent="Last update: "+(captured&&!Number.isNaN(captured.getTime())?captured.toLocaleString():"timestamp unavailable")+(age!==null?" · "+age+" sec old":"");
+ total.textContent="--";total.className="";
+ note.textContent="Floating P/L includes broker-reported profit + swap. Commission is not included / not supplied by this feed.";
+ if(stale){status.textContent="STALE SNAPSHOT · Waiting for a fresh MT5 update.";list.textContent="Position values are hidden because the latest snapshot is older than 180 seconds.";return;}
+ if(!complete){status.textContent="INCOMPLETE OR INVALID SNAPSHOT · Do not rely on position totals.";list.textContent="The broker position count, completeness flag, or individual position records do not agree. No P/L total is calculated.";return;}
+ if(count===0){status.textContent="CONNECTED · COMPLETE SNAPSHOT · "+String(detail.account||"demo").toUpperCase()+" account";total.textContent=currency+" 0.00";list.textContent="No open positions reported by MT5.";return;}
+ const sum=positions.reduce((acc,p)=>acc+Number(p.profit)+Number(p.swap),0);
+ const fmt=n=>Number(n).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
+ total.textContent=currency+" "+(sum>0?"+":"")+fmt(sum);
+ total.className=sum>0?"chart-live":sum<0?"chart-negative":"";
+ status.textContent="CONNECTED · COMPLETE SNAPSHOT · "+count+" OPEN POSITION"+(count===1?"":"S")+" · "+String(detail.account||"demo").toUpperCase();
+ list.innerHTML=positions.map(p=>{
+  const side=String(p.side).toUpperCase(),pl=Number(p.profit)+Number(p.swap);
+  const plClass=pl>0?"chart-live":pl<0?"chart-negative":"";
+  const price=n=>Number(n)>0?formatPrice(n):"—";
+  return '<div class="trade-item" style="margin:8px 0;padding:10px">'+
+   '<div class="row"><strong>'+escapeHTML(p.symbol)+' · '+side+'</strong><strong class="'+plClass+'">'+escapeHTML(currency)+' '+(pl>0?"+":"")+fmt(pl)+'</strong></div>'+
+   '<div class="row"><span>Volume / entry</span><span>'+escapeHTML(p.volume)+' lot · '+price(p.entry_price)+'</span></div>'+
+   '<div class="row"><span>Current price</span><span>'+price(p.current_price)+'</span></div>'+
+   '<div class="row"><span>Stop loss / take profit</span><span>'+price(p.stop_loss)+' / '+price(p.take_profit)+'</span></div>'+
+   '<div class="row"><span>Profit / swap</span><span>'+fmt(p.profit)+' / '+fmt(p.swap)+'</span></div>'+
+   '<div class="small">MT5 position ID: '+escapeHTML(p.position_id)+'</div></div>';
+ }).join("");
+}
+window.addEventListener("mktradehome:positions",event=>{
+ try{renderBrokerPositions(event.detail||{});}catch(error){console.error("Position display validation failed:",error);showMessage("positionsFeedStatus","POSITION DATA ERROR · No P/L total is available.");showMessage("openPositionsList","The received position snapshot could not be safely displayed.");}
+});
 
 async function sendTelegramAlert(message, proof={}){
 try{

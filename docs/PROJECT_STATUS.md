@@ -477,3 +477,12 @@ Last verified: 2026-11-21 16:24 UTC
 - Validation status: source changes were inspected on the feature branch; Deno tests have not yet been executed in this environment. Run the repository CI on the PR before deployment.
 
 - Updated the dashboard's V100 replay results renderer on this branch to display bars evaluated and the ranked per-market rejection reason counts, so the results are visible on the phone rather than hidden in raw JSON. This dashboard change is not published; it is part of the draft PR only.
+
+
+## Baseline rejection diagnostics — validation hardening (2026-11-22)
+- Reviewed the branch diagnostic helper against the actual shadow baseline `buildCandidate` and `diagnoseCandidate` gate order. Direction, 1H score threshold, 4H opposition threshold, 15M alignment/pullback-reversal conditions, 5M opposition veto, ATR validity, entry-extension limit and ATR/spread risk geometry were checked for parity.
+- Found that the existing repository engine/approval CI run for the PR completed successfully, but its job log showed that it did **not** invoke the newly added `baseline-diagnostics.test.ts`. The earlier statement that the PR had five tests therefore did not mean those tests had actually run.
+- Expanded the diagnostic regression suite to ten cases, including no 1H direction, weak BUY and SELL bias, 4H conflict, 15M pending, an allowed SELL pullback reversal, 5M conflict, invalid ATR, overextended entry and invalid risk geometry.
+- Added a dedicated GitHub Actions workflow at `.github/workflows/baseline-diagnostics.yml` to type-check and execute the diagnostic helper tests on relevant PR/push changes. The workflow has been committed to the research branch; its run result must be checked before treating these tests as passed.
+- No production signal engine, thresholds, candidate rules, classifier, risk limits, alert/approval/queue behavior, Demo execution or Real-account hard lock changed. No function was deployed and no trade was placed.
+- PR #4 remains a research-only change. Authenticated archive-backed replay has not yet been run; no conclusion about missed opportunities or strategy profitability is justified until that replay is completed and reviewed.

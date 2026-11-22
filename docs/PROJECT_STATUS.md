@@ -513,3 +513,13 @@ Last verified: 2026-11-21 16:24 UTC
 - No production `market-monitor`, live alert, approval, queue, execution, risk, or Real-account lock behavior was changed. No trade was placed.
 - The dashboard source is now on main. Cloudflare Pages publication has not yet been independently verified from this session.
 - The authenticated archive-backed replay has **not** been run yet. Next required validation is to open the signed-in dashboard, run the V100 Shadow Backtest for the requested period, and inspect actual overlap/coverage plus per-market rejection counts. Gross-only historical results remain research evidence, not proof of profitability.
+
+
+## Signal consolidation and live position visibility — research plan (2026-11-22)
+- Created isolated branch `research/signal-consolidation-and-live-positions`; added `docs/research/SIGNAL_CONSOLIDATION_AND_LIVE_POSITIONS.md`.
+- Research workstream A will group refreshed same-direction candidates into one setup episode, preserve candidate history, and calculate a single proposal only when a common technically justified stop and all existing safety gates remain valid. No blind averaging, extra positions, added volume, or order execution.
+- Research workstream B will display broker-reported open Demo MT5 positions and floating P/L on Home, with source timestamp, completeness, stale/offline states, and no inferred P/L. Existing bridge v32 already accepts per-position snapshots; dashboard has an account monitor/event hook but still indicates live position display is unfinished.
+- Read-only database inspection found the latest Demo snapshot was from 2026-11-21 18:59:56 UTC, reported zero positions, and marked its position list complete. A registered Real snapshot was incomplete and is not a valid live feed.
+- Located stable Library baseline `MktradehomeBridge_Demo_v2.21.mq5` and experimental `MktradehomeBridge_v2.22_open_positions.mq5`. The experimental diff adds per-position serialization. It has not been compiled or accepted; retain v2.21 unchanged. The reported prior 90 compiler errors must be reconciled against exact MetaEditor diagnostics before any installation.
+- No production code, database schema, edge function, approval flow, execution behavior, risk limit, or Real-account lock changed. No EA installed, no trade placed, and no deployment performed.
+- Next: inspect the exact experimental EA and compiler diagnostics, harden completeness reporting (currently server derives completeness from presence of an array, so an EA that silently skips a position could falsely claim completeness), then add read-only Home rendering and deterministic tests on this research branch.

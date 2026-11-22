@@ -553,3 +553,13 @@ Last verified: 2026-11-21 16:24 UTC
 - Added explicit OFFLINE handling after the initial panel review: if the account snapshot request fails, the dashboard clears position/P&L data and shows an offline warning rather than leaving the last successful values looking current. Rechecked all 3 inline dashboard scripts in V8 after this change; no syntax errors.
 
 - Final UI compatibility adjustment: position validation accepts any well-formed broker symbol (3–32 characters), not only the four analysis markets, so a valid Exness position outside the scanner's selected markets is not incorrectly hidden. All 3 inline scripts still pass V8 syntax parsing.
+
+
+## Evidence-based setup episode classifier — research branch (2026-11-22)
+- Added pure shared classifier `supabase/functions/_shared/setup-episode.ts` and seven deterministic tests. A candidate is linked as a REFRESHED_EPISODE only when market and direction match, completed-timeframe structure fingerprint is identical, no invalidation or material regime change is present, timestamps are monotonic and within the continuity window, and entry drift remains within a normalized ATR bound.
+- Time proximity alone cannot link candidates. Missing/invalid evidence, direction/market changes, structure changes, invalidation, regime change, stale gap or excessive entry drift starts a NEW_EPISODE with an explicit reason.
+- This is a research utility only. It is not wired into production alerts, the signal engine, approval, queue or execution. It does not calculate a consolidated entry/stop/target; that requires a separate common-stop validation and historical replay.
+- Read-only DB review found the recent BTC #799–#804 candidates share symbol/direction and close timestamps, but the persisted `trade_signals` rows alone do not include the complete multi-timeframe fingerprint needed to prove continuity. The existing archived candles can support reconstruction, but replay must reconstruct completed-candle structure before any automatic episode linking.
+- The position integrity workflow run `44989889111` completed successfully. All seven steps, including Deno setup, dashboard JavaScript syntax, six position snapshot tests and validator type-check, passed. The engine/approval workflow run `44989889098` also completed successfully.
+- The CI workflow now additionally runs the seven setup episode tests and type-checks the classifier. A fresh workflow run is pending after these latest commits.
+- No production Edge Function deployed, no EA compiled/installed, no database schema changed, no trade placed, and no signal/risk/approval/execution/Real-account lock changed.

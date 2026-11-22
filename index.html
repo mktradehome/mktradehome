@@ -577,7 +577,7 @@ window.dispatchEvent(new CustomEvent("mktradehome:positions",{detail:{
 $("accountCurrency").textContent=x.currency||"--";$("accountServer").textContent=server;$("accountData").classList.remove("hidden");
 const t=x.captured_at||x.capturedAt;
 $("accountUpdated").textContent="Snapshot time: "+(t?new Date(t).toLocaleString():"Not supplied")+(data.age_seconds!==undefined?" · Age: "+data.age_seconds+" sec":"");
-showMessage("accountStatus",real?(data.stale?"Real account snapshot found, but it is stale. Open the Real MT5 terminal and reconnect its bridge. Live approvals remain locked.":"Real account snapshot received in read-only mode. Live approvals remain locked."):(data.stale?"Demo snapshot is stale. Check MT5.":"Demo account snapshot received successfully from MT5."));
+showMessage("accountStatus",data.stale?(real?"Real account snapshot is stale. Live approvals remain locked.":"Demo snapshot is stale. Check MT5."):(!positionsComplete?(real?"Real account snapshot received, but its position list is incomplete. Do not rely on position totals. Live approvals remain locked.":"Demo account snapshot received, but its position list is incomplete. Do not rely on position totals."):(real?"Real account snapshot received in read-only mode. Live approvals remain locked.":"Demo account snapshot received successfully from MT5.")));
 }catch(e){console.error(e);$("accountData").classList.add("hidden");showMessage("accountStatus","Unable to retrieve "+(real?"Real":"Demo")+" data: "+(e.message||"Unknown error"));}finally{btn.disabled=false;}
 }
 

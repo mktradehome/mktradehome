@@ -47,7 +47,7 @@ Deno.test("baseline diagnostic allows the same qualified SELL pullback reversal 
   f["1H"] = { ...f["1H"], ema20: 98, ema50: 99 };
   f["15M"] = { ...f["15M"], close: 99.5, ema20: 101, ema50: 100 };
   f["5M"] = { ...f["5M"], close: 99, ema20: 100, macdHistogram: -0.1 };
-  const reason = baselineRejectionReason(input(f, { "4H": 0, "1H": -30, "15M": -30, "5M": 0 }));
+  const reason = baselineRejectionReason({ ...input(f, { "4H": 0, "1H": -30, "15M": -30, "5M": 0 }), price: 99.5 });
   if (reason !== "BUILDER_OR_FINAL_VALIDATION") throw new Error("Qualified pullback should pass directional gates");
 });
 Deno.test("baseline diagnostic identifies strong 5M entry conflict", () => {

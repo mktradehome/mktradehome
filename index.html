@@ -588,7 +588,7 @@ $("accountCurrency").textContent=x.currency||"--";$("accountServer").textContent
 const t=x.captured_at||x.capturedAt;
 $("accountUpdated").textContent="Snapshot time: "+(t?new Date(t).toLocaleString():"Not supplied")+(data.age_seconds!==undefined?" · Age: "+data.age_seconds+" sec":"");
 showMessage("accountStatus",data.stale?(real?"Real account snapshot is stale. Live approvals remain locked.":"Demo snapshot is stale. Check MT5."):(!positionsComplete?(real?"Real account snapshot received, but its position list is incomplete. Do not rely on position totals. Live approvals remain locked.":"Demo account snapshot received, but its position list is incomplete. Do not rely on position totals."):(real?"Real account snapshot received in read-only mode. Live approvals remain locked.":"Demo account snapshot received successfully from MT5.")));
-}catch(e){console.error(e);$("accountData").classList.add("hidden");showMessage("accountStatus","Unable to retrieve "+(real?"Real":"Demo")+" data: "+(e.message||"Unknown error"));}finally{btn.disabled=false;}
+}catch(e){console.error(e);window.dispatchEvent(new CustomEvent("mktradehome:positions",{detail:{positions:[],complete:false,stale:false,offline:true,account:real?"real":"demo",currency:"USD",capturedAt:null}}));$("accountData").classList.add("hidden");showMessage("accountStatus","Unable to retrieve "+(real?"Real":"Demo")+" data: "+(e.message||"Unknown error"));}finally{btn.disabled=false;}
 }
 
 function renderBrokerPositions(detail){
@@ -599,6 +599,7 @@ function renderBrokerPositions(detail){
  const captured=detail.capturedAt?new Date(detail.capturedAt):null;
  const age=Number.isFinite(detail.ageSeconds)?detail.ageSeconds:(captured&&!Number.isNaN(captured.getTime())?Math.max(0,Math.floor((Date.now()-captured.getTime())/1000)):null);
  const stale=detail.stale===true||(age!==null&&age>180);
+ const offline=detail.offline===true;
  const count=Number(detail.openPositions);
  const validCount=Number.isInteger(count)&&count>=0&&count<=100;
  const ids=new Set();
@@ -616,6 +617,7 @@ function renderBrokerPositions(detail){
  updated.textContent="Last update: "+(captured&&!Number.isNaN(captured.getTime())?captured.toLocaleString():"timestamp unavailable")+(age!==null?" · "+age+" sec old":"");
  total.textContent="--";total.className="";
  note.textContent="Floating P/L includes broker-reported profit + swap. Commission is not included / not supplied by this feed.";
+ if(offline){status.textContent="OFFLINE · MT5 account snapshot request failed.";list.textContent="No live position data is available. Reconnect the MT5 terminal/bridge and refresh.";return;}
  if(stale){status.textContent="STALE SNAPSHOT · Waiting for a fresh MT5 update.";list.textContent="Position values are hidden because the latest snapshot is older than 180 seconds.";return;}
  if(!complete){status.textContent="INCOMPLETE OR INVALID SNAPSHOT · Do not rely on position totals.";list.textContent="The broker position count, completeness flag, or individual position records do not agree. No P/L total is calculated.";return;}
  if(count===0){status.textContent="CONNECTED · COMPLETE SNAPSHOT · "+String(detail.account||"demo").toUpperCase()+" account";total.textContent=currency+" 0.00";list.textContent="No open positions reported by MT5.";return;}

@@ -7,7 +7,9 @@ on:
     paths:
       - "index.html"
       - "supabase/functions/_shared/mt5-position-snapshot.ts"
+      - "supabase/functions/_shared/setup-episode.ts"
       - "supabase/functions/mt5-bridge/**"
+      - "supabase/functions/market-monitor/setup-episode.test.ts"
       - "tests/**"
       - ".github/workflows/position-integrity.yml"
   pull_request:
@@ -16,7 +18,9 @@ on:
     paths:
       - "index.html"
       - "supabase/functions/_shared/mt5-position-snapshot.ts"
+      - "supabase/functions/_shared/setup-episode.ts"
       - "supabase/functions/mt5-bridge/**"
+      - "supabase/functions/market-monitor/setup-episode.test.ts"
       - "tests/**"
       - ".github/workflows/position-integrity.yml"
 
@@ -37,3 +41,7 @@ jobs:
         run: deno test supabase/functions/mt5-bridge/position-snapshot.test.ts
       - name: Type-check MT5 position validator
         run: deno check supabase/functions/_shared/mt5-position-snapshot.ts
+      - name: Test setup episode continuity
+        run: deno test supabase/functions/market-monitor/setup-episode.test.ts
+      - name: Type-check setup episode classifier
+        run: deno check supabase/functions/_shared/setup-episode.ts

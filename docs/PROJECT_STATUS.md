@@ -533,3 +533,5 @@ Last verified: 2026-11-21 16:24 UTC
 - New intelligence roadmap prioritises setup-episode continuity, consolidated proposal research, outcome-calibrated confidence (only after sufficient independent closed samples), context-aware abstention, and broker-truth position reporting.
 - No production Edge Function was changed or deployed. No database schema, signal gates, classification, risk limits, approvals, execution, or Real-account lock changed. No EA was compiled/installed and no trade was placed.
 - Next implementation: add deterministic shared tests and harden mt5-bridge server-side completeness before building the Home positions view; keep all changes on this research branch until verified.
+
+- Follow-up UI safeguard committed as `ed9c9f111a50cb922f7b286379d9a3014cc04d1a`: the account monitor now explicitly warns when a snapshot is fresh but its position list is incomplete, rather than reporting an unqualified successful snapshot. This remains research-branch-only and is not deployed.

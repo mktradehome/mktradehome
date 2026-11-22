@@ -486,3 +486,6 @@ Last verified: 2026-11-21 16:24 UTC
 - Added a dedicated GitHub Actions workflow at `.github/workflows/baseline-diagnostics.yml` to type-check and execute the diagnostic helper tests on relevant PR/push changes. The workflow has been committed to the research branch; its run result must be checked before treating these tests as passed.
 - No production signal engine, thresholds, candidate rules, classifier, risk limits, alert/approval/queue behavior, Demo execution or Real-account hard lock changed. No function was deployed and no trade was placed.
 - PR #4 remains a research-only change. Authenticated archive-backed replay has not yet been run; no conclusion about missed opportunities or strategy profitability is justified until that replay is completed and reviewed.
+
+
+- First execution of the newly wired ten-case diagnostics suite exposed one failing pullback-reversal fixture: its test quote was above the 15M EMA50, so it did not actually satisfy the builder's SELL reversal condition. Corrected the fixture to place the quote below EMA50 while keeping it within the 0.75 ATR extension limit. The failed run was useful: 9/10 cases passed and the single mismatch was in the test setup, not a production rule change. The corrected test commit is `933aaa91f421a90842b2978bd3718b72edd412f8`; a fresh CI result has not yet appeared in the workflow-run lookup.

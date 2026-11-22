@@ -1,0 +1,31 @@
+name: Baseline diagnostics tests
+
+on:
+  pull_request:
+    paths:
+      - "supabase/functions/market-monitor-v100-backtest-shadow/baseline-diagnostics.ts"
+      - "supabase/functions/market-monitor-v100-backtest-shadow/baseline-diagnostics.test.ts"
+      - ".github/workflows/baseline-diagnostics.yml"
+  push:
+    branches:
+      - "research/baseline-rejection-diagnostics"
+    paths:
+      - "supabase/functions/market-monitor-v100-backtest-shadow/baseline-diagnostics.ts"
+      - "supabase/functions/market-monitor-v100-backtest-shadow/baseline-diagnostics.test.ts"
+      - ".github/workflows/baseline-diagnostics.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  baseline-diagnostics:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Type-check diagnostic helper and tests
+        run: deno check supabase/functions/market-monitor-v100-backtest-shadow/baseline-diagnostics.ts supabase/functions/market-monitor-v100-backtest-shadow/baseline-diagnostics.test.ts
+      - name: Run baseline rejection diagnostics regression tests
+        run: deno test supabase/functions/market-monitor-v100-backtest-shadow/baseline-diagnostics.test.ts

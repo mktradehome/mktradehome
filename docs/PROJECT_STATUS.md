@@ -505,3 +505,11 @@ Last verified: 2026-11-21 16:24 UTC
 - Recomputed the latest candidate's directional scores from its saved indicator proof using the deployed v68 formula: 4H -61, 1H -64, 15M -69, 5M -26. For a SELL, negative scores are directionally aligned; all four EMA structures also aligned SELL. The GOOD AND CLEAR label and 85 score are therefore consistent with the saved evidence (85 is a rule score, not win probability).
 - The Demo MT5 queue currently has no pending/approved/executing BTCUSD item; only historical executed/expired/failed rows were returned. These alerts did not create approvals or trades.
 - No production behavior was changed. Keep the ten-minute refresh behavior for now because it supplies a fresh expiring candidate rather than silently extending an old entry. Follow-up research should distinguish a refreshed candidate from a new signal episode in performance reporting and alert wording, without suppressing genuinely new opportunities or changing risk gates.
+
+
+## Baseline rejection diagnostics — merged and deployed (2026-11-22 04:35 UTC)
+- PR #4 was validated and squash-merged to main as `bbe3f755e26405013fca49580cc896489129f422`. Dedicated GitHub Actions run `44985059713` passed Deno type-check and all 10 baseline diagnostic tests; engine/approval workflow run `44985059705` also completed successfully, including production/shadow type-checks, dashboard JavaScript syntax checks and existing regression suites.
+- Deployed only the isolated `market-monitor-v100-backtest-shadow` Edge Function, now ACTIVE version 17 with JWT verification still enabled. Its only new behavior is counting historical baseline replay rejections and returning per-market reason totals; the dashboard renderer displays those diagnostics.
+- No production `market-monitor`, live alert, approval, queue, execution, risk, or Real-account lock behavior was changed. No trade was placed.
+- The dashboard source is now on main. Cloudflare Pages publication has not yet been independently verified from this session.
+- The authenticated archive-backed replay has **not** been run yet. Next required validation is to open the signed-in dashboard, run the V100 Shadow Backtest for the requested period, and inspect actual overlap/coverage plus per-market rejection counts. Gross-only historical results remain research evidence, not proof of profitability.

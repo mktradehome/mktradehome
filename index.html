@@ -206,7 +206,7 @@ label{display:block;font-size:13px;color:#c7d8ee;margin-top:10px}
 <div id="marketChartWrap"><div id="marketChart"></div></div>
 <div id="chartTradePanel" class="trade-item" style="margin-top:10px">
 <strong>Pending Trade Setup on Chart</strong>
-<div id="chartTradeDetails" class="small" style="margin-top:7px">No pending setup for this market. Verified live MT5 positions will appear here after the terminal reporting connection is installed.</div>
+<div id="chartTradeDetails" class="small" style="margin-top:7px">No pending setup for this market. Broker-reported open positions are displayed in the Open MT5 Positions panel.</div>
 </div>
 <div class="chart-legend"><span id="chartCurrentPrice">Price: loading…</span><span id="chartUpdatedAt">Waiting for candles…</span></div>
 <div id="chartStatus" class="status">Loading historical candles…</div>
@@ -572,7 +572,7 @@ if(!got||gotServer!==server||(!real&&got!==num))throw Error("Snapshot does not m
 const vals=[Number(x.balance),Number(x.equity),Number(x.margin),Number(x.free_margin??x.freeMargin),Number(x.leverage),Number(x.open_positions??x.openPositions)];
 if(!vals.every(Number.isFinite))throw Error("Snapshot is missing required values.");
 const brokerPositions=Array.isArray(x.positions)?x.positions:[];
-const positionsComplete=x.positions_complete===true&&brokerPositions.length<=100&&brokerPositions.length===vals[5];
+const positionsComplete=x.positions_complete===true&&Number.isSafeInteger(vals[5])&&vals[5]>=0&&vals[5]<=100&&brokerPositions.length<=100&&brokerPositions.length===vals[5];
 window.dispatchEvent(new CustomEvent("mktradehome:positions",{detail:{
  positions:brokerPositions,
  complete:positionsComplete,
@@ -787,7 +787,7 @@ function drawChartTrade(){
  const box=$("chartTradeDetails");
  if(!box)return;
  if(!trade){
-  box.textContent="No pending setup for "+symbol+". Live open positions are not yet connected.";
+  box.textContent="No pending setup for "+symbol+". Broker-reported positions are shown in the Open MT5 Positions panel.";
   return;
  }
  const side=String(trade.side||"").toUpperCase();

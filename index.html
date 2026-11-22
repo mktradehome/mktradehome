@@ -605,7 +605,7 @@ function renderBrokerPositions(detail){
  const ids=new Set();
  const validRows=positions.every(p=>{
   if(!p||typeof p!=="object"||!Number.isSafeInteger(Number(p.position_id))||Number(p.position_id)<=0||
-    typeof p.symbol!=="string"||!["BTCUSD","EURUSD","XAUUSD","USDJPY"].includes(p.symbol)||
+    typeof p.symbol!=="string"||p.symbol.length<3||p.symbol.length>32||
     !["BUY","SELL"].includes(String(p.side).toUpperCase())||
     !Number.isFinite(Number(p.volume))||Number(p.volume)<=0||
     !Number.isFinite(Number(p.entry_price))||Number(p.entry_price)<=0||

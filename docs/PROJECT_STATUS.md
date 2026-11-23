@@ -571,3 +571,12 @@ Last verified: 2026-11-22 05:40 UTC
 - Expanded deterministic setup-episode tests from 7 to 12, adding prior-candidate regime change, duplicate IDs, invalid evidence/configuration, non-monotonic timestamps, and exact accepted boundary behavior.
 - Changes are confined to `research/signal-consolidation-and-live-positions`. The classifier remains a research utility and is not wired into production notifications, signals, approvals, queue or execution. No production Edge Function, database schema, EA, deployment, risk limit, or Real-account lock was changed.
 - GitHub Actions must complete successfully on the new commit before these additional tests are considered verified. Next research gate is to build/reconstruct reliable completed-candle structure fingerprints from persisted evidence and replay historical candidates; do not connect the classifier to live notifications until false-merge and missed-new-setup rates are measured.
+
+
+## Trade performance study kickoff — broker reconciliation (2026-11-23)
+- Started the trade-performance study on the existing isolated research branch; detailed design and current evidence are documented in docs/research/SIGNAL_CONSOLIDATION_AND_LIVE_POSITIONS.md.
+- Read-only Supabase inspection confirms BTCUSD Demo position 593313802 is now CLOSED in trades row 118 with reported P/L +$4.72, matching the user's MT5 close notification. The queue record remains linked by the same broker position ID.
+- EURUSD Demo position 593630527 remains status=executed in mt5_trade_queue and has no matching closed row in trades at this check; keep it pending/open until broker closure evidence arrives.
+- Existing mt5-bridge close_report matches positions by broker position ID and upserts trades idempotently using account/server/position ID. The inspected trades schema does not expose dedicated commission, swap, fees, close reason, signal category/ID, setup episode ID, or provenance fields.
+- Do not claim net-of-cost performance or infer close reason from the existing journal. Separate broker-linked executed trades from signal-only candidates and simulated backtests. Current broker-linked sample is too small for strategy conclusions.
+- Next: inspect EA close-report/deal-history payload and DB constraints/RLS; build a read-only queue-to-journal reconciliation report; then prototype dashboard metrics with explicit data-quality labels. No production schema, bridge, signal, approval, execution, risk, EA, or Real-account lock changes were made.

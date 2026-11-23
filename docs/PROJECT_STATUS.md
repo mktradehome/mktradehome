@@ -563,3 +563,11 @@ Last verified: 2026-11-22 05:40 UTC
 - The position integrity workflow run `44989889111` completed successfully. All seven steps, including Deno setup, dashboard JavaScript syntax, six position snapshot tests and validator type-check, passed. The engine/approval workflow run `44989889098` also completed successfully.
 - The CI workflow now additionally runs the seven setup episode tests and type-checks the classifier. A fresh workflow run is pending after these latest commits.
 - No production Edge Function deployed, no EA compiled/installed, no database schema changed, no trade placed, and no signal/risk/approval/execution/Real-account lock changed.
+
+
+## Setup-episode classifier hardening — research branch (2026-11-22)
+- Reviewed the existing pure classifier before any integration. It was correctly isolated from production, but review found two missing fail-closed checks: a material-regime-change flag on the previous candidate was not considered, and the same candidate ID could be misclassified as its own refresh.
+- Hardened the classifier to reject duplicate candidate IDs, regime changes on either candidate, blank identifiers/symbols/fingerprints, and invalid continuity/drift configuration. Existing market, direction, invalidation, structure, monotonic-time, continuity-window and ATR-normalized drift gates remain intact.
+- Expanded deterministic setup-episode tests from 7 to 12, adding prior-candidate regime change, duplicate IDs, invalid evidence/configuration, non-monotonic timestamps, and exact accepted boundary behavior.
+- Changes are confined to `research/signal-consolidation-and-live-positions`. The classifier remains a research utility and is not wired into production notifications, signals, approvals, queue or execution. No production Edge Function, database schema, EA, deployment, risk limit, or Real-account lock was changed.
+- GitHub Actions must complete successfully on the new commit before these additional tests are considered verified. Next research gate is to build/reconstruct reliable completed-candle structure fingerprints from persisted evidence and replay historical candidates; do not connect the classifier to live notifications until false-merge and missed-new-setup rates are measured.

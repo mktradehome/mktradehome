@@ -600,3 +600,5 @@ Last verified: 2026-11-21 16:24 UTC
 - Position display requires a matching account/server and `positions_complete=true`. Incomplete snapshots are not treated as proof of no open positions. Stale snapshots are labelled as last-reported, not live. Real account mode remains read-only; no approval or execution behavior was changed.
 - Refresh polls the snapshot alongside the existing pending queue. Floating P/L is taken from the broker snapshot `profit` field, not estimated from chart candle prices.
 - Verification in this session: confirmed the current Demo snapshot table contains a complete snapshot with two BTCUSDm BUY positions (0.01 lot each), broker P/L +0.43 and +0.53 USD at capture time. This is a historical database snapshot, not a claim that those positions remain open now. Source edits were reviewed for required guards; automated browser/MT5 end-to-end tests have not yet been run.
+
+- Final dashboard polish saved in `index.html` commit `bf22bad41543b55a4209f67a4bbd8b4147200d8f`; open-position cards now explicitly show `OPEN`, and a pending-queue read failure no longer suppresses a successfully retrieved broker position snapshot.

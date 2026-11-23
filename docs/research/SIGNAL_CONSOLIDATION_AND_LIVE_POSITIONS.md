@@ -74,3 +74,17 @@ The Library contains stable `MktradehomeBridge_Demo_v2.21.mq5` and a `Mktradehom
 - No production source or database schema changed.
 - No EA installed, compiled, or run.
 - No trades placed.
+
+
+## Completed-candle evidence review (2026-11-22)
+
+- Reviewed the repository's current `market-monitor` candidate path without modifying it. `normalizeCandles` excludes provider rows explicitly marked open, validates OHLC and cadence, requires at least 60 completed bars, and rejects a stale/invalid latest completed candle. This gives a defensible basis for reconstructing the engine's completed-candle state in research.
+- Each saved `trade_signals.analysis` proof stores the 4H/1H/15M/5M indicator snapshot and quote, but does not store each timeframe's exact latest completed-candle timestamp or the full candle window. The separate `market_candle_archive` table does store OHLC candles and timestamps, so candidate-time reconstruction is possible where archive coverage is complete.
+- Read-only archive coverage check (latest available at review): all four markets have 4H history from 2026-10-09/20 onward, 1H history from 2026-11-09/12 onward, 15M history from 2026-11-17 onward, and 5M history from 2026-11-18 onward. Exact coverage differs by market; every replay must calculate its own common window and report gaps rather than assume complete history.
+- Recent persisted candidates #848–#852 include repeated BTCUSD BUY refreshes with unchanged 4H/1H/15M indicator snapshots while their entry quotes move. This is a useful research sample, not proof by itself that they are one episode. A stable fingerprint must be derived from reconstructed completed-candle structure and tested against genuine new setups before automatic linking.
+- Important design constraint: do not use the 5M fingerprint as the primary episode identity because it is the entry-timing layer and changes more frequently. Use completed 4H/1H/15M structure plus invalidation/regime evidence; preserve the 5M state as per-candidate evidence.
+- No production source, signal logic, notifications, database schema, approvals, execution, EA or Real-account lock was changed during this review. The classifier remains isolated and unconnected.
+
+## Next research gate
+
+Build a deterministic historical reconstruction tool that, for each saved candidate, selects only candles completed at that candidate's timestamp, recomputes the same 4H/1H/15M indicators, and creates a documented structure fingerprint. Replay candidates in chronological order through the classifier. Manually audit both linked refreshes and split/new episodes, measure duplicate-alert reduction and false-merge/missed-new-setup rates, and test alternate fingerprint definitions out of sample. Do not connect to production notifications until this evidence is acceptable.

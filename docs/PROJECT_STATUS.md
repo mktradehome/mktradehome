@@ -636,3 +636,18 @@ Last verified: 2026-11-21 16:24 UTC
 - The dashboard source on main contains the Trading Intelligence Hub, in-app activity centre, manual approval refresh control and broker-position display. The Hub and activity-centre reads are account/user-scoped and read-only. This session's successful API logs support backend integration, but no direct browser visual inspection was available.
 - Reconciliation note: no `trades` journal row was present yet for position ID 595355103 at the time of this check. The Hub's closed-trade performance/journal is based on recorded `trades` rows; verify that this position is recorded correctly after it closes. Do not insert or fabricate a journal row, expose the MT5 queue to the browser, or weaken RLS to work around this.
 - No source, database, strategy, risk, account mode, execution switch, approval rule, or open trade was changed during this investigation. The current position was left untouched. Demo-first and manual approval remain mandatory.
+
+
+## Research review: reliability improvements, not an accuracy promise — 2026-11-23
+
+- Reviewed current research on cost-aware ML trading, intraday strategy evaluation, LLM strategy-search leakage/overfitting, and official MetaTrader 5 forward-testing guidance.
+- Key conclusion: do not target or advertise 99% win accuracy. A high directional hit rate is neither guaranteed nor sufficient for profitability; spread, commission, slippage, payoff asymmetry, drawdown, regime shifts and overfitting matter.
+- Candidate future work, to be tested separately before any production integration:
+  1. Add a cost-aware expected-move gate using current executable-side spread and realistic slippage assumptions. Reject setups whose expected net reward does not clear costs and minimum net R:R. Do not relax current approval executable-price deterioration guard.
+  2. Build chronological walk-forward evaluation per symbol and combined portfolio, with untouched out-of-sample periods. Track all experiment trials and avoid selecting only the best historical parameter set.
+  3. Report expectancy, profit factor, max drawdown, recovery factor, Sharpe/Sortino where statistically meaningful, win/loss size, exposure, costs and confidence intervals alongside win rate.
+  4. Segment results by market regime, session, volatility and symbol; verify whether any edge survives different conditions rather than assuming one model fits all.
+  5. Reconcile each MT5 execution and closure to one immutable trade-journal lifecycle record, including broker ticket/position ID, fill, costs, SL/TP changes, close reason and realized P/L. Preserve server-side user scoping and RLS; never expose service-role or queue tables to the browser.
+  6. Keep the current unified signal engine, GOOD AND CLEAR / NORMAL labels, WAIT behavior, manual approval, Demo-first process, fixed risk controls and real-account read-only lock. No new model, indicator, threshold, market, or execution behavior is authorized by this research note.
+- Sources reviewed: MetaTrader 5 official Strategy Optimization and Forward Testing documentation; 2026 studies on transaction-cost-aware walk-forward ML trading, intraday ML evaluation with trading frictions, and leakage-aware LLM strategy discovery. Research findings are hypotheses and evaluation guidance, not proof of an edge in Mktradehome.
+- No code, database, deployed function, strategy parameter, risk setting, account mode or open trade was changed as part of this review.

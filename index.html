@@ -258,7 +258,7 @@ label{display:block;font-size:13px;color:#c7d8ee;margin-top:10px}
 </div>
 
 <div class="card" id="approvalCentre">
-<h2>Trade Approval Centre</h2>
+<div class="approval-centre-heading"><h2>Trade Approval Centre</h2><button id="approvalRefreshBtn" type="button" aria-label="Refresh approval setups" title="Refresh approval setups">↻</button></div>
 <p>Choose which MT5 account should receive the exact setup. Every approval is tied to that account and still requires the separate server and MT5 safety switches.</p>
 <p>Approvals are sent to the account selected above.</p>
 <div id="approvalTrades"><p>Waiting for market analysis...</p></div>
@@ -1633,6 +1633,22 @@ $("recordPnl").value="";
 showMessage("recordMessage","Trade result recorded on this device.");
 }
 
+async function refreshApprovalCentreManually(){
+const button=$("approvalRefreshBtn");
+if(button){button.disabled=true;button.classList.add("refreshing");}
+showMessage("approvalStatus","Refreshing approval setups and live quotes...");
+try{
+await syncApprovalCandidates();
+await fetchQuotes();
+renderApprovalCentre();
+showMessage("approvalStatus","Approval setups and live quotes refreshed · "+new Date().toLocaleTimeString()+". Final price and safety checks still run when you approve.");
+}catch(error){
+console.error("Manual approval refresh failed:",error);
+showMessage("approvalStatus","Refresh failed: "+(error.message||"Please try again.")+". No approval or trade was created.");
+}finally{
+if(button){button.disabled=false;button.classList.remove("refreshing");}
+}
+}
 async function syncApprovalCandidates(){
 if(approvalSyncBusy||document.hidden||$("dashboard").classList.contains("hidden"))return;
 approvalSyncBusy=true;
@@ -1904,6 +1920,7 @@ button.classList.toggle("active",button.dataset.page===activePage?.id);
 },{passive:true});
 }
 
+$("approvalRefreshBtn").addEventListener("click",refreshApprovalCentreManually);
 $("approvalTrades").addEventListener("click",event=>{
 const button=event.target.closest("[data-action]");
 if(!button)return;
@@ -1955,6 +1972,12 @@ checkSession();
 </script>
 
 <style>
+.approval-centre-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.approval-centre-heading h2{margin:0}
+#approvalRefreshBtn{width:42px;min-width:42px;height:42px;padding:0;border:1px solid #f5c542;border-radius:50%;background:#171717;color:#f5c542;font-size:27px;line-height:1;cursor:pointer}
+#approvalRefreshBtn:disabled{opacity:.55;cursor:wait}
+#approvalRefreshBtn.refreshing{animation:approvalRefreshSpin .8s linear infinite}
+@keyframes approvalRefreshSpin{to{transform:rotate(360deg)}}
 #advancedTools{padding:14px}
 #advancedTools>summary{cursor:pointer;list-style:none;color:#f5c542;font-size:16px;font-weight:700}
 #advancedTools>summary::-webkit-details-marker{display:none}

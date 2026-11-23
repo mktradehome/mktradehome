@@ -30,5 +30,7 @@ jobs:
         run: deno test supabase/functions/_shared/foresight-outcome.test.ts
       - name: Test independent approval proof against live strategy rules
         run: deno test --allow-read supabase/functions/_shared/approval-proof.test.ts
+      - name: Test executable-side approval price and risk validation
+        run: deno test supabase/functions/_shared/approval-price.test.ts
       - name: Test legacy shared-engine fixtures
         run: deno test supabase/functions/_shared/technical-engine.test.ts

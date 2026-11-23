@@ -1,6 +1,7 @@
 
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { validateIndependentCandidateProof } from "../_shared/approval-proof.ts";
+import { validateApprovalExecutionPrice } from "../_shared/approval-price.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -11,7 +12,6 @@ const ACCOUNT_NUMBER = "486163696";
 const ACCOUNT_SERVER = "Exness-MT5Trial10";
 
 const ALLOWED_SYMBOLS = ["BTCUSD", "EURUSD", "XAUUSD", "USDJPY"];
-const MAX_ENTRY_DEVIATION_PERCENT = 0.05;
 const MAX_QUOTE_AGE_SECONDS = 30;
 
 const corsHeaders = {
@@ -228,18 +228,48 @@ Deno.serve(async (req) => {
       }, 409);
     }
 
-    // 5. Enforce maximum 0.05% entry deviation.
-    const deviationPercent =
-      (Math.abs(entry - livePrice) / livePrice) * 100;
+    // 5. Revalidate at the executable side of the live quote.
+    // BUY orders execute at Ask; SELL orders execute at Bid. Keep the
+    // candidate's original SL/TP fixed and reject if current RR or structure
+    // no longer qualifies. This replaces the direction-blind 0.05% midpoint
+    // comparison without weakening the strategy's ATR entry-zone limit.
+    const priceValidation = validateApprovalExecutionPrice({
+      side: side as "BUY" | "SELL",
+      entry,
+      stopLoss,
+      takeProfit1: takeProfit,
+      takeProfit2,
+      bid: quoteBid,
+      ask: quoteAsk,
+      timeframe15m: {
+        close: Number(proof?.timeframes?.["15M"]?.close),
+        atr14: Number(proof?.timeframes?.["15M"]?.atr14),
+      },
+      originalQuote: {
+        bid: Number(proof?.quote?.bid),
+        ask: Number(proof?.quote?.ask),
+      },
+    });
 
-    if (deviationPercent > MAX_ENTRY_DEVIATION_PERCENT) {
+    if (!priceValidation.valid || !Number.isFinite(priceValidation.executionEntry)) {
+      console.warn("Approval price validation blocked:", {
+        symbol,
+        side,
+        reason: priceValidation.reason,
+        quoteAge,
+        spread: quoteAsk - quoteBid,
+        candidateEntry: entry,
+        liveMid: livePrice,
+      });
       return response({
-        error: "Market price has moved too far from this setup. Refresh the analysis and approve the new signal.",
-        live_price: livePrice,
+        error: priceValidation.reason,
         submitted_entry: entry,
-        deviation_percent: Number(deviationPercent.toFixed(5)),
+        live_bid: quoteBid,
+        live_ask: quoteAsk,
+        quote_age_seconds: quoteAge,
       }, 409);
     }
+    const executionPrice = priceValidation.executionEntry;
 
     // 6. Create secure database client.
     const adminClient = createClient(
@@ -341,7 +371,7 @@ Deno.serve(async (req) => {
           symbol,
           side,
           lot_size: 0.01,
-          entry_price: entry,
+          entry_price: executionPrice,
           stop_loss: stopLoss,
           take_profit: takeProfit,
           status: "approved",
@@ -366,10 +396,15 @@ Deno.serve(async (req) => {
       success: true,
       message: "Approval saved after live-price validation. No MT5 order has been placed by this function.",
       trade: savedTrade,
-      verified_live_price: livePrice,
-      price_deviation_percent: Number(
-        deviationPercent.toFixed(5),
-      ),
+      verified_live_price: executionPrice,
+      quote_side: side === "BUY" ? "ASK" : "BID",
+      verified_spread: priceValidation.spread,
+      verified_risk: priceValidation.risk,
+      verified_reward_1: priceValidation.reward1,
+      verified_reward_2: priceValidation.reward2,
+      verified_rr_1: priceValidation.rr1,
+      verified_rr_2: priceValidation.rr2,
+      drift_from_signal_atr: priceValidation.driftFromSignalAtr,
     });
   } catch (error) {
     console.error("Approval function error:", error);

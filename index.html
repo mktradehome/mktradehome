@@ -1012,8 +1012,13 @@ for(const row of (data||[])){
 const current=analyses[row.symbol];
 const created=Date.parse(row.created_at||"");
 const currentCreated=Date.parse(current?.updatedAt||"");
-if(current?.engineVerified===true&&current?.verificationStatus==="PASSED"&&String(current.candidateId)===String(row.id))continue;
-if(current?.engineVerified===true&&current?.verificationStatus==="PASSED"&&Number.isFinite(currentCreated)&&Number.isFinite(created)&&currentCreated>=created)continue;
+if(current?.engineVerified===true&&current?.verificationStatus==="PASSED"&&String(current.candidateId)===String(row.id)){
+const q=quotes[row.symbol],risk=row.signal==="BUY"?Number(row.entry_price)-Number(row.stop_loss):Number(row.stop_loss)-Number(row.entry_price);
+const distance=Math.abs(Number(q?.price)-Number(row.entry_price));
+current.quoteFresh=isQuoteFresh(q,row.symbol)&&Number.isFinite(distance)&&risk>0&&distance<=risk*0.25&&Date.parse(current.expiresAt||"")>Date.now();
+restoredSymbols.add(row.symbol);continue;
+}
+if(current?.engineVerified===true&&current?.verificationStatus==="PASSED"&&Number.isFinite(currentCreated)&&Number.isFinite(created)&&currentCreated>=created){restoredSymbols.add(row.symbol);continue;}
 const ageMs=Date.now()-created;
 if(!Number.isFinite(created)||ageMs<0||ageMs>10*60*1000)continue;
 let saved={};

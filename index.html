@@ -887,11 +887,9 @@ async function refreshChartTrade(){
   };
   chartOpenPositions=chartPositionMeta.complete&&Array.isArray(x.positions)?x.positions:[];
   if(!chartPositionMeta.complete)chartPositionMeta.error="MT5 has not confirmed a complete open-position list.";
-  if(queueResult.error)throw queueResult.error;
   const qd=queueResult.data;
-  if(qd?.success!==true)throw new Error(qd?.message||"Could not load MT5 pending queue.");
-  const rows=Array.isArray(qd.trades)?qd.trades:[];
-  chartActiveTrades=rows.filter(t=>["approved","executing"].includes(String(t.status||"").toLowerCase()));
+  if(queueResult.error||qd?.success!==true){chartActiveTrades=[];console.warn("Pending queue unavailable; broker position snapshot remains available.",queueResult.error||qd?.message);}
+  else {const rows=Array.isArray(qd.trades)?qd.trades:[];chartActiveTrades=rows.filter(t=>["approved","executing"].includes(String(t.status||"").toLowerCase()));}
   drawChartTrade();
  }catch(e){
   console.warn("Chart MT5 position overlay:",e);

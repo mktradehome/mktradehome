@@ -15,7 +15,7 @@ Deno.test("uses Bid for SELL", () => {
 });
 Deno.test("rejects adverse movement when RR falls below minimum", () => {
   const r = validateApprovalExecutionPrice({ ...base, bid: 101.4, ask: 101.5 });
-  assert(!r.valid && r.reason.includes("risk/reward"));
+  assert(!r.valid && r.reason.includes("weakened"));
 });
 Deno.test("rejects movement outside the original 15M ATR entry zone", () => {
   const r = validateApprovalExecutionPrice({ ...base, bid: 101.8, ask: 101.9 });
@@ -28,4 +28,13 @@ Deno.test("rejects an excessively widened spread", () => {
 Deno.test("rejects price crossing original stop", () => {
   const r = validateApprovalExecutionPrice({ ...base, bid: 97.8, ask: 97.9, timeframe15m: { close: 100, atr14: 4 } });
   assert(!r.valid && r.reason.includes("crossed"));
+});
+
+Deno.test("accepts unchanged spread-adjusted executable quote", () => {
+  const r = validateApprovalExecutionPrice({ ...base, bid: 99.9, ask: 100.1 });
+  assert(r.valid && r.executionEntry === 100.1);
+});
+Deno.test("rejects adverse SELL movement that weakens spread-adjusted RR", () => {
+  const r = validateApprovalExecutionPrice({ ...base, side: "SELL", entry: 100, stopLoss: 102, takeProfit1: 96, takeProfit2: 94, bid: 99.3, ask: 99.4 });
+  assert(!r.valid && r.reason.includes("weakened"));
 });

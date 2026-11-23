@@ -602,3 +602,5 @@ Last verified: 2026-11-21 16:24 UTC
 - Verification in this session: confirmed the current Demo snapshot table contains a complete snapshot with two BTCUSDm BUY positions (0.01 lot each), broker P/L +0.43 and +0.53 USD at capture time. This is a historical database snapshot, not a claim that those positions remain open now. Source edits were reviewed for required guards; automated browser/MT5 end-to-end tests have not yet been run.
 
 - Final dashboard polish saved in `index.html` commit `bf22bad41543b55a4209f67a4bbd8b4147200d8f`; open-position cards now explicitly show `OPEN`, and a pending-queue read failure no longer suppresses a successfully retrieved broker position snapshot.
+
+- Final isolation hardening saved in `index.html` commit `633985a7150783c71b9bbe07e8dcf29264241d6c`: a pending-queue request failure (including a rejected network request) cannot prevent a successful broker position snapshot from rendering.

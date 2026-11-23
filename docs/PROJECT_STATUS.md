@@ -1,6 +1,6 @@
 # Mktradehome — Current Project Status
 
-Last verified: 2026-11-21 16:24 UTC
+Last verified: 2026-11-22 05:40 UTC
 
 ## Project and safety
 - Private personal Exness trading assistant; dashboard: https://mktradehome.pages.dev/
@@ -513,3 +513,97 @@ Last verified: 2026-11-21 16:24 UTC
 - No production `market-monitor`, live alert, approval, queue, execution, risk, or Real-account lock behavior was changed. No trade was placed.
 - The dashboard source is now on main. Cloudflare Pages publication has not yet been independently verified from this session.
 - The authenticated archive-backed replay has **not** been run yet. Next required validation is to open the signed-in dashboard, run the V100 Shadow Backtest for the requested period, and inspect actual overlap/coverage plus per-market rejection counts. Gross-only historical results remain research evidence, not proof of profitability.
+
+
+## Signal consolidation and live position visibility — research plan (2026-11-22)
+- Created isolated branch `research/signal-consolidation-and-live-positions`; added `docs/research/SIGNAL_CONSOLIDATION_AND_LIVE_POSITIONS.md`.
+- Research workstream A will group refreshed same-direction candidates into one setup episode, preserve candidate history, and calculate a single proposal only when a common technically justified stop and all existing safety gates remain valid. No blind averaging, extra positions, added volume, or order execution.
+- Research workstream B will display broker-reported open Demo MT5 positions and floating P/L on Home, with source timestamp, completeness, stale/offline states, and no inferred P/L. Existing bridge v32 already accepts per-position snapshots; dashboard has an account monitor/event hook but still indicates live position display is unfinished.
+- Read-only database inspection found the latest Demo snapshot was from 2026-11-21 18:59:56 UTC, reported zero positions, and marked its position list complete. A registered Real snapshot was incomplete and is not a valid live feed.
+- Located stable Library baseline `MktradehomeBridge_Demo_v2.21.mq5` and experimental `MktradehomeBridge_v2.22_open_positions.mq5`. The experimental diff adds per-position serialization. It has not been compiled or accepted; retain v2.21 unchanged. The reported prior 90 compiler errors must be reconciled against exact MetaEditor diagnostics before any installation.
+- No production code, database schema, edge function, approval flow, execution behavior, risk limit, or Real-account lock changed. No EA installed, no trade placed, and no deployment performed.
+- Next: inspect the exact experimental EA and compiler diagnostics, harden completeness reporting (currently server derives completeness from presence of an array, so an EA that silently skips a position could falsely claim completeness), then add read-only Home rendering and deterministic tests on this research branch.
+
+
+## Evidence-led intelligence improvements — research branch (2026-11-22)
+- Added `docs/research/MARKET_INTELLIGENCE_IMPROVEMENTS.md` to translate the recent BTC repeated-alert review, baseline rejection diagnostics and MT5 position investigation into a staged intelligence roadmap.
+- Key intelligence findings recorded: BTC candidates #799–#801 represent one continuing setup refreshed after ten-minute expiry, not three independent opportunities; the 85 rule score is not an 85% win probability; and the active mt5-bridge v32 currently treats any positions array as complete without checking it against the broker-reported open-position count.
+- Safe dashboard hardening committed in `index.html` as `56e829dca9887daf370b17eb047f66888e66fbac`: validate selected account identity and required account values before dispatching position data; mark the event complete only when the bridge says complete, the array is within the 100-position limit, and array length equals open_positions.
+- This client-side check is fail-closed but does not repair server-side completeness validation. No position table is yet rendered, and the Home event still needs an explicitly tested consumer.
+- New intelligence roadmap prioritises setup-episode continuity, consolidated proposal research, outcome-calibrated confidence (only after sufficient independent closed samples), context-aware abstention, and broker-truth position reporting.
+- No production Edge Function was changed or deployed. No database schema, signal gates, classification, risk limits, approvals, execution, or Real-account lock changed. No EA was compiled/installed and no trade was placed.
+- Next implementation: add deterministic shared tests and harden mt5-bridge server-side completeness before building the Home positions view; keep all changes on this research branch until verified.
+
+- Follow-up UI safeguard committed as `ed9c9f111a50cb922f7b286379d9a3014cc04d1a`: the account monitor now explicitly warns when a snapshot is fresh but its position list is incomplete, rather than reporting an unqualified successful snapshot. This remains research-branch-only and is not deployed.
+
+
+## Broker position integrity and Home panel implementation — research PR #5 (2026-11-22)
+- Added a main Trading-page **Open MT5 Positions** panel. It renders only broker snapshot records and shows symbol, side, volume, entry, current price, SL/TP, broker profit, swap, position ID and account-currency floating P/L (profit + swap). Commission is disclosed as not supplied/excluded.
+- The panel fails closed: stale snapshots (>180 seconds), missing/invalid records, duplicate position IDs, non-integer broker counts, count mismatches, or an absent completeness flag suppress the P/L total. A complete fresh zero-position snapshot is shown separately as “No open positions.” This panel is view-only; it has no trade controls.
+- The account refresh event now includes broker open-position count and snapshot age. Dashboard JavaScript syntax was checked in the V8 runtime: all 3 inline scripts parsed successfully.
+- Added a research copy of the currently deployed `mt5-bridge` v32 source under `supabase/functions/mt5-bridge/index.ts`, plus shared validator `supabase/functions/_shared/mt5-position-snapshot.ts` and six deterministic Deno test cases. Missing arrays remain backward-compatible but incomplete; count mismatch can preserve account totals while never marking positions complete; malformed or duplicate position records are rejected.
+- Added GitHub Actions workflow `.github/workflows/position-integrity.yml` to run dashboard syntax validation, Deno position tests and validator type-check. These Deno/CI tests have not yet been observed passing in this session; do not claim them as passed until a workflow result confirms it.
+- Read-only production database check confirms the latest Demo snapshot is still from 2026-11-21 18:59:56 UTC, reports zero positions and is now stale. The registered Real snapshot is also old and marked incomplete. Therefore the new panel will correctly show stale/incomplete status until a fresh, trustworthy MT5 EA snapshot arrives.
+- The experimental EA v2.22 still has not been compiled or installed. Its serializer can skip invalid positions; the bridge validator now catches count mismatches, but the exact MetaEditor compiler diagnostics are still required before installation. Stable v2.21 remains untouched.
+- Opened draft PR #5: `https://github.com/mktradehome/mktradehome/pull/5`. It is unmerged. No Supabase Edge Function was deployed, no Cloudflare Pages deployment was triggered, no EA installed, no production database/schema changed, and no production signal/risk/approval/execution/Real-lock behavior changed.
+- Next gates: confirm GitHub Actions results; review the full PR diff; resolve/verify EA compile; obtain a fresh Demo snapshot with at least one test position and then a zero-position snapshot; compare Home values against MT5 terminal; only then consider a separate production release review.
+
+- Final research-branch review: fetched all five implementation files again; confirmed the dashboard contains 3 inline scripts and all 3 pass V8 syntax parsing. Confirmed the bridge source imports the shared validator, uses its completeness result, and the Deno test file contains 6 test cases. GitHub Actions/Deno test results are still not available, so those tests remain unverified. Updated account-monitor copy to direct users to the new panel. Existing Records page already contains the MT5 closed-trade journal; no duplicate history feature was added.
+
+- Added explicit OFFLINE handling after the initial panel review: if the account snapshot request fails, the dashboard clears position/P&L data and shows an offline warning rather than leaving the last successful values looking current. Rechecked all 3 inline dashboard scripts in V8 after this change; no syntax errors.
+
+- Final UI compatibility adjustment: position validation accepts any well-formed broker symbol (3–32 characters), not only the four analysis markets, so a valid Exness position outside the scanner's selected markets is not incorrectly hidden. All 3 inline scripts still pass V8 syntax parsing.
+
+
+## Evidence-based setup episode classifier — research branch (2026-11-22)
+- Added pure shared classifier `supabase/functions/_shared/setup-episode.ts` and seven deterministic tests. A candidate is linked as a REFRESHED_EPISODE only when market and direction match, completed-timeframe structure fingerprint is identical, no invalidation or material regime change is present, timestamps are monotonic and within the continuity window, and entry drift remains within a normalized ATR bound.
+- Time proximity alone cannot link candidates. Missing/invalid evidence, direction/market changes, structure changes, invalidation, regime change, stale gap or excessive entry drift starts a NEW_EPISODE with an explicit reason.
+- This is a research utility only. It is not wired into production alerts, the signal engine, approval, queue or execution. It does not calculate a consolidated entry/stop/target; that requires a separate common-stop validation and historical replay.
+- Read-only DB review found the recent BTC #799–#804 candidates share symbol/direction and close timestamps, but the persisted `trade_signals` rows alone do not include the complete multi-timeframe fingerprint needed to prove continuity. The existing archived candles can support reconstruction, but replay must reconstruct completed-candle structure before any automatic episode linking.
+- The position integrity workflow run `44989889111` completed successfully. All seven steps, including Deno setup, dashboard JavaScript syntax, six position snapshot tests and validator type-check, passed. The engine/approval workflow run `44989889098` also completed successfully.
+- The CI workflow now additionally runs the seven setup episode tests and type-checks the classifier. A fresh workflow run is pending after these latest commits.
+- No production Edge Function deployed, no EA compiled/installed, no database schema changed, no trade placed, and no signal/risk/approval/execution/Real-account lock changed.
+
+
+## Setup-episode classifier hardening — research branch (2026-11-22)
+- Reviewed the existing pure classifier before any integration. It was correctly isolated from production, but review found two missing fail-closed checks: a material-regime-change flag on the previous candidate was not considered, and the same candidate ID could be misclassified as its own refresh.
+- Hardened the classifier to reject duplicate candidate IDs, regime changes on either candidate, blank identifiers/symbols/fingerprints, and invalid continuity/drift configuration. Existing market, direction, invalidation, structure, monotonic-time, continuity-window and ATR-normalized drift gates remain intact.
+- Expanded deterministic setup-episode tests from 7 to 12, adding prior-candidate regime change, duplicate IDs, invalid evidence/configuration, non-monotonic timestamps, and exact accepted boundary behavior.
+- Changes are confined to `research/signal-consolidation-and-live-positions`. The classifier remains a research utility and is not wired into production notifications, signals, approvals, queue or execution. No production Edge Function, database schema, EA, deployment, risk limit, or Real-account lock was changed.
+- GitHub Actions must complete successfully on the new commit before these additional tests are considered verified. Next research gate is to build/reconstruct reliable completed-candle structure fingerprints from persisted evidence and replay historical candidates; do not connect the classifier to live notifications until false-merge and missed-new-setup rates are measured.
+
+
+## Trade performance study kickoff — broker reconciliation (2026-11-23)
+- Started the trade-performance study on the existing isolated research branch; detailed design and current evidence are documented in docs/research/SIGNAL_CONSOLIDATION_AND_LIVE_POSITIONS.md.
+- Read-only Supabase inspection confirms BTCUSD Demo position 593313802 is now CLOSED in trades row 118 with reported P/L +$4.72, matching the user's MT5 close notification. The queue record remains linked by the same broker position ID.
+- EURUSD Demo position 593630527 remains status=executed in mt5_trade_queue and has no matching closed row in trades at this check; keep it pending/open until broker closure evidence arrives.
+- Existing mt5-bridge close_report matches positions by broker position ID and upserts trades idempotently using account/server/position ID. The inspected trades schema does not expose dedicated commission, swap, fees, close reason, signal category/ID, setup episode ID, or provenance fields.
+- Do not claim net-of-cost performance or infer close reason from the existing journal. Separate broker-linked executed trades from signal-only candidates and simulated backtests. Current broker-linked sample is too small for strategy conclusions.
+- Next: inspect EA close-report/deal-history payload and DB constraints/RLS; build a read-only queue-to-journal reconciliation report; then prototype dashboard metrics with explicit data-quality labels. No production schema, bridge, signal, approval, execution, risk, EA, or Real-account lock changes were made.
+
+## Trade performance study — source and schema audit (2026-11-23)
+- Both research CI workflows passed on commit c7a3e101bc8025ccbd9bec5599c738737ba851f6: position integrity/dashboard syntax and engine/approval regression suite. The passing position workflow includes all 12 setup-episode tests and classifier type-check.
+- Audited saved Library EA source MktradehomeBridge_Demo_v2.21.mq5: its close-report sums deal profit, commission, swap and fee into one realised P/L amount. The bridge stores that combined value; it does not currently store separate cost components or close reason. Do not subtract costs a second time from that combined value.
+- EA close reporting checks for fully closed positions, volume coverage, retries unconfirmed reports, and skips unsupported reversal entries. These behaviors still need representative MT5 history testing; saved Library source is not proof of the exact EA build currently installed in the user's terminal.
+- Read-only catalog audit found unique journal index `trades_mt5_position_unique` on `(account_number, account_server, mt5_position_id)`, matching the close-report upsert conflict target. No database constraints, indexes, triggers, RLS, tables or production functions were changed.
+- Latest queue-to-journal reconciliation: BTCUSD position 593313802 linked to CLOSED journal row 118 at +$4.72; EURUSD position 593630527 remains executed with no matching closed journal row.
+- Next: test MT5 close aggregation and reason extraction against actual representative deal histories; inspect full EA active-build/version and compile evidence before any EA changes; prototype the reconciliation view and performance dashboard on the research branch. No merge, deployment, EA install, production schema/bridge, signal/risk/approval/execution, or Real-account lock changes.
+
+## Verification refresh — latest research head (2026-11-23)
+- Latest PR #5 head verified as `04244b885768c7bffcd610da8427352da83a4939`; PR remains open, draft, and unmerged against `main`.
+- Re-fetched GitHub Actions for this exact head. Position integrity/dashboard syntax workflow run `45088348995` completed successfully: dashboard syntax, MT5 position snapshot tests, validator type-check, all 12 setup-episode tests, and classifier type-check passed.
+- Engine and approval regression workflow run `45088348963` also completed successfully, including production/shadow Edge Function type-checks, dashboard/Vision syntax checks, candidate geometry/risk tests, shadow rules, Market Foresight metrics/horizon resolution, approval proof, and legacy fixtures.
+- Latest read-only Supabase reconciliation still shows BTCUSD position `593313802` linked to CLOSED journal row 118 at +$4.72. EURUSD position `593630527` remains `executed` in the queue and has no matching closed row in `trades`; closure is still pending verification.
+- No additional production or database changes are required from this verification pass. Keep the PR isolated and unmerged. Next work remains representative broker-history validation, full active-EA build/version verification, and a read-only queue-to-journal reconciliation/dashboard prototype. No live settings, signal/risk/approval/execution logic, EA installation, or Real-account lock were changed.
+
+
+## Approval dashboard delivery reliability (research only)
+- Research-branch commit: approval candidate feed now polls the persisted `trade_signals` source every 2.5 seconds while the dashboard is visible; quote refresh is separate at 8 seconds. Supabase Realtime is not currently enabled for `trade_signals` in the `supabase_realtime` publication, so the dashboard uses a bounded REST polling fallback rather than assuming a subscription works.
+- The approval centre only displays candidates with a fresh successful feed sync and an unexpired server-issued technical-engine proof. It displays a seconds-to-expiry countdown, hides candidates when the feed becomes stale, and blocks click approval if the last successful feed sync is at least 10 seconds old or the candidate proof has expired.
+- Candidate restoration now allows a newer persisted verified candidate to replace an older one, preserves the current candidate when older rows are also returned, and recalculates quote freshness from the latest cached quote. Existing server-side live quote, strategy-proof, entry-deviation, risk/reward, account and manual-approval checks remain authoritative.
+- This is a dashboard-side research change only. No Supabase schema/publication change, Edge Function deployment, EA change, production merge, or Real-account change was made. Browser/network latency and real-time delivery still require live Demo validation; 2.5 seconds is a polling target, not a guaranteed delivery SLA.
+
+- Exact commits for this delivery pass: dashboard implementation `45e19ae11c8acb2d1015750b90ecf7c8db5a33f8`; candidate-stability follow-up `514355eab6fbba20ba7dddbf99eabd7c19efb763`; status documentation `cf30e7f96bba8b7cb5bbbd430488a265da1a0ca6`.
+- CI status for this new dashboard change: no PR-triggered workflow runs were returned for the two code commits or the documentation commit. The earlier successful workflows listed above ran against code head `04244b885768c7bffcd610da8427352da83a4939`, not this new change. Therefore this delivery is **not yet CI-verified** and must remain unmerged/unpublished until syntax/regression checks and live Demo delivery tests pass.
+- Follow-up lifecycle fix: approval polling starts only after the dashboard passcode is successfully unlocked, and restarts after each re-unlock. This avoids the visibility-lock flow leaving the candidate feed stopped. Latest dashboard commit: `12066ec8d5cc64c1942a8e0069b97dc286a05f6b`.
+- CI follow-up after the passcode-unlock lifecycle correction: the GitHub connector also returned no PR-triggered workflow run for dashboard commit `12066ec8d5cc64c1942a8e0069b97dc286a05f6b`. This remains pending automated syntax/regression verification; no claim of successful tests is made for the new approval-feed code.

@@ -604,3 +604,8 @@ Last verified: 2026-11-21 16:24 UTC
 - Final dashboard polish saved in `index.html` commit `bf22bad41543b55a4209f67a4bbd8b4147200d8f`; open-position cards now explicitly show `OPEN`, and a pending-queue read failure no longer suppresses a successfully retrieved broker position snapshot.
 
 - Final isolation hardening saved in `index.html` commit `633985a7150783c71b9bbe07e8dcf29264241d6c`: a pending-queue request failure (including a rejected network request) cannot prevent a successful broker position snapshot from rendering.
+
+
+## Live position card sizing refinement — 2026-11-23
+- Reduced the open-position card padding, gaps and metric label/value sizes. Floating profit/loss display reduced from 20px to 16px while retaining bold green/red contrast and all position details.
+- No data, account, chart, strategy, risk, or execution behavior changed.

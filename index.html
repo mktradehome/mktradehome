@@ -58,6 +58,16 @@ label{display:block;font-size:13px;color:#c7d8ee;margin-top:10px}
 .news-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
 .news-head button{width:auto;min-width:92px;margin:0;padding:9px 12px;font-size:12px}
 @media(max-width:500px){.market{grid-template-columns:1fr}header{align-items:flex-start}.news-head{align-items:flex-start}}
+.mkHubMetrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:12px 0}
+.mkHubMetric{background:#071321;border:1px solid #29476d;border-radius:9px;padding:10px;min-width:0}
+.mkHubMetric span{display:block;color:#9db5d2;font-size:10px;line-height:1.35}
+.mkHubMetric strong{display:block;font-size:17px;margin-top:5px;overflow-wrap:anywhere}
+.mkHubTable{overflow-x:auto}.mkHubTable table{width:100%;border-collapse:collapse;font-size:12px}
+.mkHubTable th,.mkHubTable td{padding:8px 6px;text-align:left;border-bottom:1px solid #29476d;white-space:nowrap}
+.mkHubTable th{color:#9db5d2;font-weight:600}.mkHubPositive{color:#42d392}.mkHubNegative{color:#ff7373}
+.mkHubJournalItem{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:9px 0;border-bottom:1px solid #29476d;font-size:12px}
+.mkHubJournalItem:last-child{border-bottom:0}.mkHubJournalItem span{display:block;color:#9db5d2;font-size:10px;margin-top:3px}
+@media(max-width:520px){.mkHubMetrics{grid-template-columns:repeat(2,minmax(0,1fr))}.mkHubMetric strong{font-size:15px}}
 #marketChartWrap{height:360px;position:relative;width:100%;overflow:hidden;border-radius:9px;background:#071321;margin-top:12px}
 #marketChart{height:100%;width:100%}
 #chartTradeDetails .row{margin:6px 0} .chart-live{color:#42d392;font-weight:800} .chart-negative{color:#ff7373;font-weight:800}
@@ -193,6 +203,25 @@ label{display:block;font-size:13px;color:#c7d8ee;margin-top:10px}
 
 <div class="card" id="accountSelectorCard"><h2>Trading Account</h2><p>Choose the account view. Real mode is visible, but live account data and trade approvals remain locked until its MT5 connection is verified.</p><label for="accountSelector">Selected account</label><select id="accountSelector"><option value="demo" selected>Exness Demo · Trial10</option><option value="real">Exness Real · View mode (connection pending)</option></select><div class="small" id="accountModeNote">Demo monitoring and approvals are available. Real mode is display-only for now; no live orders can be approved or executed.</div></div>
 <div class="card" id="accountMonitor"><h2 id="accountMonitorTitle">Exness Demo Account Monitor</h2><p>Live account information received from the selected MT5 bridge.</p><button id="accountRefreshBtn" class="secondary">Refresh Demo Account Data</button><div id="accountStatus" class="status">Waiting for selected MT5 account data...</div><div id="accountData" class="hidden"><hr><div class="row"><span>Balance</span><strong id="accountBalance">--</strong></div><div class="row"><span>Equity</span><strong id="accountEquity">--</strong></div><div class="row"><span>Used margin</span><strong id="accountMargin">--</strong></div><div class="row"><span>Free margin</span><strong id="accountFreeMargin">--</strong></div><div class="row"><span>Currency</span><strong id="accountCurrency">--</strong></div><div class="row"><span>Leverage</span><strong id="accountLeverage">--</strong></div><div class="row"><span>Open position count</span><strong id="accountPositions">--</strong></div><div class="row"><span>Account server</span><strong id="accountServer">--</strong></div><div class="small" id="accountUpdated"></div></div><p class="small">Account details follow the selector. This snapshot gives account totals and an open-position count, not individual position details.</p></div>
+
+<div class="card" id="tradingIntelligenceHub">
+<h2>Trading Intelligence Hub</h2>
+<p>One read-only overview connecting broker positions, market performance, alerts and your trade journal.</p>
+<div class="mkHubMetrics">
+ <div class="mkHubMetric"><span>Open MT5 positions</span><strong id="mkHubOpenCount">—</strong></div>
+ <div class="mkHubMetric"><span>Floating P/L</span><strong id="mkHubFloatingPnl">—</strong></div>
+ <div class="mkHubMetric"><span>Unread alerts</span><strong id="mkHubUnread">—</strong></div>
+ <div class="mkHubMetric"><span>Closed trades</span><strong id="mkHubClosed">—</strong></div>
+ <div class="mkHubMetric"><span>Win rate</span><strong id="mkHubWinRate">—</strong></div>
+ <div class="mkHubMetric"><span>Profit factor</span><strong id="mkHubProfitFactor">—</strong></div>
+</div>
+<h3>Market performance · closed trades</h3>
+<div id="mkHubMarkets" class="mkHubTable"><p class="small">Waiting for your verified trading history…</p></div>
+<h3>Recent trade journal</h3>
+<div id="mkHubJournal"><p class="small">Waiting for completed trades…</p></div>
+<div id="mkHubStatus" class="status">Waiting for account-scoped records and a verified MT5 snapshot…</div>
+<p class="small">Read-only analytics. Broker floating P/L is shown only when the selected MT5 account has a complete, fresh position snapshot. Historical results are not a prediction of future performance.</p>
+</div>
 
 <div class="card">
 <h2>Markets</h2>
@@ -378,6 +407,7 @@ const marketList=[
 
 let quotes={};
 let analyses={};
+let tradingIntelligenceTimer=null;
 let approvalSyncTimer=null;
 let approvalQuoteTimer=null;
 let approvalSyncBusy=false;
@@ -447,6 +477,69 @@ showMessage("marketNewsStatus","Market news is temporarily unavailable. Please t
 }finally{
 if(button)button.disabled=false;
 }
+}
+
+/* CONNECTED TRADING INTELLIGENCE HUB — authenticated, account-scoped, read-only. */
+function mkHubCash(value,currency="USD"){
+ const n=Number(value);if(!Number.isFinite(n))return "—";
+ try{return new Intl.NumberFormat(undefined,{style:"currency",currency:currency||"USD",maximumFractionDigits:2}).format(n);}
+ catch(_){return n.toFixed(2)+" "+(currency||"USD");}
+}
+function mkHubSafe(value){return escapeHTML(value===null||value===undefined?"—":String(value));}
+async function loadTradingIntelligenceHub(){
+ const status=$("mkHubStatus");if(!status)return;
+ status.textContent="Refreshing account-scoped trading records…";
+ try{
+  const {data:userData,error:userError}=await supabaseClient.auth.getUser();
+  if(userError||!userData?.user)throw new Error("Please sign in to view trading intelligence.");
+  const uid=userData.user.id,real=selectedAccount()==="real";
+  let tradeQuery=supabaseClient.from("trades").select("id,symbol,direction,status,profit_loss,opened_at,closed_at,account_number,account_server").eq("user_id",uid).eq("account_server",real?"Exness-MT5Real30":MT5_SERVER).order("opened_at",{ascending:false}).limit(250);
+  if(!real)tradeQuery=tradeQuery.eq("account_number",MT5_ACCOUNT);
+  const since=new Date(Date.now()-7*24*60*60*1000).toISOString();
+  const [tradesResult,signalsResult,alertsResult]=await Promise.all([
+   tradeQuery,
+   supabaseClient.from("trade_signals").select("id,symbol,signal,confidence,created_at").eq("user_id",uid).gte("created_at",since).order("created_at",{ascending:false}).limit(250),
+   supabaseClient.from("trade_alerts").select("id",{count:"exact",head:true}).eq("user_id",uid).eq("is_read",false)
+  ]);
+  for(const result of [tradesResult,signalsResult,alertsResult])if(result.error)throw result.error;
+  const trades=tradesResult.data||[],signals=signalsResult.data||[];
+  const closed=trades.filter(t=>String(t.status||"").toUpperCase()==="CLOSED"||!!t.closed_at);
+  const wins=closed.filter(t=>Number(t.profit_loss)>0),losses=closed.filter(t=>Number(t.profit_loss)<0);
+  const grossProfit=wins.reduce((sum,t)=>sum+Number(t.profit_loss),0),grossLoss=Math.abs(losses.reduce((sum,t)=>sum+Number(t.profit_loss),0));
+  const net=closed.reduce((sum,t)=>sum+(Number(t.profit_loss)||0),0);
+  const winRate=closed.length?(wins.length/closed.length)*100:null;
+  const profitFactor=grossLoss>0?grossProfit/grossLoss:grossProfit>0?Infinity:null;
+  const floatingReady=chartPositionMeta.complete===true&&chartPositionMeta.stale!==true&&chartPositionMeta.account===(real?"real":"demo")&&!chartPositionMeta.error;
+  const openPositions=floatingReady?chartOpenPositions:[];
+  const floating=floatingReady?openPositions.reduce((sum,p)=>sum+(Number(p.profit)||0),0):null;
+  const currency=chartPositionMeta.currency||"USD";
+  $("mkHubOpenCount").textContent=floatingReady?String(openPositions.length):"—";
+  $("mkHubFloatingPnl").textContent=floating?mkHubCash(floating,currency):(floating===0?mkHubCash(0,currency):"Awaiting MT5");
+  $("mkHubFloatingPnl").className=floating===null?"":floating>=0?"mkHubPositive":"mkHubNegative";
+  $("mkHubUnread").textContent=String(alertsResult.count??0);
+  $("mkHubClosed").textContent=String(closed.length);
+  $("mkHubWinRate").textContent=winRate===null?"—":winRate.toFixed(1)+"%";
+  $("mkHubProfitFactor").textContent=profitFactor===null?"—":Number.isFinite(profitFactor)?profitFactor.toFixed(2):"∞";
+  const markets=marketList.map(m=>{
+   const rows=closed.filter(t=>normalizeMt5Symbol(t.symbol)===normalizeMt5Symbol(m.symbol));
+   const pnl=rows.reduce((sum,t)=>sum+(Number(t.profit_loss)||0),0);
+   const recentSignals=signals.filter(x=>normalizeMt5Symbol(x.symbol)===normalizeMt5Symbol(m.symbol)).length;
+   const cls=pnl>0?"mkHubPositive":pnl<0?"mkHubNegative":"";
+   return '<tr><td><strong>'+mkHubSafe(m.name)+'</strong></td><td>'+rows.length+'</td><td class="'+cls+'">'+mkHubCash(pnl,currency)+'</td><td>'+recentSignals+'</td></tr>';
+  }).join("");
+  $("mkHubMarkets").innerHTML='<table><thead><tr><th>Market</th><th>Closed</th><th>Net P/L</th><th>7-day signals</th></tr></thead><tbody>'+markets+'</tbody></table>';
+  const journal=closed.slice().sort((a,b)=>(Date.parse(b.closed_at||b.opened_at)||0)-(Date.parse(a.closed_at||a.opened_at)||0)).slice(0,6);
+  $("mkHubJournal").innerHTML=journal.length?journal.map(t=>{
+   const pnl=Number(t.profit_loss)||0,cls=pnl>0?"mkHubPositive":pnl<0?"mkHubNegative":"";
+   const date=t.closed_at||t.opened_at;
+   return '<div class="mkHubJournalItem"><div><strong>'+mkHubSafe(t.symbol)+' · '+mkHubSafe(t.direction)+'</strong><span>'+mkHubSafe(date?new Date(date).toLocaleString():"Time unavailable")+'</span></div><strong class="'+cls+'">'+mkHubCash(pnl,currency)+'</strong></div>';
+  }).join(""):'<p class="small">No closed trades are recorded for this account yet.</p>';
+  const snapshotText=floatingReady?"MT5 positions verified · "+openPositions.length+" open · broker snapshot "+(chartPositionMeta.capturedAt?new Date(chartPositionMeta.capturedAt).toLocaleTimeString():"time unavailable"):"MT5 position total withheld until a fresh, complete snapshot is available.";
+  status.textContent="Updated "+new Date().toLocaleTimeString()+" · "+closed.length+" closed trades · "+wins.length+" wins / "+losses.length+" losses · win rate "+(winRate===null?"—":winRate.toFixed(1)+"%")+" · profit factor "+(profitFactor===null?"—":Number.isFinite(profitFactor)?profitFactor.toFixed(2):"∞")+" · net historical P/L "+mkHubCash(net,currency)+" · "+snapshotText;
+ }catch(error){
+  console.error("Trading Intelligence Hub load failed:",error);
+  status.textContent="Trading intelligence unavailable: "+(error.message||"Please refresh. Existing trading and approval functions are unaffected.");
+ }
 }
 
 /* AUTHENTICATION */
@@ -586,6 +679,9 @@ updateAccountLabels();
 renderHistory();
 refreshAll();
 refreshSelectedAccount();
+loadTradingIntelligenceHub();
+if(tradingIntelligenceTimer)clearInterval(tradingIntelligenceTimer);
+tradingIntelligenceTimer=setInterval(loadTradingIntelligenceHub,60000);
 refreshMarketNews();
 runMarketForesight();
 

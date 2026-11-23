@@ -811,7 +811,7 @@ function drawChartOpenPositions(){
   const good=Number.isFinite(profit)&&profit>=0;
   const opened=Number(p.opened_at_unix)?new Date(Number(p.opened_at_unix)*1000).toLocaleString():"Not supplied";
   const metric=(label,value)=>'<div class="position-metric"><span>'+label+'</span><strong>'+value+'</strong></div>';
-  return '<div class="position-card"><div class="position-head"><span>'+escapeHTML(normalizeMt5Symbol(p.symbol))+' · '+escapeHTML(side)+'</span><span>0'+escapeHTML("")+'</span></div>'+
+  return '<div class="position-card"><div class="position-head"><span>'+escapeHTML(normalizeMt5Symbol(p.symbol))+' · '+escapeHTML(side)+'</span><span>OPEN</span></div>'+
    '<div class="position-profit '+(good?'positive':'negative')+'">'+(Number.isFinite(profit)?(profit>=0?'+':'')+money(profit):'Unavailable')+' '+escapeHTML(chartPositionMeta.currency||"USD")+'</div>'+
    '<div class="small">Ticket '+escapeHTML(p.position_id??p.ticket??"—")+' · Lot size '+escapeHTML(Number.isFinite(volume)?volume.toFixed(2):"—")+'</div>'+
    '<div class="position-grid">'+metric("Entry price",formatPrice(entry))+metric("Current price",formatPrice(current))+metric("Stop Loss",formatPrice(sl))+metric("Take Profit",formatPrice(tp))+metric("Distance to TP",Number.isFinite(tpDistance)?formatPrice(Math.abs(tpDistance))+" price units":"Not set")+metric("Swap",money(swap)+" "+escapeHTML(chartPositionMeta.currency||"USD"))+'</div>'+

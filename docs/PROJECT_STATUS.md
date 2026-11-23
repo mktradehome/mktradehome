@@ -625,3 +625,14 @@ Last verified: 2026-11-21 16:24 UTC
 - The dashboard card is a first integrated overview, not a replacement for the existing detailed chart, market analysis, approval centre, or notification panel. Further work should connect lifecycle events (approval, execution, TP/SL and close outcomes) to a safe user-scoped event feed without exposing MT5 queue tables or weakening RLS.
 
 - Follow-up refinement: the hub also calculates account-scoped closed-trade win rate and profit factor, and orders journal records by opened time so null close timestamps cannot crowd out completed history. These are descriptive historical metrics only.
+
+
+## Live EUR/USD approval-to-broker verification — 2026-11-23 12:00–12:03 UTC
+
+- Read-only verification of the user's manually approved EUR/USD GOOD AND CLEAR SELL candidate. Signal #909 was generated at 12:00:05 UTC with rule quality score 85/100 (not a win probability); the stored analysis records all-four-timeframe EMA alignment, strong 4H/1H/15M directional scores, and 5M confirmation.
+- Manual approval was recorded at 12:00:20 UTC. The Demo MT5 queue changed to `executed` at 12:00:31 UTC. Broker confirmation returned retcode 10009, symbol EURUSDm, SELL 0.01 lot, fill 1.09610, and position ID 595355103.
+- The latest complete Demo account snapshot at 12:03:18 UTC independently showed the same EURUSDm SELL position ID 595355103 open at 0.01 lot, entry 1.09610, SL 1.09693, TP 1.09426, current price 1.09616, and broker-reported floating P/L -$0.06 at capture time. This is a timestamped observation, not a guarantee of the position's status after that snapshot.
+- Supabase logs from 11:58–12:05 UTC show the live dashboard origin `https://mktradehome.pages.dev/` successfully requesting authenticated trade signals, account/position snapshot, trade queue, trade records, alerts and scan status. The sampled requests returned HTTP 200; the deployed `mt5-bridge` was ACTIVE v32 and the approval endpoint ACTIVE v23.
+- The dashboard source on main contains the Trading Intelligence Hub, in-app activity centre, manual approval refresh control and broker-position display. The Hub and activity-centre reads are account/user-scoped and read-only. This session's successful API logs support backend integration, but no direct browser visual inspection was available.
+- Reconciliation note: no `trades` journal row was present yet for position ID 595355103 at the time of this check. The Hub's closed-trade performance/journal is based on recorded `trades` rows; verify that this position is recorded correctly after it closes. Do not insert or fabricate a journal row, expose the MT5 queue to the browser, or weaken RLS to work around this.
+- No source, database, strategy, risk, account mode, execution switch, approval rule, or open trade was changed during this investigation. The current position was left untouched. Demo-first and manual approval remain mandatory.

@@ -364,6 +364,10 @@ const marketList=[
 
 let quotes={};
 let analyses={};
+let approvalSyncTimer=null;
+let approvalQuoteTimer=null;
+let approvalSyncBusy=false;
+let lastApprovalSyncAt=0;
 let latestForesightResults=[];
 let latestForesightGeneratedAt=null;
 let latestForesightPerformance=null;
@@ -940,10 +944,18 @@ const {data,error}=await supabaseClient
 if(error)throw error;
 const restoredSymbols=new Set();
 for(const row of (data||[])){
-if(analyses[row.symbol]&&["BUY","SELL"].includes(analyses[row.symbol].overall)&&(analyses[row.symbol].engineVerified===true&&analyses[row.symbol].verificationStatus==="PASSED"))continue;
+const current=analyses[row.symbol];
 const created=Date.parse(row.created_at||"");
+const currentCreated=Date.parse(current?.updatedAt||"");
+if(current?.engineVerified===true&&current?.verificationStatus==="PASSED"&&String(current.candidateId)===String(row.id)){
+const q=quotes[row.symbol],risk=row.signal==="BUY"?Number(row.entry_price)-Number(row.stop_loss):Number(row.stop_loss)-Number(row.entry_price);
+const distance=Math.abs(Number(q?.price)-Number(row.entry_price));
+current.quoteFresh=isQuoteFresh(q,row.symbol)&&Number.isFinite(distance)&&risk>0&&distance<=risk*0.25&&Date.parse(current.expiresAt||"")>Date.now();
+restoredSymbols.add(row.symbol);continue;
+}
+if(current?.engineVerified===true&&current?.verificationStatus==="PASSED"&&Number.isFinite(currentCreated)&&Number.isFinite(created)&&currentCreated>=created){restoredSymbols.add(row.symbol);continue;}
 const ageMs=Date.now()-created;
-if(!Number.isFinite(created)||ageMs<0||ageMs>30*60*1000)continue;
+if(!Number.isFinite(created)||ageMs<0||ageMs>10*60*1000)continue;
 let saved={};
 try{saved=JSON.parse(row.analysis||"{}");}catch(e){continue;}
 const isEngine=saved.source==="mktradehome-technical-engine"&&saved.engineVersion==="1.0.0"&&saved.engineVerified===true&&saved.verificationStatus==="PASSED"&&saved.qualityScoreIsWinProbability===false&&!!saved.expiresAt&&Date.parse(saved.expiresAt)>Date.now();
@@ -964,6 +976,7 @@ const results={
 };
 analyses[row.symbol]={
 candidateId:String(row.id),
+expiresAt:saved.expiresAt,
 symbol:row.symbol,overall:row.signal,entry,sl,tp1,tp2,
 quoteFresh:quoteFresh&&ageMs<=10*60*1000&&stillNearEntry,
 reason:"Restored from saved Mktradehome technical-engine analysis. "+(saved.explanation||""),
@@ -979,8 +992,10 @@ updatedAt:created
 };
 restoredSymbols.add(row.symbol);
 }
+return true;
 }catch(error){
 console.error("Could not restore saved technical-engine candidates:",error);
+return false;
 }
 }
 
@@ -1266,13 +1281,14 @@ if(!container)return;
 
 const reviews=getSignalReviews();
 
+const feedFresh=lastApprovalSyncAt>0&&Date.now()-lastApprovalSyncAt<10000;
 const signals=marketList.map(m=>({market:m,a:analyses[m.symbol]}))
-.filter(x=>x.a&&["BUY","SELL"].includes(x.a.overall)&&
+.filter(x=>feedFresh&&x.a&&Date.parse(x.a.expiresAt||"")>Date.now()&&["BUY","SELL"].includes(x.a.overall)&&
  (x.a.engineVerified===true&&x.a.verificationStatus==="PASSED"&&x.a.candidateId!==undefined&&x.a.candidateId!==null&&String(x.a.candidateId).trim().length>0)&&
  Number.isFinite(x.a.entry)&&Number.isFinite(x.a.sl)&&Number.isFinite(x.a.tp1)&&getSignalQuality(x.a)==="INDEPENDENT ENGINE VERIFIED · NOT A WIN PROBABILITY");
 
 if(!signals.length){
-container.innerHTML="<p>No confirmed BUY or SELL setups right now. WAIT signals are not approval opportunities.</p>";
+container.innerHTML=feedFresh?"<p>No current unexpired BUY or SELL setups pass verification. WAIT remains the correct decision.</p>":"<p>Approval feed is reconnecting. New approvals are hidden until fresh candidate data is confirmed.</p>";
 return;
 }
 
@@ -1283,12 +1299,14 @@ const status=review?.status||"awaiting_review";
 const statusText=status==="approved"
 ?"SAVED IN SECURE MT5 QUEUE"
 :status==="rejected"?"REJECTED":"AWAITING YOUR REVIEW";
+const secondsLeft=Math.max(0,Math.ceil((Date.parse(a.expiresAt)-Date.now())/1000));
 
 return `<div class="approval-trade">
 <h3>${escapeHTML(market.name)} · ${a.strength==="STRONG"?"STRONG ":""}${a.overall}</h3>
 <div class="trade-status">${escapeHTML(a.displayLabel||"LEGACY SIGNAL · NOT CLASSIFIED")}</div>
 <div class="trade-status">INDEPENDENT TECHNICAL RULES PASSED</div>
 <div class="trade-status">${getSignalQuality(a)}</div>
+<div class="trade-status">CANDIDATE EXPIRES IN ${secondsLeft}s · SERVER-VERIFIED</div>
 <div class="trade-status">${statusText}</div>
 <div class="row"><span>Entry reference</span><strong>${formatPrice(a.entry)}</strong></div>
 <div class="row"><span>Stop Loss</span><strong>${formatPrice(a.sl)}</strong></div>
@@ -1305,8 +1323,10 @@ ${status==="awaiting_review"?(a.quoteFresh?`
 /* SECURE SUPABASE APPROVAL */
 
 async function handleSignalReview(action,symbol){
+if(lastApprovalSyncAt===0||Date.now()-lastApprovalSyncAt>=10000){showMessage("approvalStatus","Approval feed is not current. Wait for it to reconnect before approving.");return;}
 const market=marketList.find(m=>m.symbol===symbol);
 const a=analyses[symbol];
+if(!a||!a.expiresAt||Date.parse(a.expiresAt)<=Date.now()){showMessage("approvalStatus","This candidate has expired. Wait for a newly verified setup.");renderApprovalCentre();return;}
 
 if(!market||!a||!["BUY","SELL"].includes(a.overall)){
 showMessage("approvalStatus","This setup is no longer active. Refresh analysis.");
@@ -1613,6 +1633,34 @@ $("recordPnl").value="";
 showMessage("recordMessage","Trade result recorded on this device.");
 }
 
+async function syncApprovalCandidates(){
+if(approvalSyncBusy||document.hidden||$("dashboard").classList.contains("hidden"))return;
+approvalSyncBusy=true;
+try{
+const ok=await loadSavedVerifiedCandidates();
+if(!ok)throw new Error("Candidate feed query failed");
+lastApprovalSyncAt=Date.now();
+renderApprovalCentre();
+showMessage("approvalStatus","Approval feed connected · last checked "+new Date(lastApprovalSyncAt).toLocaleTimeString()+" · checking every 2.5 seconds.");
+}catch(error){
+console.error("Approval candidate sync delayed:",error);
+renderApprovalCentre();
+showMessage("approvalStatus","Approval feed delayed. New approvals are hidden until fresh candidate data is restored.");
+}finally{approvalSyncBusy=false;}
+}
+function startApprovalSync(){
+if(approvalSyncTimer)clearInterval(approvalSyncTimer);
+if(approvalQuoteTimer)clearInterval(approvalQuoteTimer);
+lastApprovalSyncAt=0;
+syncApprovalCandidates();
+approvalSyncTimer=setInterval(syncApprovalCandidates,2500);
+/* Refresh the live quote separately; the server still performs its own final quote check. */
+approvalQuoteTimer=setInterval(async()=>{
+if(document.hidden||$("dashboard").classList.contains("hidden"))return;
+try{await fetchQuotes();renderApprovalCentre();}catch(error){console.warn("Approval quote refresh delayed:",error);}
+},8000);
+}
+
 /* MAIN REFRESH */
 
 async function refreshAll(){
@@ -1870,7 +1918,7 @@ function bytesToHex(bytes){return Array.from(bytes).map(b=>b.toString(16).padSta
 async function hashDashboardPin(pin,saltHex){const enc=new TextEncoder();const salt=new Uint8Array(saltHex.match(/.{2}/g).map(x=>parseInt(x,16)));const key=await crypto.subtle.importKey("raw",enc.encode(pin),"PBKDF2",false,["deriveBits"]);const bits=await crypto.subtle.deriveBits({name:"PBKDF2",salt,iterations:150000,hash:"SHA-256"},key,256);return bytesToHex(new Uint8Array(bits));}
 function showPinLock(setup=false){$("mkPinLock").classList.remove("hidden");$("mkPinTitle").textContent=setup?"Create your dashboard passcode":"Mktradehome is locked";$("mkPinHint").textContent=setup?"Create a 6-digit passcode. You will need it whenever the dashboard locks.":"Enter your 6-digit passcode to open your dashboard.";$("mkPinConfirm").classList.toggle("hidden",!setup);$("mkPinSubmit").textContent=setup?"Save Passcode":"Unlock Dashboard";$("mkPinInput").value="";$("mkPinConfirm").value="";showMessage("mkPinMessage","");setTimeout(()=>$("mkPinInput").focus(),100);}
 function lockDashboard(){if($("dashboard").classList.contains("hidden"))return;dashboardUnlocked=false;$("dashboard").classList.add("hidden");$("lockBtn").classList.add("hidden");showPinLock(!localStorage.getItem(PIN_HASH_KEY));}
-async function submitDashboardPin(){const pin=$("mkPinInput").value.trim();const setup=!localStorage.getItem(PIN_HASH_KEY);if(!/^\d{6}$/.test(pin)){showMessage("mkPinMessage","Passcode must be exactly 6 digits.");return;}try{if(setup){const confirmPin=$("mkPinConfirm").value.trim();if(pin!==confirmPin){showMessage("mkPinMessage","The two passcodes do not match.");return;}const salt=bytesToHex(crypto.getRandomValues(new Uint8Array(16)));const hash=await hashDashboardPin(pin,salt);localStorage.setItem(PIN_SALT_KEY,salt);localStorage.setItem(PIN_HASH_KEY,hash);}else{const salt=localStorage.getItem(PIN_SALT_KEY);const hash=await hashDashboardPin(pin,salt||"");if(hash!==localStorage.getItem(PIN_HASH_KEY)){showMessage("mkPinMessage","Incorrect passcode. Try again.");$("mkPinInput").value="";return;}}dashboardUnlocked=true;$("mkPinLock").classList.add("hidden");$("dashboard").classList.remove("hidden");$("lockBtn").classList.remove("hidden");}catch(e){console.error("Dashboard PIN error:",e);showMessage("mkPinMessage","Could not verify passcode on this browser.");}}
+async function submitDashboardPin(){const pin=$("mkPinInput").value.trim();const setup=!localStorage.getItem(PIN_HASH_KEY);if(!/^\d{6}$/.test(pin)){showMessage("mkPinMessage","Passcode must be exactly 6 digits.");return;}try{if(setup){const confirmPin=$("mkPinConfirm").value.trim();if(pin!==confirmPin){showMessage("mkPinMessage","The two passcodes do not match.");return;}const salt=bytesToHex(crypto.getRandomValues(new Uint8Array(16)));const hash=await hashDashboardPin(pin,salt);localStorage.setItem(PIN_SALT_KEY,salt);localStorage.setItem(PIN_HASH_KEY,hash);}else{const salt=localStorage.getItem(PIN_SALT_KEY);const hash=await hashDashboardPin(pin,salt||"");if(hash!==localStorage.getItem(PIN_HASH_KEY)){showMessage("mkPinMessage","Incorrect passcode. Try again.");$("mkPinInput").value="";return;}}dashboardUnlocked=true;$("mkPinLock").classList.add("hidden");$("dashboard").classList.remove("hidden");$("lockBtn").classList.remove("hidden");startApprovalSync();}catch(e){console.error("Dashboard PIN error:",e);showMessage("mkPinMessage","Could not verify passcode on this browser.");}}
 document.addEventListener("visibilitychange",()=>{if(document.hidden&&dashboardUnlocked)lockDashboard();});
 
 /* AUTH SESSION */

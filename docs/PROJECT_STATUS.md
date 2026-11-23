@@ -575,3 +575,11 @@ Last verified: 2026-11-21 16:24 UTC
 **Decision:** Do not force signals or loosen filters. The observed two-market signal mix is currently explained by the strategy's multi-timeframe entry rules, not by a demonstrated market-exclusion or scheduler failure. Continue monitoring fresh scans; reopen the investigation if any market stops receiving fresh snapshots, the 5-minute scheduler heartbeat goes stale, or logs show provider/data errors.
 
 **Verification boundary:** This confirms scanner execution, market data retrieval, analysis snapshot writes, and the recorded rejection reasons at the reviewed time. It does not establish future market opportunities, profitability, or end-to-end broker execution readiness. Demo-first and manual approval remain mandatory.
+
+
+## Manual Trade Approval Centre refresh control (2026-11-23)
+- Added a visible circular refresh-arrow control beside the Trade Approval Centre heading.
+- Manual refresh reloads the saved verified candidate feed and live quotes, then rerenders the approval cards and status timestamp. It does not create, approve, reject or execute a trade.
+- Existing automatic candidate polling remains in place. Server-side live executable-price validation, expiry, account binding, manual confirmation and independent safety switches are unchanged.
+- Refresh failures are reported in the approval status area; the control disables and spins while refreshing.
+- Dashboard change committed separately from all trading-engine and approval safety logic.

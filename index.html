@@ -136,6 +136,17 @@ label{display:block;font-size:13px;color:#c7d8ee;margin-top:10px}
 .mk-review-actions button{flex:1;min-width:125px}
 @media(max-width:760px){.mk-review-actions{display:grid;grid-template-columns:1fr 1fr}.mk-review-actions button:last-child{grid-column:1/-1}}
 
+
+/* In-app notification centre */
+#mkNotifyBtn{width:auto;margin:0 8px 0 0;padding:10px 12px;background:#17365f;border:1px solid #d4a72c;position:relative}
+#mkNotifyCount{display:inline-flex;min-width:18px;height:18px;align-items:center;justify-content:center;border-radius:20px;background:#e34b4b;color:#fff;font-size:10px;margin-left:5px;padding:0 4px}
+#mkNotifyPanel{position:fixed;z-index:10002;inset:0;background:#020711dd;display:none;align-items:flex-start;justify-content:center;padding:5vh 12px 20px}
+#mkNotifyPanel.open{display:flex}
+#mkNotifyCard{width:min(720px,100%);max-height:90vh;overflow:auto;background:#0b1728;border:1px solid #d4a72c;border-radius:16px;padding:16px;box-shadow:0 20px 70px #000c}
+.mkNotifyHead{display:flex;justify-content:space-between;align-items:center;gap:10px}.mkNotifyHead h2{color:#f5c542;margin:0}
+.mkNotifyTools{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0}.mkNotifyTools button{margin:0;padding:10px}
+.mkNotifyItem{border:1px solid #29476d;background:#10223a;border-radius:10px;padding:12px;margin:8px 0}.mkNotifyItem.unread{border-left:4px solid #f5c542}.mkNotifyItem strong{color:#f3f7ff}.mkNotifyMeta{font-size:11px;color:#9db5d2;margin-top:6px}.mkNotifyEmpty{padding:24px;text-align:center;color:#9db5d2}
+@media(max-width:520px){#mkNotifyPanel{padding:3vh 8px 12px}#mkNotifyCard{padding:12px}.mkNotifyTools{grid-template-columns:1fr 1fr}}
 </style>
 </head>
 <body>
@@ -147,7 +158,7 @@ label{display:block;font-size:13px;color:#c7d8ee;margin-top:10px}
 <h1>Mktradehome</h1>
 <p>Personal Trading Analysis Assistant</p>
 </div>
-<div style="display:flex;gap:8px;align-items:center"><button id="lockBtn" class="secondary hidden" type="button">Lock</button><button id="logoutBtn" class="secondary hidden" style="width:auto">Sign Out</button></div>
+<div style="display:flex;gap:8px;align-items:center"><button id="mkNotifyBtn" type="button" aria-label="Open notifications">🔔 Alerts <span id="mkNotifyCount">0</span></button><button id="lockBtn" class="secondary hidden" type="button">Lock</button><button id="logoutBtn" class="secondary hidden" style="width:auto">Sign Out</button></div>
 </header>
 
 <div id="loginPanel" class="card">
@@ -160,6 +171,7 @@ label{display:block;font-size:13px;color:#c7d8ee;margin-top:10px}
 <div id="loginMessage" class="status">Sign in to open your trading dashboard.</div>
 </div>
 
+<div id="mkNotifyPanel" role="dialog" aria-modal="true" aria-labelledby="mkNotifyTitle"><div id="mkNotifyCard"><div class="mkNotifyHead"><div><h2 id="mkNotifyTitle">Mktradehome Activity</h2><p>Signals, alerts and recorded trading activity in one place.</p></div><button id="mkNotifyClose" class="secondary" type="button" style="width:auto;margin:0">Close</button></div><div class="mkNotifyTools"><select id="mkNotifyFilter" aria-label="Filter notifications"><option value="all">All activity</option><option value="unread">Unread alerts</option><option value="signals">Signals</option><option value="trades">Trade alerts</option></select><button id="mkNotifyRefresh" class="secondary" type="button">↻ Refresh activity</button></div><div id="mkNotifyStatus" class="status">Activity feed is ready.</div><div id="mkNotifyList"><div class="mkNotifyEmpty">Loading activity…</div></div></div></div>
 <div id="dashboard" class="hidden">
 
 <div class="page-nav"><button type="button" class="active" data-page="tradingPage">1 · Trading</button><button type="button" data-page="recordsPage">2 · Records</button><button type="button" data-page="journeyPage">3 · My Journey</button></div>
@@ -436,6 +448,50 @@ if(button)button.disabled=false;
 }
 
 /* AUTHENTICATION */
+
+/* PRIVATE IN-APP ACTIVITY CENTRE — read-only event feed; only alert read-state can be changed. */
+let mkNotifyRows=[];
+function mkNotifyTime(value){const d=new Date(value);return Number.isNaN(d.getTime())?"Time unavailable":d.toLocaleString();}
+function mkNotifyEsc(value){return String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));}
+async function loadMktradehomeActivity(){
+ const status=$("mkNotifyStatus"),list=$("mkNotifyList");
+ if(!status||!list)return;
+ status.textContent="Checking your saved activity…";
+ try{
+  const {data:userData,error:userError}=await supabaseClient.auth.getUser();
+  if(userError||!userData?.user)throw new Error("Please sign in again to view your activity.");
+  const uid=userData.user.id;
+  const [alerts,signals,trades]=await Promise.all([
+   supabaseClient.from("trade_alerts").select("id,alert_type,message,is_read,created_at,symbol,trade_id").eq("user_id",uid).order("created_at",{ascending:false}).limit(100),
+   supabaseClient.from("trade_signals").select("id,symbol,signal,confidence,analysis,created_at").eq("user_id",uid).order("created_at",{ascending:false}).limit(60),
+   supabaseClient.from("trades").select("id,symbol,direction,status,profit_loss,opened_at,closed_at").eq("user_id",uid).order("opened_at",{ascending:false}).limit(60)
+  ]);
+  for(const x of [alerts,signals,trades])if(x.error)throw x.error;
+  mkNotifyRows=[];
+  (alerts.data||[]).forEach(a=>mkNotifyRows.push({kind:"alert",id:a.id,unread:!a.is_read,title:a.alert_type||"Trading alert",message:a.message||"An account alert was recorded.",symbol:a.symbol,time:a.created_at,raw:a}));
+  (signals.data||[]).forEach(a=>mkNotifyRows.push({kind:"signal",id:a.id,title:(a.signal||"WAIT")+" · "+(a.symbol||"Market"),message:a.analysis||"A market signal record was saved.",symbol:a.symbol,time:a.created_at,raw:a}));
+  (trades.data||[]).forEach(a=>mkNotifyRows.push({kind:"trade",id:a.id,title:(a.direction||"TRADE")+" · "+(a.symbol||"Market"),message:"Trade record: "+(a.status||"unknown")+(a.profit_loss==null?"":" · P/L "+a.profit_loss),symbol:a.symbol,time:a.closed_at||a.opened_at,raw:a}));
+  mkNotifyRows.sort((a,b)=>(Date.parse(b.time)||0)-(Date.parse(a.time)||0));
+  const unread=mkNotifyRows.filter(x=>x.kind==="alert"&&x.unread).length;
+  $("mkNotifyCount").textContent=unread>99?"99+":String(unread);
+  $("mkNotifyCount").hidden=unread===0;
+  renderMktradehomeActivity();
+  status.textContent="Updated "+new Date().toLocaleTimeString()+" · "+mkNotifyRows.length+" saved records · "+unread+" unread alerts.";
+ }catch(e){console.error("Activity centre load failed:",e);status.textContent="Activity could not be loaded: "+(e.message||"Please try again.");list.innerHTML='<div class="mkNotifyEmpty">Your activity is safe. Refresh to try again.</div>';}
+}
+function renderMktradehomeActivity(){
+ const filter=$("mkNotifyFilter")?.value||"all",list=$("mkNotifyList");if(!list)return;
+ const rows=mkNotifyRows.filter(x=>filter==="all"||(filter==="unread"&&x.kind==="alert"&&x.unread)||(filter==="signals"&&x.kind==="signal")||(filter==="trades"&&(x.kind==="alert"||x.kind==="trade")));
+ if(!rows.length){list.innerHTML='<div class="mkNotifyEmpty">No activity in this filter yet.</div>';return;}
+ list.innerHTML=rows.map(x=>'<article class="mkNotifyItem '+(x.unread?'unread':'')+'"><strong>'+mkNotifyEsc(x.title)+'</strong><div>'+mkNotifyEsc(x.message)+'</div><div class="mkNotifyMeta">'+mkNotifyEsc(x.kind.toUpperCase())+(x.symbol?' · '+mkNotifyEsc(x.symbol):'')+' · '+mkNotifyEsc(mkNotifyTime(x.time))+(x.unread?' · UNREAD':'')+'</div>'+(x.kind==="alert"&&x.unread?'<button type="button" class="secondary mkNotifyRead" data-alert-id="'+mkNotifyEsc(x.id)+'" style="margin-top:9px;padding:8px">Mark as read</button>':'')+'</article>').join("");
+}
+async function markMktradehomeAlertRead(id){const {data:userData}=await supabaseClient.auth.getUser();if(!userData?.user)return;const {error}=await supabaseClient.from("trade_alerts").update({is_read:true}).eq("id",id).eq("user_id",userData.user.id);if(error){$("mkNotifyStatus").textContent="Could not update alert: "+error.message;return;}await loadMktradehomeActivity();}
+$("mkNotifyBtn")?.addEventListener("click",()=>{$("mkNotifyPanel").classList.add("open");loadMktradehomeActivity();});
+$("mkNotifyClose")?.addEventListener("click",()=>$("mkNotifyPanel").classList.remove("open"));
+$("mkNotifyRefresh")?.addEventListener("click",loadMktradehomeActivity);
+$("mkNotifyFilter")?.addEventListener("change",renderMktradehomeActivity);
+$("mkNotifyList")?.addEventListener("click",e=>{const b=e.target.closest(".mkNotifyRead");if(b)markMktradehomeAlertRead(b.dataset.alertId);});
+$("mkNotifyPanel")?.addEventListener("click",e=>{if(e.target.id==="mkNotifyPanel")$("mkNotifyPanel").classList.remove("open");});
 
 async function login(){
 const email=$("email").value.trim();

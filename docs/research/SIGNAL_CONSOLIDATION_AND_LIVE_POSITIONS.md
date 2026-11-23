@@ -88,3 +88,42 @@ The Library contains stable `MktradehomeBridge_Demo_v2.21.mq5` and a `Mktradehom
 ## Next research gate
 
 Build a deterministic historical reconstruction tool that, for each saved candidate, selects only candles completed at that candidate's timestamp, recomputes the same 4H/1H/15M indicators, and creates a documented structure fingerprint. Replay candidates in chronological order through the classifier. Manually audit both linked refreshes and split/new episodes, measure duplicate-alert reduction and false-merge/missed-new-setup rates, and test alternate fingerprint definitions out of sample. Do not connect to production notifications until this evidence is acceptable.
+
+## Trade performance study — broker-linked lifecycle ledger (2026-11-23)
+
+### Purpose and boundary
+- Track every Demo trade attempt across BTCUSD, EURUSD, XAUUSD and USDJPY from signal/candidate through approval, execution and broker-confirmed closure.
+- This is a research and measurement workstream. Do not change production signal filters, approval, execution, lot/risk limits, or the Real-account hard lock as part of the study.
+- Keep broker-executed trades, signal-only candidates, and historical/backtest outcomes in separate populations. Never count repeated refresh notifications from one setup episode as independent trades.
+
+### Existing lifecycle evidence
+- mt5_trade_queue stores approved/executed/failed lifecycle evidence, planned entry/SL/TP, lot size, approval/execution timestamps, MT5 ticket and MT5 position ID.
+- The mt5-bridge close_report matches by Demo mt5_position_id (with opening-deal-ticket recovery) and upserts the closed position into trades using account/server/position ID as its conflict identity.
+- trades currently stores symbol, direction, planned entry/SL/TP, exit price, lot, status, profit_loss, open/close timestamps, account/server, position ID and currency. The inspected schema does not expose dedicated commission, swap, fee, signal-category, signal-ID, setup-episode-ID, close-reason, or provenance columns.
+- The existing close report is a useful broker-linked starting point, but the present journal is not yet a complete net-performance ledger. Do not label its P/L net of all costs unless broker evidence confirms costs are included. Do not infer TP/SL/manual close reason from price alone.
+
+### Current reconciled sample
+- BTCUSD BUY 0.01, Demo position ID 593313802: queue record is executed; matching trades journal row 118 is CLOSED, exit 61299.31, reported P/L +$4.72, opened 2026-11-22 21:00:33 UTC and closed 2026-11-22 23:38:30 UTC. This matches the MT5 close notification previously supplied by the user. Count as one broker-linked closed trade; cost completeness and close reason remain unverified from the inspected journal fields.
+- EURUSD SELL 0.01, Demo position ID 593630527: queue record remains executed; no matching closed journal row was returned in the latest check. Keep it as executed/open pending broker closure evidence. Do not count it as a win or loss.
+- This is an early sample, not evidence of strategy profitability.
+
+### Required ledger fields and evidence grades
+- Identity: account type/server, broker position ID, queue ID, signal/candidate ID, setup episode ID (when validated), market, broker symbol, side.
+- Plan: signal quality/category, planned entry, original SL/TP1/TP2, volume, signal/approval/expiry timestamps.
+- Execution: actual fill, broker ticket, execution timestamp, slippage vs approved entry, approval-to-fill delay, execution status/message.
+- Closure: actual exit, broker close/deal evidence, realized P/L and currency, commission, swap, fees, close reason, open/close times, holding duration.
+- Provenance/status: broker-confirmed, database-linked, screenshot/manual evidence, backtest-only; candidate, approved, expired, failed, executed/open, closed, or awaiting reconciliation.
+- Use stable broker position identity for idempotent matching. Replayed close reports must not create duplicate trades. Partial closes and multiple deal records must be researched before changing the current one-row-per-position model.
+
+### Dashboard measurement rules
+- Headline realized results use broker-linked closed Demo trades only. Separate gross, net, and cost-incomplete results.
+- Show verified closed count, wins/losses, win rate, realized P/L, profit factor, expectancy, drawdown, average win/loss, holding time, slippage, close reason, and sample size; suppress or label metrics that cannot yet be supported.
+- Break down only when enough independent observations exist: market, BUY/SELL, GOOD AND CLEAR/NORMAL, and validated setup episode.
+- Display data freshness and reconciliation status. Missing fields remain unknown, never guessed. Backtests stay in a separate panel and are clearly labelled simulated/gross-only where applicable.
+- Do not infer confidence or strategy quality from one or two trades; show sample sizes and uncertainty.
+
+### Next research steps
+1. Audit the EA close_report payload and MT5 history/deal fields to determine whether profit includes swap/commission and how close reason and partial-close history can be captured.
+2. Inspect constraints, indexes, triggers, RLS and bridge idempotency before proposing any schema changes.
+3. Build a read-only reconciliation report linking queue rows to trades by broker position ID and flagging executed positions without a closure record.
+4. Prototype the ledger/dashboard in this research branch first. Only propose production schema/bridge changes after a reviewed design, deterministic tests and explicit approval.

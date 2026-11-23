@@ -613,7 +613,7 @@ Last verified: 2026-11-21 16:24 UTC
 
 ## Integrated Trading Intelligence Hub — 2026-11-23
 
-- Created a feature branch `feature/integrated-trading-intelligence-hub`; this work is not merged to production and has not been deployed.
+- Developed on `feature/integrated-trading-intelligence-hub` and merged to `main` through PR #8. Squash merge commit: `6f3a2114e213be5af30ab6a9f252b592711e9b93`. Cloudflare production deployment has not yet been independently verified.
 - Added a single dashboard overview card connecting four existing capabilities: MT5 open-position monitoring, per-market closed-trade performance, unread in-app alert count, and a compact recent closed-trade journal.
 - Reads are authenticated and explicitly scoped to the current user's `user_id`. Trade history is additionally scoped to the selected MT5 account server and, for Demo, the configured Demo account number. Real-account history is server-scoped and remains view-only.
 - Market performance uses only recorded closed trade rows; the card shows closed-trade count, net recorded P/L, and signal count over the preceding seven days for BTCUSD, EURUSD, XAUUSD, and USDJPY. It does not treat signal counts as quality or profitability.
@@ -621,7 +621,7 @@ Last verified: 2026-11-21 16:24 UTC
 - The recent journal is read-only. Unread alert count is read-only; existing notification-centre controls remain the only place to mark an alert read.
 - Refreshes on dashboard entry and every 60 seconds. No database schema, RLS policy, Edge Function, signal engine, strategy threshold, lot size, stop/target, approval rule, MT5 bridge, execution switch, or account lock was changed.
 - Source checks performed: verified insertion points, authenticated user scoping, selected-account filters, four-market mapping, complete/fresh snapshot gate, and no write operations in the new hub. Supabase schema was inspected read-only; `trades` currently has recorded CLOSED rows.
-- **Verification outstanding:** automated JS/browser tests, authenticated live dashboard verification, fresh MT5 snapshot verification, and Cloudflare preview validation. Do not describe this branch as production-ready until these checks pass.
+- **Verification:** all three inline JavaScript blocks passed syntax parsing; GitHub Actions run `45167543246` completed successfully, including the dashboard inline-JavaScript syntax check and existing engine/approval tests. Authenticated live dashboard verification, fresh MT5 snapshot verification, and Cloudflare deployment confirmation remain outstanding.
 - The dashboard card is a first integrated overview, not a replacement for the existing detailed chart, market analysis, approval centre, or notification panel. Further work should connect lifecycle events (approval, execution, TP/SL and close outcomes) to a safe user-scoped event feed without exposing MT5 queue tables or weakening RLS.
 
 - Follow-up refinement: the hub also calculates account-scoped closed-trade win rate and profit factor, and orders journal records by opened time so null close timestamps cannot crowd out completed history. These are descriptive historical metrics only.

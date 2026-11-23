@@ -591,3 +591,12 @@ Last verified: 2026-11-21 16:24 UTC
 - Unread state is sourced from `trade_alerts.is_read`; the user can mark an alert read. Signal and trade history are read-only. The feature does not create, approve, reject, modify, or execute trades.
 - No database schema, RLS policy, Edge Function, Telegram integration, signal engine, risk control, MT5 bridge, or Real-account lock was changed.
 - Verification in this commit is source-level only. A live signed-in browser check is still required to confirm the current user's RLS policies permit all three read queries and alert read-state updates. If a table query is denied, do not weaken RLS; diagnose and add a narrowly scoped policy only after inspecting existing policies.
+
+
+## Exness-style live position display — 2026-11-23
+- Updated the Live Market Chart to read the authenticated `mt5-bridge?action=dashboard_snapshot` response in addition to the separate pending execution queue.
+- The chart now renders broker-reported open positions separately from pending setups, including side, volume/lot size, entry, current MT5 price, broker-reported floating P/L, SL, TP, distance to TP, swap, ticket and opened time. It draws entry/SL/TP/current-price reference lines for open positions matching the selected chart symbol.
+- Position symbols are normalized for common broker suffixes (for example `BTCUSDm` maps to `BTCUSD`) for chart matching only; the original broker symbol remains the source record.
+- Position display requires a matching account/server and `positions_complete=true`. Incomplete snapshots are not treated as proof of no open positions. Stale snapshots are labelled as last-reported, not live. Real account mode remains read-only; no approval or execution behavior was changed.
+- Refresh polls the snapshot alongside the existing pending queue. Floating P/L is taken from the broker snapshot `profit` field, not estimated from chart candle prices.
+- Verification in this session: confirmed the current Demo snapshot table contains a complete snapshot with two BTCUSDm BUY positions (0.01 lot each), broker P/L +0.43 and +0.53 USD at capture time. This is a historical database snapshot, not a claim that those positions remain open now. Source edits were reviewed for required guards; automated browser/MT5 end-to-end tests have not yet been run.

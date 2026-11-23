@@ -14,7 +14,7 @@ Deno.test("uses Bid for SELL", () => {
   assert(r.valid && r.executionEntry === 100.5);
 });
 Deno.test("rejects adverse movement when RR falls below minimum", () => {
-  const r = validateApprovalExecutionPrice({ ...base, bid: 102.9, ask: 103 });
+  const r = validateApprovalExecutionPrice({ ...base, bid: 101.4, ask: 101.5 });
   assert(!r.valid && r.reason.includes("risk/reward"));
 });
 Deno.test("rejects movement outside the original 15M ATR entry zone", () => {
@@ -26,6 +26,6 @@ Deno.test("rejects an excessively widened spread", () => {
   assert(!r.valid && r.reason.includes("spread"));
 });
 Deno.test("rejects price crossing original stop", () => {
-  const r = validateApprovalExecutionPrice({ ...base, bid: 97.8, ask: 97.9 });
+  const r = validateApprovalExecutionPrice({ ...base, bid: 97.8, ask: 97.9, timeframe15m: { close: 100, atr14: 4 } });
   assert(!r.valid && r.reason.includes("crossed"));
 });

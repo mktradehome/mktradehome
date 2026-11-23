@@ -623,3 +623,5 @@ Last verified: 2026-11-21 16:24 UTC
 - Source checks performed: verified insertion points, authenticated user scoping, selected-account filters, four-market mapping, complete/fresh snapshot gate, and no write operations in the new hub. Supabase schema was inspected read-only; `trades` currently has recorded CLOSED rows.
 - **Verification outstanding:** automated JS/browser tests, authenticated live dashboard verification, fresh MT5 snapshot verification, and Cloudflare preview validation. Do not describe this branch as production-ready until these checks pass.
 - The dashboard card is a first integrated overview, not a replacement for the existing detailed chart, market analysis, approval centre, or notification panel. Further work should connect lifecycle events (approval, execution, TP/SL and close outcomes) to a safe user-scoped event feed without exposing MT5 queue tables or weakening RLS.
+
+- Follow-up refinement: the hub also calculates account-scoped closed-trade win rate and profit factor, and orders journal records by opened time so null close timestamps cannot crowd out completed history. These are descriptive historical metrics only.

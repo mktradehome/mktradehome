@@ -866,7 +866,7 @@ async function refreshChartTrade(){
  const expectedServer=real?"Exness-MT5Real30":MT5_SERVER;
  try{
   const snapshotPromise=supabaseClient.functions.invoke("mt5-bridge?action=dashboard_snapshot"+(real?"&account=real":""),{method:"GET"});
-  const queuePromise=real?Promise.resolve({data:{success:true,trades:[]}}):supabaseClient.functions.invoke("mt5-bridge?action=dashboard_queue",{method:"GET"});
+  const queuePromise=real?Promise.resolve({data:{success:true,trades:[]}}):supabaseClient.functions.invoke("mt5-bridge?action=dashboard_queue",{method:"GET"}).catch(error=>({data:null,error}));
   const [snapshotResult,queueResult]=await Promise.all([snapshotPromise,queuePromise]);
   const sd=snapshotResult.data,se=snapshotResult.error;
   if(se)throw se;

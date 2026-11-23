@@ -583,3 +583,11 @@ Last verified: 2026-11-21 16:24 UTC
 - Existing automatic candidate polling remains in place. Server-side live executable-price validation, expiry, account binding, manual confirmation and independent safety switches are unchanged.
 - Refresh failures are reported in the approval status area; the control disables and spins while refreshing.
 - Dashboard change committed separately from all trading-engine and approval safety logic.
+
+
+## Private in-app notification and activity centre — 2026-11-23
+- Added a signed-in dashboard Alerts control with unread count and a dedicated activity panel; it is available without opening Telegram.
+- The feed reads the signed-in user's existing `trade_alerts`, `trade_signals`, and `trades` records, merges them chronologically, and provides All, Unread, Signals, and Trade Alerts filters.
+- Unread state is sourced from `trade_alerts.is_read`; the user can mark an alert read. Signal and trade history are read-only. The feature does not create, approve, reject, modify, or execute trades.
+- No database schema, RLS policy, Edge Function, Telegram integration, signal engine, risk control, MT5 bridge, or Real-account lock was changed.
+- Verification in this commit is source-level only. A live signed-in browser check is still required to confirm the current user's RLS policies permit all three read queries and alert read-state updates. If a table query is denied, do not weaken RLS; diagnose and add a narrowly scoped policy only after inspecting existing policies.

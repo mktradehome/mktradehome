@@ -609,3 +609,17 @@ Last verified: 2026-11-21 16:24 UTC
 ## Live position card sizing refinement — 2026-11-23
 - Reduced the open-position card padding, gaps and metric label/value sizes. Floating profit/loss display reduced from 20px to 16px while retaining bold green/red contrast and all position details.
 - No data, account, chart, strategy, risk, or execution behavior changed.
+
+
+## Integrated Trading Intelligence Hub — 2026-11-23
+
+- Created a feature branch `feature/integrated-trading-intelligence-hub`; this work is not merged to production and has not been deployed.
+- Added a single dashboard overview card connecting four existing capabilities: MT5 open-position monitoring, per-market closed-trade performance, unread in-app alert count, and a compact recent closed-trade journal.
+- Reads are authenticated and explicitly scoped to the current user's `user_id`. Trade history is additionally scoped to the selected MT5 account server and, for Demo, the configured Demo account number. Real-account history is server-scoped and remains view-only.
+- Market performance uses only recorded closed trade rows; the card shows closed-trade count, net recorded P/L, and signal count over the preceding seven days for BTCUSD, EURUSD, XAUUSD, and USDJPY. It does not treat signal counts as quality or profitability.
+- Floating P/L and open-position count are displayed only when the existing MT5 position feed reports a complete, fresh snapshot for the currently selected account. Otherwise the hub withholds the figure and states that MT5 verification is pending.
+- The recent journal is read-only. Unread alert count is read-only; existing notification-centre controls remain the only place to mark an alert read.
+- Refreshes on dashboard entry and every 60 seconds. No database schema, RLS policy, Edge Function, signal engine, strategy threshold, lot size, stop/target, approval rule, MT5 bridge, execution switch, or account lock was changed.
+- Source checks performed: verified insertion points, authenticated user scoping, selected-account filters, four-market mapping, complete/fresh snapshot gate, and no write operations in the new hub. Supabase schema was inspected read-only; `trades` currently has recorded CLOSED rows.
+- **Verification outstanding:** automated JS/browser tests, authenticated live dashboard verification, fresh MT5 snapshot verification, and Cloudflare preview validation. Do not describe this branch as production-ready until these checks pass.
+- The dashboard card is a first integrated overview, not a replacement for the existing detailed chart, market analysis, approval centre, or notification panel. Further work should connect lifecycle events (approval, execution, TP/SL and close outcomes) to a safe user-scoped event feed without exposing MT5 queue tables or weakening RLS.

@@ -558,3 +558,20 @@ Last verified: 2026-11-21 16:24 UTC
 - Cloudflare's branch preview check succeeded for the PR. Since the merged changes are backend function/helper and documentation files (not dashboard HTML), this does not itself certify a new production dashboard UI deployment.
 - Remaining verification: the saved EA v2.21 stable / v2.22 experimental sources both retain the 0.05% final execution-time guard. Confirm which version is actually active, confirm a fresh Demo MT5 heartbeat, and run one fresh manual approval through the EA. Latest recorded Demo heartbeat remains 2026-11-23 06:15:33 UTC (balance/equity 519.87; zero positions; complete snapshot), so terminal connectivity is not currently certified fresh. Real account remains read-only/locked.
 - Live-money readiness is still NOT approved. The v23 deployment is ready for controlled Demo verification only.
+
+
+## Four-market coverage and signal-frequency investigation — 2026-11-23
+
+**Outcome: no production fix justified by the evidence reviewed.** This was a read-only diagnostic; no signal thresholds, risk controls, scheduler settings, Supabase functions, approvals, or trade execution paths were changed.
+
+- All four configured markets remain active: BTCUSD, EURUSD, XAUUSD, USDJPY.
+- The production `market-monitor` Edge Function was ACTIVE at version 68. The `mktradehome-market-monitor` pg_cron job was active on `*/5 * * * *`; the latest observed run at 09:55 UTC succeeded. The database reported 288 successful runs in the preceding 24 hours and zero failures.
+- The 09:55 UTC scan logged all four symbols and fetched the four required timeframes (5M, 15M, 1H, 4H) for each. Latest market-intelligence snapshots for all four symbols were saved at approximately 09:55 UTC with fresh quotes (about 1–2 seconds old).
+- At that scan, BTCUSD was blocked by strong 5M opposition to its 1H BUY bias (5M score -49); EURUSD had a 1H BUY bias but a strong 15M pullback (score -41); XAUUSD lacked a valid 1H SELL bias because the directional score conflicted (+22); USDJPY likewise lacked a valid 1H SELL bias because its directional score conflicted (+35). These were WAIT outcomes, not missing-market scans.
+- The latest recorded BUY/SELL candidates before that scan were BTCUSD #899 at 09:50 UTC and EURUSD #894 at 08:45 UTC. XAUUSD and USDJPY have older candidate history, but were still being scanned and their market context was refreshed.
+- Dashboard source confirms all four symbols are present in the market list and market-intelligence view. It intentionally displays WAIT when no current verified BUY/SELL candidate exists; the scanner status view also distinguishes scheduler health from signal count.
+- The unified GOOD AND CLEAR / NORMAL classification is applied only after the common candidate validation path passes. No evidence from this investigation supports relaxing that classifier or the entry gates.
+
+**Decision:** Do not force signals or loosen filters. The observed two-market signal mix is currently explained by the strategy's multi-timeframe entry rules, not by a demonstrated market-exclusion or scheduler failure. Continue monitoring fresh scans; reopen the investigation if any market stops receiving fresh snapshots, the 5-minute scheduler heartbeat goes stale, or logs show provider/data errors.
+
+**Verification boundary:** This confirms scanner execution, market data retrieval, analysis snapshot writes, and the recorded rejection reasons at the reviewed time. It does not establish future market opportunities, profitability, or end-to-end broker execution readiness. Demo-first and manual approval remain mandatory.

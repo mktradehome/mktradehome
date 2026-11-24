@@ -324,14 +324,21 @@ async function handleRequest(req: Request): Promise<Response> {
       }
     }
 
+    const openPositions = body.open_positions as number;
+    const balance = body.balance as number;
+    const equity = body.equity as number;
+    const margin = body.margin as number;
+    const freeMargin = body.free_margin as number;
+    const leverage = body.leverage as number;
+
     if (
-      !Number.isInteger(body.open_positions) ||
-      body.open_positions < 0 ||
-      body.balance < 0 ||
-      body.equity < 0 ||
-      body.margin < 0 ||
-      body.free_margin < 0 ||
-      body.leverage <= 0 ||
+      !Number.isInteger(openPositions) ||
+      openPositions < 0 ||
+      balance < 0 ||
+      equity < 0 ||
+      margin < 0 ||
+      freeMargin < 0 ||
+      leverage <= 0 ||
       typeof body.currency !== "string" ||
       body.currency.length < 1 ||
       body.currency.length > 10

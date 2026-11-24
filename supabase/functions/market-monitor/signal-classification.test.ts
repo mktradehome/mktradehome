@@ -53,3 +53,26 @@ Deno.test("rejects non-finite directional scores from Good and Clear tier", () =
   const result = classifyValidatedSignal(input);
   assert(result.label === "WAIT");
 });
+
+
+Deno.test("treats a zero 5M score as non-opposition, not confirmation", () => {
+  const input = fixture("BUY");
+  input.frames["5M"].directionalScore = 0;
+  const result = classifyValidatedSignal(input);
+  assert(result.label === "GOOD_AND_CLEAR");
+  assert(result.reason.includes("does not oppose"));
+});
+
+Deno.test("keeps a verified candidate NORMAL when 5M score opposes direction", () => {
+  const input = fixture("BUY");
+  input.frames["5M"].directionalScore = -1;
+  const result = classifyValidatedSignal(input);
+  assert(result.label === "NORMAL");
+});
+
+Deno.test("fails closed when timeframe evidence is missing", () => {
+  const input = fixture("BUY");
+  input.frames["15M"] = undefined as never;
+  const result = classifyValidatedSignal(input);
+  assert(result.label === "WAIT");
+});

@@ -660,3 +660,5 @@ Last verified: 2026-11-21 16:24 UTC
 - Extended `signal-classification.test.ts` with tests for neutral 5M score wording, slightly opposing 5M score classification, and missing timeframe evidence. Existing tests cover aligned BUY/SELL, NORMAL tier, hard-gate fail-closed behavior, WAIT direction and non-finite scores.
 - Test execution is pending CI/runtime confirmation. Do not claim these new tests passed until a workflow run executes them successfully.
 - No production code was changed; only the isolated classifier explanation and deterministic unit-test coverage were updated. No Supabase data/functions, deployed services, account settings, risk controls, approvals, queue items or trades were touched.
+
+- Added an isolated GitHub Actions workflow at `.github/workflows/classifier-contract.yml` to type-check and execute the classifier-specific Deno tests on relevant pull-request and experiment-branch changes. Workflow execution status has not yet been independently confirmed; keep validation marked pending until a successful run is observed.

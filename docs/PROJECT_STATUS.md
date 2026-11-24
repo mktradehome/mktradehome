@@ -673,3 +673,11 @@ Last verified: 2026-11-21 16:24 UTC
 - Full read-only findings and next-step design are documented in `docs/DEMO_LIFECYCLE_AUDIT_2026-11-24.md` (commit `bc0af18ce957ae9af4ba48a0a87d8967f6b4182c`).
 - Next safe work: trace the MT5 bridge's execution and journal-sync path; design a structured, backward-compatible lifecycle record preserving requested price, broker fill, close fill, costs, signal ID and broker identifiers; add deterministic tests in isolation. Do not modify production, historical rows, account settings, strategy thresholds, risk limits or trades until the design and tests are reviewed.
 - No Supabase data/functions, production deployment, risk settings, account mode, approval, queue item or trade was changed during this audit.
+
+## Demo broker-fill reconciliation improvement — 2026-11-24
+- Isolated branch `experiment/demo-fill-reconciliation-2026-11-24` adds a strict parser for confirmed MT5 execution messages, deterministic tests, a dedicated GitHub Actions workflow, an additive migration, and an updated mt5-bridge source copy.
+- The updated close-report path preserves legacy `trades.entry_price` as the approved/requested value and adds explicit `requested_entry_price`, `broker_entry_price`, and `mt5_opening_deal_ticket` fields. Broker fill is accepted only from the known confirmation prefix with success retcode 10009 and a positive finite price; otherwise the new fill field stays NULL.
+- Read-only preflight matched the strict confirmation format for all 23 existing executed Demo queue rows (23/23). No migration was applied and no Edge Function was deployed during this preparation.
+- Dedicated parser CI is pending independent confirmation. Keep this change isolated until CI passes and the migration/function diff is reviewed.
+- Full implementation and rollout checklist: `docs/DEMO_FILL_RECONCILIATION_2026-11-24.md`.
+- No signal generation, thresholds, candidate logic, approval checks, lot sizing, execution enablement, account configuration, production deployment, queue rows, trades or historical journal values were changed.

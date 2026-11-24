@@ -30,3 +30,12 @@ This branch is not production. Before rollout:
 6. Keep the 0.01 lot cap, manual approval, Demo-only execution and Real-account read-only lock.
 
 This change improves entry-fill measurement only. It does not change signal generation, approval proof, risk sizing, order placement, exit logic or strategy thresholds. It does not yet create a direct signal-to-trade foreign-key link; that remains a separate follow-up.
+## Deployment and post-deploy verification — 2026-11-24 22:12 UTC
+- PR #10 was merged after the classifier, fill-parser and main engine/approval workflows passed. Merge commit: `e2e721dae5f9a56a5f986fa8cade313f73957c7a`.
+- Applied the additive migration to the connected Supabase project. All 23 existing Demo journal rows now have requested entry, broker-confirmed entry and opening ticket populated (23/23); all 23 legacy `entry_price` values remain equal to the original requested/approved prices. The historical recorded P/L remains +$11.74.
+- Deployed `mt5-bridge` version 33 (ACTIVE). The updated source is saved at `supabase/functions/mt5-bridge/index.ts` in main. The bridge retains the same account binding, secret check, execution gate, claim/report behavior and Real-account read-only dashboard behavior; only the close-report journal fields were extended.
+- Post-deploy logs show the MT5 EA health, peek and POST bridge requests returning HTTP 200 on version 33. Dashboard snapshot and queue reads also returned HTTP 200.
+- Latest Demo snapshot at 22:11:40 UTC: balance/equity $513.70, zero open positions, complete positions snapshot, zero live approved queue items.
+- No trade was opened, closed, approved or executed by this work. No strategy thresholds, candidate logic, lot limits or account locks were changed.
+- The first future Demo close report is still the live integration check for newly generated rows. Existing historical backfill and post-deploy health checks passed; do not claim a new closed-trade round-trip until a new manually approved Demo trade is completed.
+- Supabase security/performance advisors returned several existing project-wide notices (RLS tables without policies, public extension, auth password protection, existing policy/performance warnings). None was caused by the three nullable journal columns; unrelated findings were not modified.

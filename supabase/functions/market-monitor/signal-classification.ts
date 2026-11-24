@@ -61,7 +61,7 @@ export function classifyValidatedSignal(input: SignalClassificationInput): Signa
     return {
       label: "GOOD_AND_CLEAR",
       displayLabel: "GOOD AND CLEAR SIGNAL",
-      reason: "All four timeframes show directional EMA alignment; 4H, 1H and 15M have strong directional scores and 5M confirms rather than opposes.",
+      reason: "All four timeframes show directional EMA alignment; 4H, 1H and 15M have strong directional scores and 5M EMA structure is aligned and its score is non-negative, so it does not oppose the setup.",
     };
   }
 

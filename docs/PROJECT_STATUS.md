@@ -651,3 +651,33 @@ Last verified: 2026-11-21 16:24 UTC
   6. Keep the current unified signal engine, GOOD AND CLEAR / NORMAL labels, WAIT behavior, manual approval, Demo-first process, fixed risk controls and real-account read-only lock. No new model, indicator, threshold, market, or execution behavior is authorized by this research note.
 - Sources reviewed: MetaTrader 5 official Strategy Optimization and Forward Testing documentation; 2026 studies on transaction-cost-aware walk-forward ML trading, intraday ML evaluation with trading frictions, and leakage-aware LLM strategy discovery. Research findings are hypotheses and evaluation guidance, not proof of an edge in Mktradehome.
 - No code, database, deployed function, strategy parameter, risk setting, account mode or open trade was changed as part of this review.
+
+
+## Isolated classifier contract review — 2026-11-24
+- Created branch `experiment/classifier-contract-2026-11-24` from current `main`; no production branch or deployment was changed.
+- Re-read the current production classifier. GOOD AND CLEAR requires all four timeframe EMA-alignment flags, strong directional scores on 4H/1H/15M, and a non-negative directional score on 5M. NORMAL is assigned to a fully hard-gate-validated candidate that does not meet that higher confluence bar; WAIT remains fail-closed for invalid direction, missing/non-finite evidence or failed mandatory gates.
+- Found one explanation precision issue: the implementation accepts a zero 5M directional score, but the old reason said 5M “confirms”. Changed only the explanation to say 5M is aligned and does not oppose the setup. No thresholds, labels, candidate creation, proof validation, risk, approval or execution behavior changed.
+- Extended `signal-classification.test.ts` with tests for neutral 5M score wording, slightly opposing 5M score classification, and missing timeframe evidence. Existing tests cover aligned BUY/SELL, NORMAL tier, hard-gate fail-closed behavior, WAIT direction and non-finite scores.
+- Test execution is pending CI/runtime confirmation. Do not claim these new tests passed until a workflow run executes them successfully.
+- No production code was changed; only the isolated classifier explanation and deterministic unit-test coverage were updated. No Supabase data/functions, deployed services, account settings, risk controls, approvals, queue items or trades were touched.
+
+- Added an isolated GitHub Actions workflow at `.github/workflows/classifier-contract.yml` to type-check and execute the classifier-specific Deno tests on relevant pull-request and experiment-branch changes. Workflow execution status has not yet been independently confirmed; keep validation marked pending until a successful run is observed.
+
+## Demo lifecycle audit and classifier CI verification — 2026-11-24
+- Verified GitHub Actions on isolated branch `experiment/classifier-contract-2026-11-24`, commit `1de64dfe9565e8d595dd9d57012a199540ab9487`: classifier contract workflow run `45493047858` passed, including Deno type-check and classifier tests; main engine/approval workflow run `45493047854` passed all listed steps. PR #9 remains unmerged and production was not changed.
+- Read-only Supabase check: the latest complete Demo snapshot was captured at 21:45:10 UTC with balance/equity $513.70 and zero open positions. This is a timestamped snapshot, not a live guarantee.
+- The Demo journal currently contains 23 closed trades: 12 wins, 11 losses, and +$11.74 recorded P/L. Per-market: BTCUSD 11 trades, +$1.69; EURUSD 9 trades, +$2.47; XAUUSD 2 trades, +$8.71; USDJPY 1 trade, -$1.13. Small sample; commission and swap are not separately represented in the inspected trades schema, so this is not verified net-of-all-costs performance.
+- Critical reconciliation issue: joining all 23 trades to executed queue rows by MT5 position ID shows all 23 journal entry_price values match the approved/requested queue price, while all 23 broker fill prices parsed from execution_message differ. Broker fill exists only in free text; no structured fill_price column exists. Preserve historical rows; do not silently rewrite them.
+- Lifecycle linkage gap: inspected trade_signals, mt5_trade_queue and trades schemas have no signal_id field, preventing direct signal-to-approval-to-outcome attribution. The inspected mt5_close_queue is empty; commission, swap and broker close-deal metadata are not separately recorded in trades.
+- Signal activity snapshot: 1,141 saved trade_signals rows, 45 queue rows (23 executed, 8 expired, 14 failed), and 23 closed journal rows. Repeated same-direction scan rows must not be counted as independent setups.
+- Full read-only findings and next-step design are documented in `docs/DEMO_LIFECYCLE_AUDIT_2026-11-24.md` (commit `bc0af18ce957ae9af4ba48a0a87d8967f6b4182c`).
+- Next safe work: trace the MT5 bridge's execution and journal-sync path; design a structured, backward-compatible lifecycle record preserving requested price, broker fill, close fill, costs, signal ID and broker identifiers; add deterministic tests in isolation. Do not modify production, historical rows, account settings, strategy thresholds, risk limits or trades until the design and tests are reviewed.
+- No Supabase data/functions, production deployment, risk settings, account mode, approval, queue item or trade was changed during this audit.
+
+## Demo broker-fill reconciliation improvement — 2026-11-24
+- Isolated branch `experiment/demo-fill-reconciliation-2026-11-24` adds a strict parser for confirmed MT5 execution messages, deterministic tests, a dedicated GitHub Actions workflow, an additive migration, and an updated mt5-bridge source copy.
+- The updated close-report path preserves legacy `trades.entry_price` as the approved/requested value and adds explicit `requested_entry_price`, `broker_entry_price`, and `mt5_opening_deal_ticket` fields. Broker fill is accepted only from the known confirmation prefix with success retcode 10009 and a positive finite price; otherwise the new fill field stays NULL.
+- Read-only preflight matched the strict confirmation format for all 23 existing executed Demo queue rows (23/23). No migration was applied and no Edge Function was deployed during this preparation.
+- Dedicated parser CI is pending independent confirmation. Keep this change isolated until CI passes and the migration/function diff is reviewed.
+- Full implementation and rollout checklist: `docs/DEMO_FILL_RECONCILIATION_2026-11-24.md`.
+- No signal generation, thresholds, candidate logic, approval checks, lot sizing, execution enablement, account configuration, production deployment, queue rows, trades or historical journal values were changed.

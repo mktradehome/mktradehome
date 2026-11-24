@@ -1,0 +1,32 @@
+name: Demo execution fill contract
+
+on:
+  pull_request:
+    paths:
+      - "supabase/functions/_shared/execution-fill.ts"
+      - "supabase/functions/_shared/execution-fill.test.ts"
+      - "supabase/functions/mt5-bridge/index.ts"
+      - "supabase/migrations/*demo_execution_fill*"
+      - ".github/workflows/demo-execution-fill.yml"
+  push:
+    branches:
+      - "experiment/demo-fill-reconciliation-2026-11-24"
+    paths:
+      - "supabase/functions/_shared/execution-fill.ts"
+      - "supabase/functions/_shared/execution-fill.test.ts"
+      - "supabase/functions/mt5-bridge/index.ts"
+      - "supabase/migrations/*demo_execution_fill*"
+      - ".github/workflows/demo-execution-fill.yml"
+
+jobs:
+  execution-fill-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Type-check parser and tests
+        run: deno check supabase/functions/_shared/execution-fill.test.ts
+      - name: Run parser contract tests
+        run: deno test supabase/functions/_shared/execution-fill.test.ts

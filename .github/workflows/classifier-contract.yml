@@ -1,0 +1,31 @@
+name: Mktradehome classifier contract tests
+
+on:
+  pull_request:
+    paths:
+      - "supabase/functions/market-monitor/signal-classification.ts"
+      - "supabase/functions/market-monitor/signal-classification.test.ts"
+      - ".github/workflows/classifier-contract.yml"
+  push:
+    branches:
+      - "experiment/classifier-contract-2026-11-24"
+    paths:
+      - "supabase/functions/market-monitor/signal-classification.ts"
+      - "supabase/functions/market-monitor/signal-classification.test.ts"
+      - ".github/workflows/classifier-contract.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  classifier-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Type-check classifier and tests
+        run: deno check supabase/functions/market-monitor/signal-classification.test.ts
+      - name: Run classifier contract tests
+        run: deno test --no-check supabase/functions/market-monitor/signal-classification.test.ts

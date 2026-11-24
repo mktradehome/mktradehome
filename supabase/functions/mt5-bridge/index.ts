@@ -1,6 +1,5 @@
 
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { parseConfirmedBrokerFill } from "../_shared/execution-fill.ts";
 
 const ACCOUNT_NUMBER = "486163696";
 const ACCOUNT_SERVER = "Exness-MT5Trial10";
@@ -40,6 +39,17 @@ function sameSecret(a: string, b: string): boolean {
 
 function validNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
+}
+
+function parseConfirmedBrokerFill(message: unknown): { price: number; retcode: 10009 } | null {
+  if (typeof message !== "string" || message.length === 0 || message.length > 1000) return null;
+  if (!message.startsWith("MT5 market order confirmed.")) return null;
+  if (!/(?:^|;[ ]*)retcode=10009(?:;|$)/.test(message)) return null;
+  const match = message.match(/(?:^|;[ ]*)price=([0-9]+(?:[.][0-9]+)?)(?:;|$)/);
+  if (!match) return null;
+  const price = Number(match[1]);
+  if (!Number.isFinite(price) || price <= 0) return null;
+  return { price, retcode: 10009 };
 }
 
 function validPositionId(value: unknown): value is number {

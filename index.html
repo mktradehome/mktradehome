@@ -1177,7 +1177,8 @@ const distance=Math.abs(Number(q?.price)-Number(row.entry_price));
 current.quoteFresh=isQuoteFresh(q,row.symbol)&&Number.isFinite(distance)&&risk>0&&distance<=risk*0.25&&Date.parse(current.expiresAt||"")>Date.now();
 restoredSymbols.add(row.symbol);continue;
 }
-if(current?.engineVerified===true&&current?.verificationStatus==="PASSED"&&Number.isFinite(currentCreated)&&Number.isFinite(created)&&currentCreated>=created){restoredSymbols.add(row.symbol);continue;}
+const currentHasDifferentSavedCandidate=current?.candidateId!==undefined&&current?.candidateId!==null&&String(current.candidateId)!==String(row.id);
+if(current?.engineVerified===true&&current?.verificationStatus==="PASSED"&&currentHasDifferentSavedCandidate&&Number.isFinite(currentCreated)&&Number.isFinite(created)&&currentCreated>=created){restoredSymbols.add(row.symbol);continue;}
 const ageMs=Date.now()-created;
 if(!Number.isFinite(created)||ageMs<0||ageMs>10*60*1000)continue;
 let saved={};

@@ -651,3 +651,14 @@ Last verified: 2026-11-21 16:24 UTC
   6. Keep the current unified signal engine, GOOD AND CLEAR / NORMAL labels, WAIT behavior, manual approval, Demo-first process, fixed risk controls and real-account read-only lock. No new model, indicator, threshold, market, or execution behavior is authorized by this research note.
 - Sources reviewed: MetaTrader 5 official Strategy Optimization and Forward Testing documentation; 2026 studies on transaction-cost-aware walk-forward ML trading, intraday ML evaluation with trading frictions, and leakage-aware LLM strategy discovery. Research findings are hypotheses and evaluation guidance, not proof of an edge in Mktradehome.
 - No code, database, deployed function, strategy parameter, risk setting, account mode or open trade was changed as part of this review.
+
+
+## Market reliability and AI-platform review — 2026-11-24 (isolated audit branch)
+
+- Created docs/MKTRADEHOME_RELIABILITY_AUDIT_2026-11-24.md on audit/2026-11-24-market-reliability.
+- Read-only production review found all four configured markets were scanned with fresh quotes and correctly spaced candles at the reviewed 21:20–21:25 UTC runs. At 21:25, EURUSD BUY, XAUUSD SELL and USDJPY BUY candidates passed; BTCUSD correctly returned WAIT because 5M momentum strongly opposed the SELL bias. The preceding 21:20 scan logged candidates for all four.
+- Recent 24-hour signal rows existed for all four symbols. Counts are not unique opportunities or proof of performance; repeated-signal churn and dashboard filtering need separate analysis.
+- Confirmed the engine's timeframe BUY/SELL/WAIT state is stricter than its EMA/directional-score candidate logic. The classifier uses EMA alignment and scores rather than the timeframe signal field, so the GOOD AND CLEAR reason can imply stronger confirmation than the implemented test. Correct wording and add explicit tests in isolation before considering production changes.
+- Reviewed TrendSpider Sidekick, Trade Ideas Holly/OddsMaker and Capitalise.ai for transferable design patterns: multi-timeframe scans, chart context, event-based backtesting, cost-aware strategy comparison, risk-aware exits and forward simulation. Do not copy marketing accuracy claims or treat these products as proof of profitability.
+- Next isolated work: explain dashboard signal visibility, measure signal churn/expiry/approval/execution by symbol and class, reconcile requested entry to broker fill and close, then run chronological cost-aware walk-forward tests.
+- No production code, database rows, deployed functions, signal thresholds, strategy settings, risk controls, account settings, approvals, queue items or trades were changed. Demo-first, manual approval, 0.01-lot cap and Real-account hard lock remain unchanged.

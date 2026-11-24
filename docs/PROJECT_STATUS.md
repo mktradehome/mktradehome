@@ -663,3 +663,13 @@ Last verified: 2026-11-21 16:24 UTC
 - Next isolated work: explain dashboard signal visibility, measure signal churn/expiry/approval/execution by symbol and class, reconcile requested entry to broker fill and close, then run chronological cost-aware walk-forward tests.
 - No production code, database rows, deployed functions, signal thresholds, strategy settings, risk controls, account settings, approvals, queue items or trades were changed. Demo-first, manual approval, 0.01-lot cap and Real-account hard lock remain unchanged.
 - Dashboard source follow-up confirmed that market cards default to monitor-only WAIT and separately restore only independently verified candidates from the last 10 minutes that remain within 0.25R of current price. Fewer than four actionable cards can therefore be correct even while all four markets scan. Recommended dashboard clarity improvement: persist four market rows and separate scan health, market bias, setup state, candidate expiry and WAIT reason. No UI code changed.
+
+
+## External trading-system research update — 2026-11-24
+- Added `docs/EXTERNAL_TRADING_SYSTEM_RESEARCH_2026-11-24.md` on the isolated reliability-audit branch.
+- Reviewed official MetaTrader 5 guidance: real-tick tests, Bid/Ask execution, variable spreads, commissions, configurable execution delays/requotes, and a separate forward period are important for more realistic evaluation.
+- Reviewed published work on probability of backtest overfitting. Track every experiment and avoid repeatedly tuning against the same holdout; a good historical result alone is not proof of a durable edge.
+- Captured transferable patterns from TrendSpider, Trade Ideas Holly/OddsMaker and Capitalise.ai: multi-timeframe research, explainable rule conditions, event-level backtesting, risk-aware exits and forward simulation. These are workflow inspirations, not sources of signals or guarantees.
+- Prioritized Mktradehome gaps: immutable signal-to-broker-fill-to-close reconciliation; executable-side Bid/Ask pricing; cost-aware net R; chronological walk-forward with an untouched final period; experiment ledger; sample-size-aware metrics; and shadow/Demo validation.
+- Explicit limitation: current OHLC replay is not execution-realistic because historical bid/ask, commission, swap, slippage and tick-level sequencing are not fully represented. Continue labelling those results gross/limited; do not use them as expected net performance.
+- No production code, database rows, deployed functions, strategy thresholds, account settings, risk controls, approvals, queue items or trades changed. Demo-first, manual approval, 0.01-lot cap and Real-account hard lock remain unchanged.

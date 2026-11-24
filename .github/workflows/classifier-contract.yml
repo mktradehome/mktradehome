@@ -6,13 +6,24 @@ on:
       - "supabase/functions/market-monitor/signal-classification.ts"
       - "supabase/functions/market-monitor/signal-classification.test.ts"
       - ".github/workflows/classifier-contract.yml"
+      - "supabase/functions/_shared/execution-fill.ts"
+      - "supabase/functions/_shared/execution-fill.test.ts"
+      - "supabase/functions/mt5-bridge/index.ts"
+      - "supabase/migrations/*demo_execution_fill*"
+      - ".github/workflows/demo-execution-fill.yml"
   push:
     branches:
       - "experiment/classifier-contract-2026-11-24"
+      - "experiment/demo-fill-reconciliation-2026-11-24"
     paths:
       - "supabase/functions/market-monitor/signal-classification.ts"
       - "supabase/functions/market-monitor/signal-classification.test.ts"
       - ".github/workflows/classifier-contract.yml"
+      - "supabase/functions/_shared/execution-fill.ts"
+      - "supabase/functions/_shared/execution-fill.test.ts"
+      - "supabase/functions/mt5-bridge/index.ts"
+      - "supabase/migrations/*demo_execution_fill*"
+      - ".github/workflows/demo-execution-fill.yml"
 
 permissions:
   contents: read
@@ -29,3 +40,17 @@ jobs:
         run: deno check supabase/functions/market-monitor/signal-classification.test.ts
       - name: Run classifier contract tests
         run: deno test --no-check supabase/functions/market-monitor/signal-classification.test.ts
+
+  demo-execution-fill-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Type-check execution fill parser and tests
+        run: deno check supabase/functions/_shared/execution-fill.test.ts
+      - name: Run execution fill contract tests
+        run: deno test supabase/functions/_shared/execution-fill.test.ts
+      - name: Type-check updated MT5 bridge
+        run: deno check supabase/functions/mt5-bridge/index.ts

@@ -57,3 +57,9 @@ The best transferable lesson is not to copy another AI's BUY/SELL calls. It is a
 
 ## Decision
 No production fix is justified from this read-only review alone. Keep the existing production engine and all protections unchanged while the next isolated work item focuses on dashboard-vs-database signal visibility, signal churn, classifier wording/tests, and broker-fill reconciliation. No profitability claim is made.
+
+## Dashboard candidate visibility follow-up
+
+- Inspected the production dashboard source. Its market-analysis cards are intentionally monitor-only and default to WAIT; they do not create independent signals. The dashboard separately restores only saved, independently verified BUY/SELL candidates from the last 10 minutes, checks proof metadata and current quote proximity (within 0.25R), and displays those candidates. This explains why the four markets can all be scanned while fewer than four show a current actionable signal at any moment.
+- The 10-minute candidate expiry and current-price proximity check are deliberate safety filters, not evidence of missing symbol coverage. The dashboard's Market Intelligence panel is separate from its actionable candidate feed; the user-facing UI should make that distinction clearer.
+- No dashboard code was changed. Recommended UI improvement: show four persistent market rows with separate columns for scan/data health, market bias, setup state, actionable candidate/expiry, and exact WAIT reason. This improves visibility without manufacturing more trades or weakening gates.

@@ -651,3 +651,12 @@ Last verified: 2026-11-21 16:24 UTC
   6. Keep the current unified signal engine, GOOD AND CLEAR / NORMAL labels, WAIT behavior, manual approval, Demo-first process, fixed risk controls and real-account read-only lock. No new model, indicator, threshold, market, or execution behavior is authorized by this research note.
 - Sources reviewed: MetaTrader 5 official Strategy Optimization and Forward Testing documentation; 2026 studies on transaction-cost-aware walk-forward ML trading, intraday ML evaluation with trading frictions, and leakage-aware LLM strategy discovery. Research findings are hypotheses and evaluation guidance, not proof of an edge in Mktradehome.
 - No code, database, deployed function, strategy parameter, risk setting, account mode or open trade was changed as part of this review.
+
+
+## Isolated classifier contract review — 2026-11-24
+- Created branch `experiment/classifier-contract-2026-11-24` from current `main`; no production branch or deployment was changed.
+- Re-read the current production classifier. GOOD AND CLEAR requires all four timeframe EMA-alignment flags, strong directional scores on 4H/1H/15M, and a non-negative directional score on 5M. NORMAL is assigned to a fully hard-gate-validated candidate that does not meet that higher confluence bar; WAIT remains fail-closed for invalid direction, missing/non-finite evidence or failed mandatory gates.
+- Found one explanation precision issue: the implementation accepts a zero 5M directional score, but the old reason said 5M “confirms”. Changed only the explanation to say 5M is aligned and does not oppose the setup. No thresholds, labels, candidate creation, proof validation, risk, approval or execution behavior changed.
+- Extended `signal-classification.test.ts` with tests for neutral 5M score wording, slightly opposing 5M score classification, and missing timeframe evidence. Existing tests cover aligned BUY/SELL, NORMAL tier, hard-gate fail-closed behavior, WAIT direction and non-finite scores.
+- Test execution is pending CI/runtime confirmation. Do not claim these new tests passed until a workflow run executes them successfully.
+- No production code was changed; only the isolated classifier explanation and deterministic unit-test coverage were updated. No Supabase data/functions, deployed services, account settings, risk controls, approvals, queue items or trades were touched.

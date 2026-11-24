@@ -691,3 +691,13 @@ Last verified: 2026-11-21 16:24 UTC
 - No trade was opened, closed, approved or executed by this work. No signal thresholds, candidate logic, lot sizing, manual approval, Demo-first rule, execution gate or Real-account read-only lock changed.
 - Ready for the next manual-approval Demo observation round. The first new closed Demo trade will provide the final end-to-end check that the deployed close-report path writes the three new fields correctly. Do not claim that round-trip test complete until such a trade is closed.
 - Full rollout and evidence: `docs/DEMO_FILL_RECONCILIATION_2026-11-24.md`.
+
+## 2026-11-24 · Saved candidate missing from Approval Centre
+
+- Investigated the USDJPY BUY candidate saved as `trade_signals.id = 1149` at `2026-11-24T22:30:01Z`, with expiry `2026-11-24T22:40:01Z`.
+- Confirmed the candidate exists in `trade_signals`; no matching new `mt5_trade_queue` row exists, which is expected before manual approval.
+- Found a frontend restoration guard that could suppress a saved candidate whenever a newer in-memory verified analysis existed for the same symbol, even when that in-memory analysis had no persisted `candidateId`.
+- Patched `index.html` so only a newer, different persisted candidate can suppress an older saved row. The exact-ID path and all quote freshness, expiry, risk geometry, manual approval, Demo-only and execution safeguards remain unchanged.
+- Targeted regression assertions passed for: unlinked newer analysis does not suppress the saved row; a different newer persisted candidate still suppresses the older row; same-ID candidate continues through the exact-ID path.
+- Branch: `fix/restore-saved-approval-candidate-2026-11-24`. Commit: `9341e989b4e57d2574685b4c32afa8be1e1c3aaa`.
+- This is an isolated frontend fix, not yet merged or deployed. The candidate's original 10-minute expiry remains authoritative; do not approve it if expired. A fresh post-deploy candidate must confirm the Approval Centre restoration end-to-end.

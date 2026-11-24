@@ -681,3 +681,13 @@ Last verified: 2026-11-21 16:24 UTC
 - Dedicated parser CI is pending independent confirmation. Keep this change isolated until CI passes and the migration/function diff is reviewed.
 - Full implementation and rollout checklist: `docs/DEMO_FILL_RECONCILIATION_2026-11-24.md`.
 - No signal generation, thresholds, candidate logic, approval checks, lot sizing, execution enablement, account configuration, production deployment, queue rows, trades or historical journal values were changed.
+
+## Demo fill reconciliation — deployed and verified — 2026-11-24 22:12 UTC
+- PR #10 merged to main after all required checks passed. Merge commit: `e2e721dae5f9a56a5f986fa8cade313f73957c7a`.
+- GitHub Actions: classifier contract run `45498184961` passed both classifier and Demo execution-fill jobs, including Deno type-check for the updated MT5 bridge; Demo execution-fill run `45498184989` passed parser type-check and six parser tests; main engine/approval run `45498185040` passed all listed checks.
+- Applied additive migration `demo_execution_fill_fields`. Existing `trades.entry_price` was preserved; added `requested_entry_price`, `broker_entry_price`, and `mt5_opening_deal_ticket`. Backfilled 23/23 existing Demo journal rows with requested price, broker fill and opening ticket; all 23 legacy entry prices remain unchanged.
+- Deployed `mt5-bridge` v33 ACTIVE. The close-report journal path now records the requested entry and parsed broker-confirmed fill separately. Parser accepts only the known MT5 confirmation message, positive finite price and retcode 10009; malformed/unconfirmed messages leave the new broker fill field NULL.
+- Post-deploy MT5 bridge health, peek and POST requests returned HTTP 200; dashboard snapshot and queue reads returned HTTP 200. Latest snapshot at 22:11:40 UTC: Demo balance/equity $513.70, zero open positions, complete positions snapshot, zero live approved queue items.
+- No trade was opened, closed, approved or executed by this work. No signal thresholds, candidate logic, lot sizing, manual approval, Demo-first rule, execution gate or Real-account read-only lock changed.
+- Ready for the next manual-approval Demo observation round. The first new closed Demo trade will provide the final end-to-end check that the deployed close-report path writes the three new fields correctly. Do not claim that round-trip test complete until such a trade is closed.
+- Full rollout and evidence: `docs/DEMO_FILL_RECONCILIATION_2026-11-24.md`.

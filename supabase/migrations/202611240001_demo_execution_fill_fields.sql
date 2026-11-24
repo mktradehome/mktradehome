@@ -9,8 +9,8 @@ alter table public.trades
 update public.trades t
 set requested_entry_price = q.entry_price,
     broker_entry_price = case
-      when q.execution_message ~ '^MT5 market order confirmed\\..*; price=[0-9]+(\\.[0-9]+)?; retcode=10009(;|$)'
-      then substring(q.execution_message from '; price=([0-9]+(\\.[0-9]+)?); retcode=10009')::numeric
+      when q.execution_message ~ '^MT5 market order confirmed[.].*; price=[0-9]+([.][0-9]+)?; retcode=10009(;|$)'
+      then substring(q.execution_message from '; price=([0-9]+([.][0-9]+)?); retcode=10009')::numeric
       else null
     end,
     mt5_opening_deal_ticket = q.mt5_ticket

@@ -443,7 +443,7 @@ function replayShortTerm(symbol:string,data:Record<Timeframe,Candle[]>,testStart
   signals++;
   const side=candidate.signal,sl=candidate.stopLoss,tp1=candidate.takeProfit1;
   // Include the fill candle so same-bar SL/TP events are not silently ignored.
-  const exitResult=resolveReplayExit({bars:m5,entryIndex:i+1,side,stopLoss:sl,takeProfit:tp1,riskDistance:candidate.riskDistance,maxHoldBars:36});
+  const exitResult=resolveReplayExit({bars:m5,entryIndex:i+1,entryPrice:entry,side,stopLoss:sl,takeProfit:tp1,riskDistance:candidate.riskDistance,maxHoldBars:36});
   const exitIndex=exitResult?.index??Math.min(i+1+36,m5.length-1);
   const record={side,signalClass:classification.label,displayLabel:classification.displayLabel,
    entryTime:new Date(fillBar.time).toISOString(),entry:+entry.toPrecision(10),stopLoss:+sl.toPrecision(10),

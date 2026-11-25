@@ -71,3 +71,17 @@ The separate short-term shadow is more demanding about entry timing: it uses 15M
 ## Current status
 
 Production market-monitor is ACTIVE v68. market-monitor-v100-shadow is ACTIVE v5 and market-monitor-v100-backtest-shadow is ACTIVE v17 at the time of this audit. No production function was deployed or changed. Keep new Demo trade approvals paused during the investigation; do not increase lot size or use the Real account.
+
+
+## Additional cross-timeframe outcome pattern
+
+A second diagnostic join parsed saved timeframe labels for 29 approximate trade-to-signal matches. These are still nearest-time matches, not immutable lifecycle links, and the sample is small:
+- 4H label ALIGNED with trade direction: 7 trades, 5 wins / 2 losses, 71.4% wins, +$6.49 recorded P/L.
+- 4H label WAIT: 22 trades, 7 wins / 15 losses, 31.8% wins, -$10.48 recorded P/L.
+- By market, all five USDJPY trades had 4H WAIT and all five lost. XAUUSD had 2 wins / 0 losses when 4H was aligned (+$8.71), versus 1 win / 2 losses when 4H was WAIT (-$13.58). BTCUSD and EURUSD were mixed, so this is not universal proof.
+- In the latest five trades, all four losses had 4H WAIT; the one winner (BTCUSD SELL) had 4H SELL. Two of the losing candidates had all four timeframe signal labels at WAIT; the other two had lower-timeframe agreement but no 4H/1H signal confirmation.
+- 15M ALIGNED: 4/8 wins, +$1.13; 15M WAIT: 8/21 wins, -$5.12. 1H ALIGNED: 8/18 wins, +$0.19; 1H WAIT: 4/11 wins, -$4.18. 5M ALIGNED: 2/8 wins, -$22.63; 5M WAIT: 9/20 wins, +$12.98. This warns against simply requiring every timeframe label to be BUY/SELL; the 5M full label did not improve these small-sample outcomes.
+
+The live candidate builder treats 4H as a score-based conflict veto, not a requirement for an explicit 4H BUY/SELL signal. The results make a strict 4H directional-confirmation gate a promising hypothesis to test, particularly for USDJPY and Gold, but not a production conclusion.
+
+The isolated backtest branch now adds a third comparison, fourHourConfirmedShadow: it replays the unchanged baseline and rejects a candidate unless the completed 4H indicator signal explicitly matches the trade direction. It is read-only research code only, has no live signal or execution connection, and must pass CI and historical cost-aware testing before anyone considers promotion. The existing baseline and short-term shadow remain unchanged.

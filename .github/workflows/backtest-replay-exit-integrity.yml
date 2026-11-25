@@ -18,4 +18,4 @@ jobs:
         with:
           deno-version: v2.x
       - name: Run deterministic replay exit tests
-        run: deno test supabase/functions/market-monitor-v100-backtest-shadow/replay-exit.test.ts
+        run: deno test supabase/functions/market-monitor-v100-backtest-shadow/replay-exit.test.ts supabase/functions/market-monitor-v100-backtest-shadow/confirmation-filters.test.ts

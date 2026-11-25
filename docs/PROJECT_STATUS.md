@@ -1,6 +1,6 @@
 # Mktradehome — Current Project Status
 
-Last verified: 2026-11-21 16:24 UTC
+Last verified: 2026-11-25 (read-only root-cause audit; isolated replay fix passed CI)
 
 ## Project and safety
 - Private personal Exness trading assistant; dashboard: https://mktradehome.pages.dev/
@@ -720,3 +720,20 @@ Last verified: 2026-11-21 16:24 UTC
 - Compared the prior complete Demo snapshot ($513.70 at 2026-11-24 22:11:40 UTC) with the latest complete snapshot ($530.86 at 2026-11-25 00:53:40 UTC): balance increased by $17.16.
 - Five additional trades were approved and executed after the prior snapshot, each with an approval timestamp and a matching MT5 position ID: EURUSD BUY -$0.59; USDJPY BUY -$0.87; EURUSD BUY -$0.32; XAUUSD SELL +$19.32; USDJPY BUY -$0.38. Their recorded P/L totals exactly +$17.16, matching the observed balance increase over that interval.
 - All five positions were closed by the latest complete snapshot; the Demo snapshot reports zero open positions. This supports reconciliation of those five recorded outcomes to the account balance movement, though individual close-deal commission/swap/fee fields and broker close reasons are still not stored separately.
+
+
+## 2026-11-25 · Root-cause investigation and isolated replay-integrity fix
+- Read-only Demo audit: 33 closed journal rows, 14 wins / 19 losses, +$0.87 recorded P/L. By market: BTCUSD +$7.86 (6/12 wins), EURUSD +$1.56 (5/11), USDJPY -$3.68 (0/5), XAUUSD -$4.87 (3/5; average loss -$16.45 vs average win +$9.34). Latest complete account snapshot 03:14:10 UTC: $502.83 balance/equity, zero open positions, complete snapshot.
+- Nearest-time signal attribution is only approximate because trade/queue rows still lack an immutable signal_id. Of 21 approximate matches, GOOD_AND_CLEAR was 3W/3L, -$12.63, PF 0.31; NORMAL was 4W/11L, -$0.25, PF 0.99; 12 rows were not linked by the diagnostic join. Do not interpret these small-sample metrics as durable class performance.
+- Classifier review found GOOD AND CLEAR can be assigned from EMA alignment and directional score thresholds even when saved timeframe indicator labels are WAIT. Example: XAUUSD journal id 155, labelled GOOD AND CLEAR (85), had 5M SELL, 15M WAIT, 1H WAIT, 4H WAIT. This is a label-evidence mismatch to test; production classifier was not changed.
+- Found V100 baseline and short-term shadow replay both skipped the fill candle when checking SL/TP (entry at next candle open, exit scan started one candle later). Isolated fix and deterministic tests added on branch experiment/root-cause-audit-2026-11-25. Final replay-exit CI run 45539108188 passed all seven tests (five replay-exit and two 4H filter tests); full engine/approval run 45539108207 passed type-check and existing tests. The fix is not deployed.
+- Production market-monitor ACTIVE v68; V100 shadow ACTIVE v5; V100 backtest shadow ACTIVE v17. No production source, Supabase function/data, strategy threshold, risk control, approval, queue row, account setting or trade was changed.
+- Full findings: docs/ROOT_CAUSE_AUDIT_2026-11-25.md. Keep Demo approvals paused during investigation; no lot-size increase or Real-account use.
+
+- Additional read-only timeframe analysis of 29 approximate signal matches: 4H ALIGNED with trade direction was 5W/2L (+$6.49); 4H WAIT was 7W/15L (-$10.48). All five USDJPY losses had 4H WAIT; the latest four losses also had 4H WAIT, while the latest BTCUSD winner had 4H SELL. Small sample and approximate linkage; hypothesis only.
+- The same diagnostic did not support blindly requiring 5M full BUY/SELL labels (2W/6L when aligned versus 9W/11L when WAIT). Do not force all timeframe labels to agree.
+- Added an isolated fourHourConfirmedShadow comparison to the V100 backtest branch. It requires explicit 4H signal alignment for research only; no live signal, approval, risk or execution behavior changed. The two 4H filter tests and the full combined CI run passed (45539108188 and 45539108207).
+
+- 2026-11-25 deployment: isolated `market-monitor-v100-backtest-shadow` deployed to Supabase as ACTIVE v18 (previous v17), SHA `77a15f9d55e2d54913ac09a3914a0ea457f02bb87e16d91377cd60ec26238c93`. JWT verification remains enabled. Deployed files: index.ts plus signal-classification.ts, short-term-shadow.ts, baseline-diagnostics.ts, replay-exit.ts and confirmation-filters.ts.
+- Deployment scope verified: this endpoint reads archived candle history and external rolling OHLC history, then returns simulated comparisons. Source explicitly declares no database writes, approvals, queue items, alerts or trade execution. It contains no trade_signals or mt5_trade_queue write path. Production `market-monitor` remains ACTIVE v68; no production strategy code, account setting or risk limit changed.
+- The deployment was verified by retrieving the deployed function source/version and checking the 4H shadow and fill-candle replay fix are present. A live authenticated POST invocation was not performed in this tool session; the first actual replay run still needs to be triggered from the authenticated Mktradehome app and its returned coverage/results inspected.

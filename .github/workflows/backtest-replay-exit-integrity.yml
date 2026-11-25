@@ -1,0 +1,21 @@
+name: Backtest replay exit integrity
+
+on:
+  push:
+    branches:
+      - experiment/root-cause-audit-2026-11-25
+  pull_request:
+    paths:
+      - "supabase/functions/market-monitor-v100-backtest-shadow/**"
+      - ".github/workflows/backtest-replay-exit-integrity.yml"
+
+jobs:
+  replay-exit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Run deterministic replay exit tests
+        run: deno test supabase/functions/market-monitor-v100-backtest-shadow/replay-exit.test.ts supabase/functions/market-monitor-v100-backtest-shadow/confirmation-filters.test.ts

@@ -3,6 +3,7 @@ export interface ReplayBar { open: number; high: number; low: number; close: num
 export interface ReplayExitInput {
   bars: ReplayBar[];
   entryIndex: number;
+  entryPrice: number;
   side: ReplaySide;
   stopLoss: number;
   takeProfit: number;
@@ -24,9 +25,9 @@ export interface ReplayExitResult {
  * period and neither exit level was reached.
  */
 export function resolveReplayExit(input: ReplayExitInput): ReplayExitResult | null {
-  const { bars, entryIndex, side, stopLoss, takeProfit, riskDistance, maxHoldBars } = input;
+  const { bars, entryIndex, entryPrice, side, stopLoss, takeProfit, riskDistance, maxHoldBars } = input;
   if (!Array.isArray(bars) || !Number.isInteger(entryIndex) || entryIndex < 0 ||
-      entryIndex >= bars.length || !Number.isFinite(stopLoss) || !Number.isFinite(takeProfit) ||
+      entryIndex >= bars.length || !Number.isFinite(entryPrice) || entryPrice <= 0 || !Number.isFinite(stopLoss) || !Number.isFinite(takeProfit) ||
       !Number.isFinite(riskDistance) || riskDistance <= 0 ||
       !Number.isInteger(maxHoldBars) || maxHoldBars < 1 ||
       (side !== "BUY" && side !== "SELL")) {
@@ -46,7 +47,7 @@ export function resolveReplayExit(input: ReplayExitInput): ReplayExitResult | nu
     if (stopTouched) return { index, exit: "SL", r: -1, tp1: false };
     if (targetTouched) return { index, exit: "TP1", r: 2, tp1: true };
     if (index === plannedExitIndex) {
-      const signedMove = side === "BUY" ? bar.close - bar.open : bar.open - bar.close;
+      const signedMove = side === "BUY" ? bar.close - entryPrice : entryPrice - bar.close;
       return { index, exit: "TIME", r: signedMove / riskDistance, tp1: false };
     }
   }

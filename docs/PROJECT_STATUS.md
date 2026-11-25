@@ -1,6 +1,6 @@
 # Mktradehome — Current Project Status
 
-Last verified: 2026-11-21 16:24 UTC
+Last verified: 2026-11-25 (read-only root-cause audit; isolated replay fix pending CI)
 
 ## Project and safety
 - Private personal Exness trading assistant; dashboard: https://mktradehome.pages.dev/
@@ -720,3 +720,12 @@ Last verified: 2026-11-21 16:24 UTC
 - Compared the prior complete Demo snapshot ($513.70 at 2026-11-24 22:11:40 UTC) with the latest complete snapshot ($530.86 at 2026-11-25 00:53:40 UTC): balance increased by $17.16.
 - Five additional trades were approved and executed after the prior snapshot, each with an approval timestamp and a matching MT5 position ID: EURUSD BUY -$0.59; USDJPY BUY -$0.87; EURUSD BUY -$0.32; XAUUSD SELL +$19.32; USDJPY BUY -$0.38. Their recorded P/L totals exactly +$17.16, matching the observed balance increase over that interval.
 - All five positions were closed by the latest complete snapshot; the Demo snapshot reports zero open positions. This supports reconciliation of those five recorded outcomes to the account balance movement, though individual close-deal commission/swap/fee fields and broker close reasons are still not stored separately.
+
+
+## 2026-11-25 · Root-cause investigation and isolated replay-integrity fix
+- Read-only Demo audit: 33 closed journal rows, 14 wins / 19 losses, +$0.87 recorded P/L. By market: BTCUSD +$7.86 (6/12 wins), EURUSD +$1.56 (5/11), USDJPY -$3.68 (0/5), XAUUSD -$4.87 (3/5; average loss -$16.45 vs average win +$9.34). Latest complete account snapshot 03:14:10 UTC: $502.83 balance/equity, zero open positions, complete snapshot.
+- Nearest-time signal attribution is only approximate because trade/queue rows still lack an immutable signal_id. Of 21 approximate matches, GOOD_AND_CLEAR was 3W/3L, -$12.63, PF 0.31; NORMAL was 4W/11L, -$0.25, PF 0.99; 12 rows were not linked by the diagnostic join. Do not interpret these small-sample metrics as durable class performance.
+- Classifier review found GOOD AND CLEAR can be assigned from EMA alignment and directional score thresholds even when saved timeframe indicator labels are WAIT. Example: XAUUSD journal id 155, labelled GOOD AND CLEAR (85), had 5M SELL, 15M WAIT, 1H WAIT, 4H WAIT. This is a label-evidence mismatch to test; production classifier was not changed.
+- Found V100 baseline and short-term shadow replay both skipped the fill candle when checking SL/TP (entry at next candle open, exit scan started one candle later). Isolated fix and five deterministic tests added on branch experiment/root-cause-audit-2026-11-25; CI pending. The fix is not deployed.
+- Production market-monitor ACTIVE v68; V100 shadow ACTIVE v5; V100 backtest shadow ACTIVE v17. No production source, Supabase function/data, strategy threshold, risk control, approval, queue row, account setting or trade was changed.
+- Full findings: docs/ROOT_CAUSE_AUDIT_2026-11-25.md. Keep Demo approvals paused during investigation; no lot-size increase or Real-account use.

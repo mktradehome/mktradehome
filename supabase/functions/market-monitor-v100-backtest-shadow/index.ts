@@ -401,7 +401,7 @@ function replay(symbol:string,data:Record<Timeframe,Candle[]>,testStart:number){
   signals++;
   // Include the fill candle: price movement after the next-bar OPEN is tradable.
   // If SL and TP1 both occur in one OHLC bar, resolve SL first conservatively.
-  const exitResult=resolveReplayExit({bars:m15,entryIndex:i+1,side,stopLoss:sl,takeProfit:tp1,riskDistance:risk,maxHoldBars:96});
+  const exitResult=resolveReplayExit({bars:m15,entryIndex:i+1,entryPrice:entry,side,stopLoss:sl,takeProfit:tp1,riskDistance:risk,maxHoldBars:96});
   const exitIndex=exitResult?.index??Math.min(i+1+96,m15.length-1);
   const record={side,signalClass:classification.label,displayLabel:classification.displayLabel,entryTime:new Date(fillBar.time).toISOString(),entry:+entry.toPrecision(10),exit:exitResult?.exit??"OPEN",holdingBars:exitResult?exitResult.index-(i+1):exitIndex-(i+1)};
   if(exitResult)all.push({...record,r:+exitResult.r.toFixed(3),tp1:exitResult.tp1});

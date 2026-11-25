@@ -1,6 +1,6 @@
 # Mktradehome — Current Project Status
 
-Last verified: 2026-11-25 (read-only root-cause audit; isolated replay fix pending CI)
+Last verified: 2026-11-25 (read-only root-cause audit; isolated replay fix passed CI)
 
 ## Project and safety
 - Private personal Exness trading assistant; dashboard: https://mktradehome.pages.dev/

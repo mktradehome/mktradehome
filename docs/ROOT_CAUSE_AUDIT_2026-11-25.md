@@ -51,7 +51,7 @@ Branch experiment/root-cause-audit-2026-11-25 now:
 - Adds five deterministic Deno tests for immediate SL, immediate TP, ambiguous same-bar SL/TP, incomplete future history, and time exit.
 - Adds a dedicated GitHub Actions workflow.
 
-Validation: the first CI attempt caught missing entryPrice wiring in the short-term replay call and test fixtures. That was corrected. Final GitHub Actions run 45538752993 passed all five deterministic replay-exit tests; run 45538753029 passed the full engine/approval workflow, including type-checking production and shadow Edge Functions and all existing tests. The correction remains isolated and has not been deployed to Supabase.
+Validation: the first CI attempt caught missing entryPrice wiring in the short-term replay call and test fixtures. That was corrected. Final GitHub Actions run 45539108188 passed all seven deterministic tests (five replay-exit cases and two 4H-filter cases); run 45539108207 passed the full engine/approval workflow, including type-checking production and shadow Edge Functions and all existing tests. The correction and 4H comparison remain isolated and have not been deployed to Supabase.
 
 ## Backtest and data limitations
 

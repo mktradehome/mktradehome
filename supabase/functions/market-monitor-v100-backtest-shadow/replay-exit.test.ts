@@ -7,7 +7,7 @@ function assertEquals<T>(actual: T, expected: T, message: string) {
 Deno.test("checks the fill candle and catches an immediate stop", () => {
   const result = resolveReplayExit({
     bars: [{ open: 100, high: 101, low: 98, close: 99 }],
-    entryIndex: 0, side: "BUY", stopLoss: 99, takeProfit: 102,
+    entryIndex: 0, entryPrice: 100, side: "BUY", stopLoss: 99, takeProfit: 102,
     riskDistance: 1, maxHoldBars: 3,
   });
   assertEquals(result?.exit, "SL", "fill-candle stop must be counted");
